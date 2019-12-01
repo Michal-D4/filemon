@@ -1,0 +1,13 @@
+<RCC>
+  <qresource prefix="image">
+    <file>res/Database.png</file>
+    <file>res/Favourites.png</file>
+    <file>res/Filter.png</file>
+    <file>res/Folder.png</file>
+    <file>res/left.png</file>
+    <file>res/List.png</file>
+    <file>res/menu.png</file>
+    <file>res/right.png</file>
+    <file>res/Update.png</file>
+  </qresource>
+</RCC>
