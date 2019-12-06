@@ -5,7 +5,7 @@ from collections import namedtuple
 from PyQt5.QtCore import Qt, QSettings
 from PyQt5.QtWidgets import QDialog, QAbstractItemView
 
-from src.core.helper import EXT_ID_INCREMENT
+from src.core.helper import EXT_ID_INCREMENT, get_selected_items
 from src.ui.ui_sel_opt import Ui_SelOpt
 
 
@@ -24,7 +24,8 @@ def get_items_id(view: QAbstractItemView) -> str:
 
 
 class SelOpt(QDialog):
-    # todo instead of controller use the dict/map of list chosen items in all widgets
+
+
     def __init__(self, controller, parent=None):
         super(SelOpt, self).__init__(parent)
         self.ui = Ui_SelOpt()
@@ -66,8 +67,7 @@ class SelOpt(QDialog):
 
     def author_toggle(self, author_list):
         if self.ui.chAuthor.isChecked():
-            self.ui.eAuthors.setText(author_list)  # todo the same in the similar ethods
-            # author_list = self.ctrl.get_selected_items(self.ctrl.ui.authorsList))
+            self.ui.eAuthors.setText(get_selected_items(self.ctrl.ui.authorsList))
         else:
             self.ui.eAuthors.setText('')
 
@@ -85,13 +85,13 @@ class SelOpt(QDialog):
 
     def dir_toggle(self):
         if self.ui.chDirs.isChecked():
-            self.ui.lDir.setText(self.ctrl.get_selected_items(self.ctrl.ui.dirTree))
+            self.ui.lDir.setText(get_selected_items(self.ctrl.ui.dirTree))
         else:
             self.ui.lDir.setText('')
 
     def ext_toggle(self):
         if self.ui.chExt.isChecked():
-            self.ui.eExt.setText(self.ctrl.get_selected_items(self.ctrl.ui.extList))
+            self.ui.eExt.setText(get_selected_items(self.ctrl.ui.extList))
         else:
             self.ui.eExt.setText('')
 
@@ -99,7 +99,7 @@ class SelOpt(QDialog):
         # print('--> tag_toggle')
         state = self.ui.chTags.isChecked()
         if state:
-            self.ui.eTags.setText(self.ctrl.get_selected_items(self.ctrl.ui.tagsList))
+            self.ui.eTags.setText(get_selected_items(self.ctrl.ui.tagsList))
         else:
             self.ui.eTags.setText('')
 
