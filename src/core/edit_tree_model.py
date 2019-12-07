@@ -11,6 +11,7 @@ from PyQt5.QtGui import QFont
 from src.core.helper import (REAL_FOLDER, VIRTUAL_FOLDER,
                              MimeTypes, DROP_COPY_FOLDER, DROP_MOVE_FOLDER,
                              DROP_COPY_FILE, DROP_MOVE_FILE, Shared)
+import src.core.utilities as ut
 
 DirData = namedtuple('DirData', 'dir_id parent_id is_virtual path')
 # dir_id: int, parent_id: int, is_virtual: int, path: str
@@ -204,8 +205,7 @@ class EditTreeModel(QAbstractItemModel):
         for idx in idx_list:
             item = copy.deepcopy(QModelIndex(idx).internalPointer())
             item.userData = item.userData._replace(parent_id=new_parent_data[2])
-            Shared['DB utility'].update_other('DIR_PARENT', (new_parent_data[0], 
-                                              item.userData.dir_id))
+            ut.update_other('DIR_PARENT', (new_parent_data[0], item.userData.dir_id))
             new_parent_item.appendChild(item)
         
         curr_idx.internalPointer().parent().appendChild(new_parent_item)
@@ -377,11 +377,10 @@ class EditTreeModel(QAbstractItemModel):
             # dir_id = stream.readInt() # may be restored, if copy/move from real folder
             fav_id = stream.readInt()
             if action == DROP_COPY_FILE:
-                Shared['DB utility'].insert_other('VIRTUAL_FILE', (parent_dir_id, file_id))
+                ut.insert_other('VIRTUAL_FILE', (parent_dir_id, file_id))
             else:
                 if fav_id > 0:
-                    Shared['DB utility'].update_other('VIRTUAL_FILE_MOVE', 
-                                                      (parent_dir_id, fav_id, file_id))
+                    ut.update_other('VIRTUAL_FILE_MOVE', (parent_dir_id, fav_id, file_id))
 
         if action == DROP_MOVE_FILE:          # update file list after moving files
             Shared['Controller'].files_virtual_folder(fav_id)
@@ -409,7 +408,7 @@ class EditTreeModel(QAbstractItemModel):
 
         parent_id = self.data(parent, role=Qt.UserRole).dir_id
         item_id = self.data(index, role=Qt.UserRole).dir_id
-        Shared['DB utility'].update_other('DIR_PARENT', (parent_id, item_id))
+        ut.update_other('DIR_PARENT', (parent_id, item_id))
 
         self.remove_row(index)
 
@@ -422,9 +421,7 @@ class EditTreeModel(QAbstractItemModel):
 
         parent_id = self.data(parent, role=Qt.UserRole).dir_id
         item_id = self.data(index, role=Qt.UserRole).dir_id
-        Shared['DB utility'].insert_other('VIRTUAL_DIR',
-                                          (parent_id, 
-                                           item_id))
+        ut.insert_other('VIRTUAL_DIR', (parent_id, item_id))
 
     def _restore_index(self, path):
         parent = QModelIndex()

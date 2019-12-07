@@ -9,7 +9,6 @@ from PyQt5.QtGui import QFontDatabase
 # immutable
 from PyQt5.QtWidgets import QAbstractItemView
 
-EXT_ID_INCREMENT = 100000
 Fields = namedtuple('Fields', 'fields headers indexes')
 # fields: str  - tuple of fields (in table Files) to be displayed in the view filesList
 # headers: str - tuple of headers in the view filesList
@@ -29,7 +28,6 @@ Shared = {'AppFont': QFontDatabase.systemFont(QFontDatabase.GeneralFont),
           'AppWindow': None,
           'Controller': None,
           'DB choice dialog': None,
-          'DB connection': None,
           'DB utility': None}
 
 
@@ -37,6 +35,7 @@ def get_file_extension(file_name):
     if file_name.rfind('.') > 0:
         return str.lower(file_name.rpartition('.')[2])
     return ''
+
 
 def show_message(message, time=3000):
     Shared['AppWindow'].ui.statusbar.showMessage(message, time)

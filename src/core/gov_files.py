@@ -17,18 +17,17 @@ from src.core.table_model import TableModel, ProxyModel2
 from src.core.tree_model import TreeModel
 from src.core.edit_tree_model import EditTreeModel, EditTreeItem
 from src.core.file_info import FileInfo, LoadFiles
-from src.core.helper import (EXT_ID_INCREMENT, Fields, Shared, show_message, selected_db_indexes, finish_thread,
+from src.core.helper import (Fields, Shared, show_message, selected_db_indexes, finish_thread,
                              persistent_row_indexes, del_add_items, save_path)
-from src.core.utilities import DBUtils
+import src.core.utilities as ut
 from src.core.create_db import create_all_objects
 from src.core.load_db_data import LoadDBData
 from src.core.input_date import DateInputDialog
 from src.core.item_edit import ItemEdit
 from src.core.sel_opt import SelOpt
 from src.core.set_fields import SetFields
+from src.core.utilities import DETECT_TYPES
 
-
-DETECT_TYPES = sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
 FileData = namedtuple('FileData', 'file_id dir_id comment_id ext_id source')
 # file_id: int, dir_id: int, comment_id: int, ext_id: int,
 # source: int - one of the FOLDER, VIRTUAL, ADVANCE constants
@@ -50,7 +49,6 @@ class FilesCrt():
         self.obj_thread: QObject = None
         self.in_thread: QThread = None
         self.file_list_source = FilesCrt.FOLDER
-        self._dbu = DBUtils()
         self._opt = SelOpt(self)
         self._restore_font()
         self._restore_fields()
@@ -109,7 +107,7 @@ class FilesCrt():
 
             d_dat = self.ui.dirTree.model().data(curr_idx, Qt.UserRole)
             new_parent = (new_name, d_dat.parent_id, 3)
-            new_parent_id = self._dbu.insert_other('DIR', new_parent)
+            new_parent_id = ut.insert_other('DIR', new_parent)
             self.ui.dirTree.model().create_new_parent(curr_idx, (new_parent_id,
                                                                  *new_parent), idx_list)
 
@@ -149,7 +147,7 @@ class FilesCrt():
             parent_id = self.ui.dirTree.model().data(parent, role=Qt.UserRole).dir_id
         else:
             parent_id = 0
-        dir_id = self._dbu.insert_other('DIR', (folder_name, parent_id, 2))
+        dir_id = ut.insert_other('DIR', (folder_name, parent_id, 2))
 
         item = EditTreeItem(
             (folder_name, ), (dir_id, parent_id, 2, folder_name))
@@ -165,17 +163,17 @@ class FilesCrt():
         print('--> _delete_virtual: parent_id {}, dir_id {}'.format(parent_id, dir_id))
 
         if self._exist_in_virt_dirs(dir_id, parent_id):
-            self._dbu.delete_other('FROM_VIRT_DIRS', (parent_id, dir_id))
+            ut.delete_other('FROM_VIRT_DIRS', (parent_id, dir_id))
             self.ui.dirTree.model().remove_row(cur_idx)
             print('***     exist')
         else:
-            self._dbu.delete_other('VIRT_FROM_DIRS', (dir_id,))
-            self._dbu.delete_other('VIRT_DIR_ID', (dir_id,))
+            ut.delete_other('VIRT_FROM_DIRS', (dir_id,))
+            ut.delete_other('VIRT_DIR_ID', (dir_id,))
             self.ui.dirTree.model().remove_all_copies(cur_idx)
             print('*** not exist')
 
     def _exist_in_virt_dirs(self, dir_id, parent_id):
-        return self._dbu.select_other('EXIST_IN_VIRT_DIRS', (dir_id, parent_id)).fetchone()
+        return ut.select_other('EXIST_IN_VIRT_DIRS', (dir_id, parent_id)).fetchone()
 
     # not used now ???
     def _is_parent_virtual(self, index):
@@ -190,7 +188,7 @@ class FilesCrt():
                                              'Input new folder name', '',
                                              QLineEdit.Normal, folder_name)
         if ok_:
-            self._dbu.update_other('DIR_NAME', (new_name, u_data.dir_id))
+            ut.update_other('DIR_NAME', (new_name, u_data.dir_id))
             self.ui.dirTree.model().update_folder_name(cur_idx, new_name)
 
     def _selected_files(self):
@@ -211,7 +209,7 @@ class FilesCrt():
             if idx.column() == 0:
                 file_name = model.data(idx)
                 u_dat = model.data(idx, Qt.UserRole)
-                file_path, _ = self._dbu.select_other(
+                file_path, _ = ut.select_other(
                     'PATH', (u_dat.dir_id,)).fetchone()
                 file_data = file_._make(
                     (idx, os.path.join(file_path, file_name), u_dat, file_name))
@@ -222,7 +220,7 @@ class FilesCrt():
         import shutil
         try:
             shutil.move(file[1], to_path)
-            self._dbu.update_other('FILE_DIR_ID', (dir_id, file[2][0]))
+            ut.update_other('FILE_DIR_ID', (dir_id, file[2][0]))
             self.ui.filesList.model().sourceModel().delete_row(file[0])
         except IOError:
             show_message("Can't move file \"{}\" into folder \"{}\"".
@@ -233,17 +231,17 @@ class FilesCrt():
         import shutil
         try:
             shutil.copy2(file_.name_with_path, to_path)
-            file_id = self._dbu.select_other2(
+            file_id = ut.select_other2(
                 'FILE_IN_DIR', (dir_id, file_.name)).fetchone()
             if file_id:
                 new_file_id = file_id[0]
             else:
-                new_file_id = self._dbu.insert_other2('COPY_FILE',
+                new_file_id = ut.insert_other2('COPY_FILE',
                                                       (dir_id, file_.user_data[0]))
 
-            self._dbu.insert_other2(
+            ut.insert_other2(
                 'COPY_TAGS', (new_file_id, file_.user_data[0]))
-            self._dbu.insert_other2(
+            ut.insert_other2(
                 'COPY_AUTHORS', (new_file_id, file_.user_data[0]))
         except IOError:
             show_message("Can't copy file \"{}\" into folder \"{}\"".
@@ -314,7 +312,7 @@ class FilesCrt():
             self.ui.filesList.model().sourceModel().update(idx, new_name)
             os.rename(os.path.join(path, file_name),
                       os.path.join(path, new_name))
-            self._dbu.update_other('FILE_NAME', (new_name, file_id))
+            ut.update_other('FILE_NAME', (new_name, file_id))
 
     def _restore_fields(self):
         settings = QSettings()
@@ -344,7 +342,7 @@ class FilesCrt():
                                            'Input new name',
                                            '', QLineEdit.Normal, tag)
             if ok:
-                self._dbu.update_other('UPDATE_TAG', (tag, id_))
+                ut.update_other('UPDATE_TAG', (tag, id_))
                 self.ui.tagsList.model().update(idx, tag, Qt.DisplayRole)
 
     def _copy_file_name(self):
@@ -358,7 +356,7 @@ class FilesCrt():
         QApplication.clipboard().setText(path)
 
     def get_db_utils(self):
-        return self._dbu
+        return ut
 
     def on_db_connection(self, file_name, create, last_used):
         """
@@ -387,8 +385,9 @@ class FilesCrt():
         f_name = os.path.basename(file_name)
         Shared['AppWindow'].setWindowTitle('Current DB:{}, located in {}'.
                                            format(f_name, path))
-        self._dbu.set_connection(_connection)
-        self._dbu.select_other('PRAGMA', ())
+        ut.DB_Connection['Path'] = file_name
+        ut.DB_Connection['Conn'] = _connection
+        ut.select_other('PRAGMA', ())
         self._populate_all_widgets()
 
     def on_change_data(self, action):
@@ -417,13 +416,13 @@ class FilesCrt():
 
         sel_tag = self.get_selected_tags()
         for tag in sel_tag:
-            files = self._dbu.select_other2(
+            files = ut.select_other2(
                 'FILE_INFO', (','.join([str(i) for i in all_id]),
                               tag[1])).fetchall()
             for file in files:
                 if re.search(tag[0], file[0], re.IGNORECASE):
                     try:
-                        self._dbu.insert_other('TAG_FILE', (tag[1], file[1]))
+                        ut.insert_other('TAG_FILE', (tag[1], file[1]))
                     except sqlite3.IntegrityError:
                         pass
 
@@ -463,24 +462,24 @@ class FilesCrt():
         self.ui.commentField.setFont(Shared['AppFont'])
 
     def _author_remove_unused(self):
-        self._dbu.delete_other('UNUSED_AUTHORS', ())
+        ut.delete_other('UNUSED_AUTHORS', ())
         self._populate_author_list()
 
     def _tag_remove_unused(self):
-        self._dbu.delete_other('UNUSED_TAGS', ())
+        ut.delete_other('UNUSED_TAGS', ())
         self._populate_tag_list()
 
     def _ext_remove_unused(self):
-        self._dbu.delete_other('UNUSED_EXT', ())
-        self._dbu.delete_other('UNUSED_EXT_GROUP', ())
+        ut.delete_other('UNUSED_EXT', ())
+        ut.delete_other('UNUSED_EXT_GROUP', ())
         self._populate_ext_list()
 
     def _ext_delete_current(self):
         cur_idx = self.ui.extList.currentIndex()
         ext_id = self.ui.extList.model().data(cur_idx, role=Qt.UserRole)[0]
-        if ext_id > EXT_ID_INCREMENT:
-            self._dbu.delete_other('FILE_BY_EXT', (ext_id - EXT_ID_INCREMENT,))
-            self._dbu.delete_other('EXT', (ext_id - EXT_ID_INCREMENT,))
+        if ext_id > ut.EXT_ID_INCREMENT:
+            ut.delete_other('FILE_BY_EXT', (ext_id - ut.EXT_ID_INCREMENT,))
+            ut.delete_other('EXT', (ext_id - ut.EXT_ID_INCREMENT,))
             self._populate_ext_list()
 
     def _ext_create_group(self) -> None:
@@ -491,25 +490,25 @@ class FilesCrt():
                                                           '', QLineEdit.Normal,
                                                           '')
             if ok_pressed:
-                gr_id = self._dbu.insert_other('EXT_GROUP', (group_name,))
+                gr_id = ut.insert_other('EXT_GROUP', (group_name,))
                 all_id = self._collect_all_ext(ids)
 
                 for id_ in all_id:
-                    self._dbu.update_other('EXT_GROUP', (gr_id, id_))
+                    ut.update_other('EXT_GROUP', (gr_id, id_))
 
-                self._dbu.delete_other('UNUSED_EXT_GROUP', ())
+                ut.delete_other('UNUSED_EXT_GROUP', ())
 
                 self._populate_ext_list()
 
     def _collect_all_ext(self, ids):
         all_id = set()
         for id_ in ids:
-            if id_ < EXT_ID_INCREMENT:
-                curr = self._dbu.select_other('EXT_ID_IN_GROUP', (id_,))
+            if id_ < ut.EXT_ID_INCREMENT:
+                curr = ut.select_other('EXT_ID_IN_GROUP', (id_,))
                 for idd in curr:
                     all_id.add(idd[0])
             else:
-                all_id.add(id_ - EXT_ID_INCREMENT)
+                all_id.add(id_ - ut.EXT_ID_INCREMENT)
         return all_id
 
     def _dir_update(self) -> None:
@@ -517,7 +516,7 @@ class FilesCrt():
         self._populate_directory_tree()
         self._populate_ext_list()
 
-        self.obj_thread = FileInfo(updated_dirs)
+        self.obj_thread = FileInfo(updated_dirs, ut.DB_Connection['Path'])
         self._run_in_qthread(finish_thread)
 
     def _run_in_qthread(self, run_at_finish) -> None:
@@ -530,7 +529,7 @@ class FilesCrt():
 
     def _favorite_file_list(self) -> None:
 
-        fav_id = self._dbu.select_other('FAV_ID', ()).fetchone()
+        fav_id = ut.select_other('FAV_ID', ()).fetchone()
 
         self._populate_virtual(fav_id[0])
 
@@ -552,7 +551,7 @@ class FilesCrt():
 
     def files_virtual_folder(self, dir_id):
         model = self._set_file_model()
-        files = self._dbu.select_other('FILES_VIRT', (dir_id,)).fetchall()
+        files = ut.select_other('FILES_VIRT', (dir_id,)).fetchall()
 
         if files:
             self.show_files(files, model, dir_id)
@@ -576,7 +575,7 @@ class FilesCrt():
         res = self._opt.get_result()
         model = self._set_file_model()
 
-        curs = self._dbu.advanced_selection(res)
+        curs = ut.advanced_selection(res)
         if curs:
             self.show_files(curs, model, -1)
             self.file_list_source = FilesCrt.ADVANCE
@@ -588,9 +587,9 @@ class FilesCrt():
     def _add_file_to_favorites(self) -> None:
         f_idx = self.ui.filesList.currentIndex()
         file_id = self.ui.filesList.model().data(f_idx, Qt.UserRole).file_id
-        fav_id = self._dbu.select_other('FAV_ID', ()).fetchone()
+        fav_id = ut.select_other('FAV_ID', ()).fetchone()
 
-        self._dbu.insert_other('VIRTUAL_FILE', (fav_id[0], file_id))
+        ut.insert_other('VIRTUAL_FILE', (fav_id[0], file_id))
 
     def _delete_files(self) -> None:
         indexes = persistent_row_indexes(self.ui.filesList)
@@ -599,7 +598,7 @@ class FilesCrt():
             if f_idx.isValid():
                 u_data = model.data(f_idx, Qt.UserRole)
                 if u_data.source > 0:              # file is from virtual folder
-                    self._dbu.delete_other(
+                    ut.delete_other(
                         'FILE_VIRT', (u_data.source, u_data.file_id))
                 elif u_data.source == 0:           # file is from real folder
                     self._delete_from_db(u_data)
@@ -609,12 +608,12 @@ class FilesCrt():
                 model.delete_row(f_idx)
 
     def _delete_from_db(self, file_ids):
-        self._dbu.delete_other('FAVOR_ALL', (file_ids[0],))
-        self._dbu.delete_other('AUTHOR_FILE_BY_FILE', (file_ids[0],))
-        self._dbu.delete_other('TAG_FILE_BY_FILE', (file_ids[0],))
-        self._dbu.delete_other('FILE', (file_ids[0],))
+        ut.delete_other('FAVOR_ALL', (file_ids[0],))
+        ut.delete_other('AUTHOR_FILE_BY_FILE', (file_ids[0],))
+        ut.delete_other('TAG_FILE_BY_FILE', (file_ids[0],))
+        ut.delete_other('FILE', (file_ids[0],))
         # when file for this comment not exist in DB
-        self._dbu.delete_other2('COMMENT', (file_ids[2], file_ids[2]))
+        ut.delete_other2('COMMENT', (file_ids[2], file_ids[2]))
 
     def _open_folder(self):
         path, *_ = self._file_path()
@@ -651,7 +650,7 @@ class FilesCrt():
 
         _date, ok_ = DateInputDialog.getDate(issue_date)
         if ok_:
-            self._dbu.update_other('ISSUE_DATE', (_date, file_id))
+            ut.update_other('ISSUE_DATE', (_date, file_id))
             self.ui.filesList.model().update(f_idx, _date)
 
     def _update_pages(self, f_idx, file_id, page_number):
@@ -660,7 +659,7 @@ class FilesCrt():
         pages, ok_pressed = QInputDialog.getInt(self.ui.extList, 'Input page number',
                                                 '', int(page_number))
         if ok_pressed:
-            self._dbu.update_other('PAGES', (pages, file_id))
+            ut.update_other('PAGES', (pages, file_id))
             self.ui.filesList.model().update(f_idx, pages)
 
     def _open_file(self):
@@ -673,7 +672,7 @@ class FilesCrt():
                 cur_date = QDateTime.currentDateTime().toString(Qt.ISODate)[
                     :16]
                 cur_date = cur_date.replace('T', ' ')
-                self._dbu.update_other('OPEN_DATE', (cur_date, file_id))
+                ut.update_other('OPEN_DATE', (cur_date, file_id))
                 model = self.ui.filesList.model()
                 heads = model.get_headers()
                 if 'Opened' in heads:
@@ -694,7 +693,7 @@ class FilesCrt():
                 f_idx = model.sourceModel().createIndex(f_idx.row(), 0)
             file_name = model.sourceModel().data(f_idx)
             file_id, dir_id, *_ = model.sourceModel().data(f_idx, role=Qt.UserRole)
-            path = self._dbu.select_other('PATH', (dir_id,)).fetchone()
+            path = ut.select_other('PATH', (dir_id,)).fetchone()
             return path, file_name, file_id, f_idx
         return '', '', 0, f_idx
 
@@ -704,8 +703,8 @@ class FilesCrt():
 
         titles = ('Enter new tags', 'Select tags from list',
                   'Apply key words / tags')
-        tag_list = self._dbu.select_other('TAGS').fetchall()
-        sel_tags = self._dbu.select_other(
+        tag_list = ut.select_other('TAGS').fetchall()
+        sel_tags = ut.select_other(
             'FILE_TAGS', (u_data.file_id,)).fetchall()
 
         edit_tags = ItemEdit(titles,
@@ -727,23 +726,23 @@ class FilesCrt():
 
     def _del_item_links(self, items2del, file_id, sqls):
         for item in items2del:
-            self._dbu.delete_other(sqls[0], (item, file_id))
-            res = self._dbu.select_other(sqls[1], (item,)).fetchone()
+            ut.delete_other(sqls[0], (item, file_id))
+            res = ut.select_other(sqls[1], (item,)).fetchone()
             if not res:
-                self._dbu.delete_other(sqls[2], (item,))
+                ut.delete_other(sqls[2], (item,))
 
     def _add_item_links(self, items2add, file_id, sqls):
-        add_ids = self._dbu.select_other2(
+        add_ids = ut.select_other2(
             sqls[0], ('","'.join(items2add),)).fetchall()
         sel_items = [item[0] for item in add_ids]
         not_in_ids = [item for item in items2add if not item in sel_items]
 
         for item in not_in_ids:
-            item_id = self._dbu.insert_other(sqls[1], (item,))
-            self._dbu.insert_other(sqls[2], (item_id, file_id))
+            item_id = ut.insert_other(sqls[1], (item,))
+            ut.insert_other(sqls[2], (item_id, file_id))
 
         for item in add_ids:
-            self._dbu.insert_other(sqls[2], (item[1], file_id))
+            ut.insert_other(sqls[2], (item[1], file_id))
 
     def _edit_authors(self):
         """
@@ -754,8 +753,8 @@ class FilesCrt():
 
         titles = ('Enter authors separated by commas',
                   'Select authors from list', 'Apply authors')
-        authors = self._dbu.select_other('AUTHORS').fetchall()
-        sel_authors = self._dbu.select_other(
+        authors = ut.select_other('AUTHORS').fetchall()
+        sel_authors = ut.select_other(
             'FILE_AUTHORS', (u_data.file_id,)).fetchall()
 
         edit_authors = ItemEdit(titles,
@@ -785,14 +784,14 @@ class FilesCrt():
                                   'file_id dir_id comment_id comment book_title')
         curr_idx = self.ui.filesList.currentIndex()
         user_data = self.ui.filesList.model().data(curr_idx, Qt.UserRole)
-        comment = self._dbu.select_other(
+        comment = ut.select_other(
             "FILE_COMMENT", (user_data.comment_id,)).fetchone()
         res = file_comment._make(
             user_data[:3] + (comment if comment else ('', '')))
         if not comment:
             comment = ('', '')
-            comment_id = self._dbu.insert_other('COMMENT', comment)
-            self._dbu.update_other('FILE_COMMENT', (comment_id, res.file_id))
+            comment_id = ut.insert_other('COMMENT', comment)
+            ut.update_other('FILE_COMMENT', (comment_id, res.file_id))
             user_data = user_data._replace(comment_id=comment_id)
             self.ui.filesList.model().update(curr_idx, user_data, Qt.UserRole)
             res = res._replace(comment_id=comment_id,
@@ -841,7 +840,7 @@ class FilesCrt():
                                                  '', QLineEdit.Normal,
                                                  getattr(checked, 'book_title'))
         if ok_pressed:
-            self._dbu.update_other('BOOK_TITLE', (data_, checked.comment_id))
+            ut.update_other('BOOK_TITLE', (data_, checked.comment_id))
             self._populate_comment_field(checked, edit=True)
 
     def _edit_comment(self):
@@ -852,11 +851,11 @@ class FilesCrt():
                                                           'Input comment', '',
                                                           getattr(checked, 'comment'))
         if ok_pressed:
-            self._dbu.update_other('COMMENT', (data_, checked.comment_id))
+            ut.update_other('COMMENT', (data_, checked.comment_id))
             self._populate_comment_field(checked, edit=True)
 
     def _populate_ext_list(self):
-        ext_list = self._dbu.select_other('EXT')
+        ext_list = ut.select_other('EXT')
         model = TreeModel()
         model.set_model_data(ext_list)
         model.setHeaderData(0, Qt.Horizontal, "Extensions")
@@ -896,7 +895,7 @@ class FilesCrt():
         settings.setValue('EXT_SEL_LIST', sel)
 
     def _populate_tag_list(self):
-        tag_list = self._dbu.select_other('TAGS')
+        tag_list = ut.select_other('TAGS')
         model = TableModel()
         model.setHeaderData(0, Qt.Horizontal, ("Tags",))
         for tag, id_ in tag_list:
@@ -923,7 +922,7 @@ class FilesCrt():
                 self.ui.tagsList.selectionModel().select(idx, QItemSelectionModel.Select)
 
     def _populate_author_list(self):
-        author_list = self._dbu.select_other('AUTHORS')
+        author_list = ut.select_other('AUTHORS')
         model = TableModel()
         model.setHeaderData(0, Qt.Horizontal, "Authors")
         for author, id_ in author_list:
@@ -969,7 +968,7 @@ class FilesCrt():
         settings.setValue('FILE_LIST_SOURCE', self.file_list_source)
         model = self._set_file_model()
         if dir_idx:
-            files = self._dbu.select_other('FILES_CURR_DIR', (dir_idx[0],))
+            files = ut.select_other('FILES_CURR_DIR', (dir_idx[0],))
             self.show_files(files, model, 0)
 
             self.status_label.setText('{} ({})'.format(dir_idx[-1],
@@ -1025,12 +1024,12 @@ class FilesCrt():
                 "the type of file_id is {} instead of int".format(
                     type(file_id))
 
-            tags = self._dbu.select_other("FILE_TAGS", (file_id,)).fetchall()
-            authors = self._dbu.select_other(
+            tags = ut.select_other("FILE_TAGS", (file_id,)).fetchall()
+            authors = ut.select_other(
                 "FILE_AUTHORS", (file_id,)).fetchall()
 
             if comment_id:
-                comment = self._dbu.select_other(
+                comment = ut.select_other(
                     "FILE_COMMENT", (comment_id,)).fetchone()
             else:
                 comment = ('', '')
@@ -1045,7 +1044,7 @@ class FilesCrt():
                 '<p><a href="Edit comment">Comment</a> {}</p></body></html>'
                 .format(comment[0]))))
 
-            path = self._dbu.select_other(
+            path = ut.select_other(
                 'PATH', (user_data.dir_id,)).fetchone()
             self.status_label.setText(path[0])
 
@@ -1053,7 +1052,7 @@ class FilesCrt():
                 self._update_comment_date(file_id)
 
     def _update_comment_date(self, file_id):
-        self._dbu.update_other('COMMENT_DATE', (file_id,))
+        ut.update_other('COMMENT_DATE', (file_id,))
         model = self.ui.filesList.model()
         heads = model.get_headers()
         if "Commented" in heads:
@@ -1117,7 +1116,7 @@ class FilesCrt():
         :return: list of tuples (Dir name, DirID, ParentID, FolderType, Full path of dir)
         """
         dirs = []
-        dir_tree = self._dbu.dir_tree_select(dir_id=0, level=0)
+        dir_tree = ut.dir_tree_select(dir_id=0, level=0)
 
         for rr in dir_tree:
             print('** ', rr)
@@ -1125,7 +1124,7 @@ class FilesCrt():
         return dirs
 
     def _insert_virt_dirs(self, dir_tree: list):
-        virt_dirs = self._dbu.select_other('VIRT_DIRS', ())
+        virt_dirs = ut.select_other('VIRT_DIRS', ())
         id_list = [x[1] for x in dir_tree]
 
         for vd in virt_dirs:
@@ -1184,7 +1183,7 @@ class FilesCrt():
         return idx
 
     def _del_empty_dirs(self):
-        self._dbu.delete_other('EMPTY_DIRS', ())
+        ut.delete_other('EMPTY_DIRS', ())
         self._populate_directory_tree()
 
     def _rescan_dir(self):
@@ -1208,7 +1207,7 @@ class FilesCrt():
 
     def _load_files(self, path_: str, ext_):
         logger.debug(' | '.join((path_, '|', ext_, '|')))
-        self.obj_thread = LoadFiles(path_, ext_)
+        self.obj_thread = LoadFiles(path_, ext_, ut.DB_Connection['Path'])
         self._run_in_qthread(self._dir_update)
 
     def _scan_file_system(self) -> (str, str):
@@ -1230,10 +1229,10 @@ class FilesCrt():
             model = self.ui.extList.model()
             for i in idxs:
                 tt = model.data(i, Qt.UserRole)
-                if tt[0] > EXT_ID_INCREMENT:
+                if tt[0] > ut.EXT_ID_INCREMENT:
                     res.add(model.data(i, Qt.DisplayRole))
                 else:
-                    ext_ = self._dbu.select_other(
+                    ext_ = ut.select_other(
                         'EXT_IN_GROUP', (tt[0],)).fetchall()
                     res.update([ee[0] for ee in ext_])
             res = list(res)

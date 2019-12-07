@@ -3,8 +3,8 @@
 import sqlite3
 import datetime
 
-from src.core.helper import EXT_ID_INCREMENT, Shared
-
+EXT_ID_INCREMENT = 100000
+DETECT_TYPES = sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
 
 Selects = {'TREE':  # (Dir name, DirID, ParentID, Full path of dir)
                (('WITH x(Path, DirID, ParentID, FolderType, level) AS '
@@ -156,138 +156,128 @@ Delete = {'EXT': 'delete from Extensions where ExtID = ?;',
           }
 
 
-class DBUtils:
-    """Different methods for select, update and insert information into/from DB"""
+DB_Connection = {'Path': '',
+                 'Conn': None,
+                }
 
-    def __init__(self):
-        self.conn = None
-        self.curs = None
-        Shared['DB utility'] = self
 
-    def set_connection(self, connection):
-        self.conn = connection
-        self.curs = connection.cursor()
-        Shared['DB connection'] = connection
+def generate_adv_sql(param: dict) -> str:
+    """
+    Generate SQL from tuple "Selects['ADV_SELECT']" of length 6
+    according to choices made on "SelOpt" dialog
+    @param param: dictionary with keys:
+    'dir', 'ext', 'file' and 'date'
+    The first three contain lists of IDs for Dirs, Extensions, Files tables
+    as comma separated string
+    The last is tuple of 3 items:
+    @return:
+    """
 
-    def advanced_selection(self, param):
-        # print('|---> advanced_selection', param)
-        sql = self.generate_adv_sql(param)
-        # print(sql)
+    tmp = []
 
-        if sql:
-            return self.curs.execute(sql)
+    keys_ = {'dir': 0, 'ext': 1, 'file': 2}
+    for kk in keys_:
+        if param[kk]:
+            tmp.append(Selects['ADV_SELECT'][keys_[kk]].format(param[kk]))
+
+    if param['date'][0]:
+        tt = datetime.date.today()
+        tt = tt.replace(year=tt.year - int(param['date'][1]))
+        if param['date'][2]:
+            tmp.append(Selects['ADV_SELECT'][3].format(tt))
+        else:
+            tmp.append(Selects['ADV_SELECT'][4].format(tt))
+
+    tt = ' and '.join(tmp)
+    sql = ' where '.join((Selects['ADV_SELECT'][5], tt))
+
+    return sql
+
+
+def advanced_selection(param):
+    if not DB_Connection['Conn']:
         return ()
 
-    @staticmethod
-    def generate_adv_sql(param: dict):
-        # print(Selects['ADV_SELECT'])
-        # print(param)
+    sql = generate_adv_sql(param)
+    # print(sql)
 
-        tmp = []
+    if sql:
+        return DB_Connection['Conn'].execute(sql)
+    return ()
 
-        keys_ = {'dir': 0, 'ext': 1, 'file': 2}
-        for kk in keys_:
-            if param[kk]:
-                tmp.append(Selects['ADV_SELECT'][keys_[kk]].format(param[kk]))
 
-        if param['date'][0]:
-            tt = datetime.date.today()
-            tt = tt.replace(year=tt.year - int(param['date'][1]))
-            if param['date'][2]:
-                tmp.append(Selects['ADV_SELECT'][3].format(tt))
-            else:
-                tmp.append(Selects['ADV_SELECT'][4].format(tt))
+def generate_sql(dir_id, level, sql='TREE'):
+    tree_sql = Selects[sql]
+    tmp = (tree_sql[0], tree_sql[1].format(dir_id),
+           tree_sql[2].format(dir_id), tree_sql[3],
+           tree_sql[4].format(level), tree_sql[5])
+    cc = [(0, 2, 3, 5),
+          (0, 1, 3, 5),
+          (0, 2, 3, 4),
+          (0, 1, 3, 4)]
+    i = (level > 0) * 2 + (dir_id > 0)  # 00 = 0, 01 = 1, 10 = 2, 11 = 3
+    sql = ' '.join([tmp[j] for j in cc[i]])
+    return sql
 
-        tt = ' and '.join(tmp)
-        sql = ' where '.join((Selects['ADV_SELECT'][5], tt))
 
-        return sql
+def dir_tree_select(dir_id, level):
+    """
+    Select tree of directories starting from dir_id up to level
+    :param dir_id: - starting directory, 0 - from root
+    :param level: - max level of tree, 0 - all levels
+    :return: cursor of directories
+    """
+    sql = generate_sql(dir_id, level)
 
-    def dir_tree_select(self, dir_id, level):
-        """
-        Select tree of directories starting from dir_id up to level
-        :param dir_id: - starting directory, 0 - from root
-        :param level: - max level of tree, 0 - all levels
-        :return: cursor of directories
-        """
-        sql = DBUtils.generate_sql(dir_id, level)
-        print(sql)
+    return DB_Connection['Conn'].cursor().execute(sql)
 
-        self.curs.execute(sql)
 
-        return self.curs
+def dir_ids_select(dir_id, level):
+    """
+    Select tree of directories starting from dir_id up to level
+    :param dir_id: - starting directory, 0 - from root
+    :param level: - max level of tree, 0 - all levels
+    :return: list of directories ids
+    """
+    sql = generate_sql(dir_id, level, sql='DIR_IDS')
 
-    def dir_ids_select(self, dir_id, level):
-        """
-        Select tree of directories starting from dir_id up to level
-        :param dir_id: - starting directory, 0 - from root
-        :param level: - max level of tree, 0 - all levels
-        :return: list of directories ids
-        """
-        sql = DBUtils.generate_sql(dir_id, level, sql='DIR_IDS')
+    return DB_Connection['Conn'].cursor().execute(sql)
 
-        self.curs.execute(sql)
 
-        return self.curs.fetchall()
+def select_other(sql, params=()):
+    return DB_Connection['Conn'].cursor().execute(Selects[sql], params)
 
-    @staticmethod
-    def generate_sql(dir_id, level, sql='TREE'):
-        tree_sql = Selects[sql]
-        tmp = (tree_sql[0], tree_sql[1].format(dir_id),
-               tree_sql[2].format(dir_id), tree_sql[3],
-               tree_sql[4].format(level), tree_sql[5])
-        cc = [(0, 2, 3, 5),
-              (0, 1, 3, 5),
-              (0, 2, 3, 4),
-              (0, 1, 3, 4)]
-        i = (level > 0) * 2 + (dir_id > 0)  # 00 = 0, 01 = 1, 10 = 2, 11 = 3
-        sql = ' '.join([tmp[j] for j in cc[i]])
-        return sql
 
-    def select_other(self, sql, params=()):
-        # print('|---> select_other', sql, params)
-        # print(Selects[sql])
-        self.curs.execute(Selects[sql], params)
-        return self.curs
+def select_other2(sql, params=()):
+    return DB_Connection['Conn'].cursor().execute(Selects[sql].format(*params))
 
-    def select_other2(self, sql, params=()):
-        # print('|---> select_other2', sql, params)
-        # print(Selects[sql].format(*params))
-        self.curs.execute(Selects[sql].format(*params))
-        return self.curs
 
-    def insert_other(self, sql, data):
-        # print('|---> insert_other', Insert[sql], data)
-        self.curs.execute(Insert[sql], data)
-        jj = self.curs.lastrowid
-        self.conn.commit()
-        # print('  lastrowid:', jj)
-        return jj
+def insert_other(sql, data):
+    ss = DB_Connection['Conn'].cursor().execute(Insert[sql], data)
+    DB_Connection['Conn'].commit()
+    return ss.lastrowid
 
-    def insert_other2(self, sql, data):
-        # print('|---> insert_other2', Insert[sql].format(*data))
-        self.curs.execute(Insert[sql].format(*data))
-        jj = self.curs.lastrowid
-        self.conn.commit()
-        # print('  _id:', jj)
-        return jj
 
-    def update_other(self, sql, data):
-        # print('|---> update_other:', Update[sql], data)
-        self.curs.execute(Update[sql], data)
-        self.conn.commit()
+def insert_other2(sql, data):
+    ss = DB_Connection['Conn'].cursor().execute(Insert[sql].format(*data))
+    DB_Connection['Conn'].commit()
+    return ss.lastrowid
 
-    def delete_other(self, sql, data):
-        # print('|---> delete_other:', sql, data)
-        try:
-            self.curs.execute(Delete[sql], data)
-        except sqlite3.IntegrityError:
-            pass
-        else:
-            self.conn.commit()
 
-    def delete_other2(self, sql, data):
-        # print('|---> delete_other:', sql, data)
-        # print(Delete[sql].format(*data))
-        self.curs.execute(Delete[sql].format(*data))
-        self.conn.commit()
+def update_other(sql, data):
+    DB_Connection['Conn'].cursor().execute(Update[sql], data)
+    DB_Connection['Conn'].commit()
+
+
+def delete_other(sql, data):
+    try:
+        DB_Connection['Conn'].cursor().execute(Delete[sql], data)
+    except sqlite3.IntegrityError:
+        pass
+    else:
+        DB_Connection['Conn'].commit()
+
+
+def delete_other2(sql, data):
+    DB_Connection['Conn'].cursor().execute(Delete[sql].format(*data))
+    DB_Connection['Conn'].commit()

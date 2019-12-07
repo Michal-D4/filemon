@@ -5,7 +5,8 @@ from collections import namedtuple
 from PyQt5.QtCore import Qt, QSettings
 from PyQt5.QtWidgets import QDialog, QAbstractItemView
 
-from src.core.helper import EXT_ID_INCREMENT, get_selected_items
+from src.core.helper import get_selected_items
+import src.core.utilities as ut
 from src.ui.ui_sel_opt import Ui_SelOpt
 
 
@@ -49,8 +50,11 @@ class SelOpt(QDialog):
 
     def _restore_state(self):
         settings = QSettings()
-        rest = settings.value('SelectionOptions', (False, False, False, True,
-                                                   False, True, '5', True))
+        _state = settings.value('SelectionOptions',
+                                (False, False, False, True, False, True, '5', True))
+        self._set_state(_state)
+
+    def _set_state(self, rest):
         self.ui.chDirs.setChecked(rest[0])
         self.ui.chExt.setChecked(rest[1])
         self.ui.chTags.setChecked(rest[2])
@@ -130,6 +134,10 @@ class SelOpt(QDialog):
                           self.ui.dateFile.isChecked()
                           )
 
+        self._save_state()
+        return result
+
+    def _save_state(self):
         settings = QSettings()
         settings.setValue('SelectionOptions',
                           (self.ui.chDirs.isChecked(),
@@ -140,7 +148,6 @@ class SelOpt(QDialog):
                            self.ui.chDate.isChecked(),
                            self.ui.eDate.text(),
                            self.ui.dateFile.isChecked()))
-        return result
 
     def _get_file_id(self) -> str:
         """
@@ -170,8 +177,7 @@ class SelOpt(QDialog):
             idx = self.ctrl.ui.dirTree.currentIndex()
             root_id = int(self.ctrl.ui.dirTree.model().data(idx, Qt.UserRole)[0])
 
-            ids = ','.join([str(id_[0]) for id_ in
-                            self.ctrl.get_db_utils().dir_ids_select(root_id, lvl)])
+            ids = ','.join([str(id_[0]) for id_ in ut.dir_ids_select(root_id, lvl)])
             return ids
         return ''
 
@@ -188,8 +194,8 @@ class SelOpt(QDialog):
 
             idx = []
             for id_ in aux:
-                if id_[0] > EXT_ID_INCREMENT:
-                    idx.append(id_[0] - EXT_ID_INCREMENT)
+                if id_[0] > ut.EXT_ID_INCREMENT:
+                    idx.append(id_[0] - ut.EXT_ID_INCREMENT)
                 else:
                     idx += self._ext_in_group(id_[0])
 
@@ -198,7 +204,7 @@ class SelOpt(QDialog):
         return ''
 
     def _ext_in_group(self, gr_id) -> list:
-        curr = self.ctrl.get_db_utils().select_other('EXT_ID_IN_GROUP', (gr_id,))
+        curr = ut.select_other('EXT_ID_IN_GROUP', (gr_id,))
         idx = []
         for id_ in curr:
             idx.append(id_[0])
@@ -216,19 +222,16 @@ class SelOpt(QDialog):
         if tags:
             if self.ui.tagAll.isChecked():
                 num = len(tags.split(','))
-                res = self.ctrl.get_db_utils().select_other2('FILE_IDS_ALL_TAG',
-                                                             (tags, num)).fetchall()
+                res = ut.select_other2('FILE_IDS_ALL_TAG', (tags, num)).fetchall()
             else:
-                res = self.ctrl.get_db_utils().select_other2('FILE_IDS_ANY_TAG',
-                                                             (tags,)).fetchall()
+                res = ut.select_other2('FILE_IDS_ANY_TAG', (tags,)).fetchall()
             return res
 
         return []
 
     def _get_file_ids_4_authors(self) -> list:
         auth_ids = get_items_id(self.ctrl.ui.authorsList)
-        file_ids = self.ctrl.get_db_utils().select_other2('FILE_IDS_AUTHORS',
-                                                          (auth_ids,)).fetchall()
+        file_ids = ut.select_other2('FILE_IDS_AUTHORS', (auth_ids,)).fetchall()
         return file_ids
 
 

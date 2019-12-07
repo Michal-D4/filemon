@@ -8,7 +8,7 @@ __pycache__/
 # /inspection/
 # /codestyles/
 # /_linux/
-/tmp/
+/tmp/**/*
 /venv/
 /.idea/
 *.xml

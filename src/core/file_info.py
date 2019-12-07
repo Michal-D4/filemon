@@ -5,12 +5,15 @@ import datetime
 from loguru import logger
 import os
 import re
+import sqlite3
 
 from PyPDF2 import PdfFileReader, utils
 from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot
 
 from src.core.helper import Shared, get_file_extension
 from src.core.load_db_data import LoadDBData
+
+DETECT_TYPES = sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
 
 AUTHOR_ID = 'select AuthorID from Authors where Author = ?;'
 
@@ -40,10 +43,11 @@ UPDATE_FILE = ' '.join(('update Files set',
 class LoadFiles(QObject):
     finished = pyqtSignal()
 
-    def __init__(self, path_, ext_):
+    def __init__(self, path_, ext_, db_path):
         super().__init__()
         logger.debug(' '.join((path_, '|', ext_, '|')))
-        self.conn = Shared['DB connection']
+        self.conn = sqlite3.connect(db_path, check_same_thread=False,
+                                    detect_types=DETECT_TYPES)
         self.path_ = path_
         self.ext_ = ext_
         self.updated_dirs = None
@@ -69,11 +73,12 @@ class FileInfo(QObject):
         self._update_files()
         self.finished.emit()           # 'Updating of files is finished'
 
-    def __init__(self, updated_dirs):
+    def __init__(self, updated_dirs, db_path):
         super().__init__()
         logger.debug('--> FileInfo.__init__')
         self.upd_dirs = updated_dirs
-        self.conn = Shared['DB connection']
+        self.conn = sqlite3.connect(db_path, check_same_thread=False,
+                                    detect_types=DETECT_TYPES)
         self.cursor = self.conn.cursor()
         self.file_info = []
 
