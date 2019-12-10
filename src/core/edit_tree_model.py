@@ -1,5 +1,6 @@
 # edit_tree_model.py
 
+from loguru import logger
 import copy
 from collections import namedtuple, defaultdict
 
@@ -18,6 +19,7 @@ DirData = namedtuple('DirData', 'dir_id parent_id is_virtual path')
 
 ALL_ITEMS = defaultdict(list)
 
+
 class EditTreeItem(object):
 
     def __init__(self, data_, user_data=None, parent=None):
@@ -30,19 +32,19 @@ class EditTreeItem(object):
         self.children = []
 
     def childNumber(self):
-        if self.parent_ != None:
+        if self.parent_ is not None:
             return self.parent_.children.index(self)
         return 0
 
     def removeChildren(self, position, count):
-        print('--> removeChildren from', len(self.children), self.userData)
+        logger.debug(f'children count: {len(self.children)}, userData: {self.userData}')
         if position < 0 or position + count > len(self.children):
             return False
 
         for _ in range(count):
-            print('  ', self.children[position].userData)
+            logger.debug(f'userData: {self.children[position].userData}')
             self.children.pop(position)
-        print('  childCount', self.childCount(), len(self.children))
+        logger.debug(f'childCount: {self.childCount()}, {len(self.children)}')
 
         return True
 
@@ -80,9 +82,9 @@ class EditTreeItem(object):
 
     def appendChild(self, item):
         item.parent_ = self
-        print('--> appendChild to:', self.userData)
+        logger.debug(f'to: {self.userData}')
         item.userData = item.userData._replace(parent_id=self.userData.dir_id)
-        print('             Child:', item.userData)
+        logger.debug('Child: {item.userData}')
         ALL_ITEMS[item.userData.dir_id].append(item)
         self.children.append(item)
 
@@ -230,8 +232,8 @@ class EditTreeModel(QAbstractItemModel):
         return success
 
     def remove_row(self, index):
-        print('--> remove_row', self.data(index, Qt.UserRole))
-        print('    parent', self.getItem(index).parent().itemData)
+        logger.debug(f'row: {self.data(index, Qt.UserRole)}')
+        logger.debug(f'parent: {self.getItem(index).parent().itemData}')
         return self.removeRows(index.row(), 1, self.parent(index))
 
     def remove_all_copies(self, index):
@@ -242,18 +244,18 @@ class EditTreeModel(QAbstractItemModel):
         """
         dir_id = index.internalPointer().userData.dir_id
         items = ALL_ITEMS[dir_id]
-        print('--> remove_all_copies', dir_id, len(items))
+        logger.debug(f'dir_id: {dir_id}, len: {len(items)}')
         idx_list = []
         for item in items:
-            print('  1', item.userData, item.row())
+            logger.debug(f'userData: {item.userData}, item_row: {item.row()}')
             idx = self.createIndex(item.row(), 0, item)
             idx_list.append(QPersistentModelIndex(idx))
 
         for idx in idx_list:
-            print('  2', self.data(QModelIndex(idx), Qt.UserRole), 
-                  QModelIndex(idx).row())
+            logger.debug(f'data: self.data(QModelIndex(idx), Qt.UserRole), '
+                         f'row: {QModelIndex(idx).row()}')
             res = self.remove_row(QModelIndex(idx))
-            print('   res=', res)
+            logger.debug(f'res= {res}')
             
         ALL_ITEMS.pop(dir_id)
 

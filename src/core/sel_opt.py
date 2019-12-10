@@ -1,6 +1,7 @@
 # sel_opt.py
 
 from collections import namedtuple
+from loguru import logger
 
 from PyQt5.QtCore import Qt, QSettings
 from PyQt5.QtWidgets import QDialog, QAbstractItemView
@@ -45,14 +46,18 @@ class SelOpt(QDialog):
         self.ui.eDate.textEdited.connect(self._text_edited)
 
     def _text_edited(self, ed_str: str):
-        # print('|--> _text_edited', ed_str)
         self.not_older = int(ed_str)
 
     def _restore_state(self):
         settings = QSettings()
         _state = settings.value('SelectionOptions',
                                 (False, False, False, True, False, True, '5', True))
-        self._set_state(_state)
+        try:
+            self._set_state(_state)
+        except TypeError:
+            logger.debug('TypeError')
+            _state = (False, False, False, True, False, True, '5', True)
+            self._set_state(_state)
 
     def _set_state(self, rest):
         self.ui.chDirs.setChecked(rest[0])
@@ -100,7 +105,6 @@ class SelOpt(QDialog):
             self.ui.eExt.setText('')
 
     def tag_toggle(self):
-        # print('--> tag_toggle')
         state = self.ui.chTags.isChecked()
         if state:
             self.ui.eTags.setText(get_selected_items(self.ctrl.ui.tagsList))
@@ -148,6 +152,7 @@ class SelOpt(QDialog):
                            self.ui.chDate.isChecked(),
                            self.ui.eDate.text(),
                            self.ui.dateFile.isChecked()))
+        logger.debug('---')
 
     def _get_file_id(self) -> str:
         """
@@ -247,7 +252,8 @@ if __name__ == "__main__":
     set_opt = SelOpt(_controller)
 
     if set_opt.exec_():
-        print(set_opt.get_result())
+        # print(set_opt.get_result())
+        pass
     sys.exit(app.exec_())
 
     # sys.exit(app.exec_())

@@ -26,11 +26,28 @@ from src.core.input_date import DateInputDialog
 from src.core.item_edit import ItemEdit
 from src.core.sel_opt import SelOpt
 from src.core.set_fields import SetFields
-from src.core.utilities import DETECT_TYPES
 
 FileData = namedtuple('FileData', 'file_id dir_id comment_id ext_id source')
 # file_id: int, dir_id: int, comment_id: int, ext_id: int,
 # source: int - one of the FOLDER, VIRTUAL, ADVANCE constants
+
+
+def get_dirs():
+    """
+    Returns directory tree
+    :return: list of tuples (Dir name, DirID, ParentID, FolderType, Full path of dir)
+    """
+    dirs = []
+    dir_tree = ut.dir_tree_select(dir_id=0, level=0)
+
+    for rr in dir_tree:
+        logger.debug(f'{rr}')
+        dirs.append((os.path.split(rr[0])[1], *rr[1:len(rr)-1], rr[0]))
+    return dirs
+
+
+def _exist_in_virt_dirs(dir_id: int, parent_id: int):
+    return ut.select_other('EXIST_IN_VIRT_DIRS', (dir_id, parent_id)).fetchone()
 
 
 class FilesCrt():
@@ -100,7 +117,7 @@ class FilesCrt():
         new_name, ok_ = QInputDialog.getText(self.ui.dirTree,
                                              'Input folder name', '',
                                              QLineEdit.Normal, folder_name)
-        print('--> _add_group_folder', new_name, ok_)
+        logger.debug(f'group name: {new_name}, ok: {ok_}')
         if ok_:
             curr_idx = self.ui.dirTree.currentIndex()
             idx_list = self._curr_selected_dirs(curr_idx)
@@ -160,25 +177,17 @@ class FilesCrt():
         parent_id = 0 if not parent.isValid() else \
             self.ui.dirTree.model().data(parent, role=Qt.UserRole).dir_id
         dir_id = self.ui.dirTree.model().data(cur_idx, role=Qt.UserRole).dir_id
-        print('--> _delete_virtual: parent_id {}, dir_id {}'.format(parent_id, dir_id))
+        logger.debug(f'parent_id: {parent_id}, dir_id: {dir_id}')
 
-        if self._exist_in_virt_dirs(dir_id, parent_id):
+        if _exist_in_virt_dirs(dir_id, parent_id):
             ut.delete_other('FROM_VIRT_DIRS', (parent_id, dir_id))
             self.ui.dirTree.model().remove_row(cur_idx)
-            print('***     exist')
+            logger.debug('***     exist')
         else:
             ut.delete_other('VIRT_FROM_DIRS', (dir_id,))
             ut.delete_other('VIRT_DIR_ID', (dir_id,))
             self.ui.dirTree.model().remove_all_copies(cur_idx)
-            print('*** not exist')
-
-    def _exist_in_virt_dirs(self, dir_id, parent_id):
-        return ut.select_other('EXIST_IN_VIRT_DIRS', (dir_id, parent_id)).fetchone()
-
-    # not used now ???
-    def _is_parent_virtual(self, index):
-        parent = self.ui.dirTree.model().parent(index)
-        return self.ui.dirTree.model().is_virtual(parent)
+            logger.debug('*** not exist')
 
     def _rename_folder(self):
         cur_idx = self.ui.dirTree.currentIndex()
@@ -371,12 +380,12 @@ class FilesCrt():
         #  call dirrectly without signal
         if create:
             _connection = sqlite3.connect(file_name, check_same_thread=False,
-                                          detect_types=DETECT_TYPES)
+                                          detect_types=ut.DETECT_TYPES)
             create_all_objects(_connection)
         else:
             if os.path.isfile(file_name):
                 _connection = sqlite3.connect(file_name, check_same_thread=False,
-                                              detect_types=DETECT_TYPES)
+                                              detect_types=ut.DETECT_TYPES)
             else:
                 show_message("Data base does not exist")
                 return
@@ -387,7 +396,7 @@ class FilesCrt():
                                            format(f_name, path))
         ut.DB_Connection['Path'] = file_name
         ut.DB_Connection['Conn'] = _connection
-        ut.select_other('PRAGMA', ())
+        _connection.cursor().execute('PRAGMA foreign_keys = ON;')
         self._populate_all_widgets()
 
     def on_change_data(self, action):
@@ -694,7 +703,7 @@ class FilesCrt():
             file_name = model.sourceModel().data(f_idx)
             file_id, dir_id, *_ = model.sourceModel().data(f_idx, role=Qt.UserRole)
             path = ut.select_other('PATH', (dir_id,)).fetchone()
-            return path, file_name, file_id, f_idx
+            return path[0], file_name, file_id, f_idx
         return '', '', 0, f_idx
 
     def _edit_key_words(self):
@@ -799,7 +808,7 @@ class FilesCrt():
         return res
 
     def _restore_file_list(self, curr_dir_idx):
-        print('--> _restore_file_list', self.file_list_source)
+        logger.debug(f'file_list_source: {self.file_list_source}')
         # FOLDER, VIRTUAL, ADVANCE = (1, 2, 4)
         # TODO check curr_dir_idx before call _restore_file_list ???
         if not curr_dir_idx.isValid():
@@ -817,7 +826,7 @@ class FilesCrt():
             row = 0
 
         dir_idx = self.ui.dirTree.model().data(curr_dir_idx, Qt.UserRole)
-        print('  dir_idx', dir_idx)
+        logger.debug(f'dir_idx: {dir_idx}')
         if self.file_list_source == FilesCrt.VIRTUAL:
             self._populate_virtual(dir_idx.dir_id)
         elif self.file_list_source == FilesCrt.FOLDER:
@@ -953,7 +962,7 @@ class FilesCrt():
         :param dir_idx:
         :return:
         """
-        print('--> _populate_file_list', dir_idx)
+        logger.debug(f'dir idx: {dir_idx}')
         if dir_idx[-2] > 0:
             self._form_virtual_folder(dir_idx)
         else:
@@ -1088,12 +1097,8 @@ class FilesCrt():
 
     def _populate_directory_tree(self):
         # todo - do not correctly restore when reopen from toolbar button
-        print('====> _populate_directory_tree')
-        dirs = self._get_dirs()
+        dirs = get_dirs()
         self._insert_virt_dirs(dirs)
-
-        for dir_ in dirs:
-            print(dir_)
 
         model = EditTreeModel()
         model.set_alt_font(Shared['AppFont'])
@@ -1109,19 +1114,6 @@ class FilesCrt():
         self._restore_file_list(cur_dir_idx)
 
         self._resize_columns()
-
-    def _get_dirs(self):
-        """
-        Returns directory tree
-        :return: list of tuples (Dir name, DirID, ParentID, FolderType, Full path of dir)
-        """
-        dirs = []
-        dir_tree = ut.dir_tree_select(dir_id=0, level=0)
-
-        for rr in dir_tree:
-            print('** ', rr)
-            dirs.append((os.path.split(rr[0])[1], *rr[1:len(rr)-1], rr[0]))
-        return dirs
 
     def _insert_virt_dirs(self, dir_tree: list):
         virt_dirs = ut.select_other('VIRT_DIRS', ())
@@ -1146,8 +1138,8 @@ class FilesCrt():
         if curr_idx.isValid():
             save_path(curr_idx)
             dir_idx = self.ui.dirTree.model().data(curr_idx, Qt.UserRole)
-            print('--> _cur_dir_changed',
-                  self.ui.dirTree.model().rowCount(curr_idx), dir_idx)
+            logger.debug(f'Tree.model UserRole data: {dir_idx}; '
+                         f'rows: {self.ui.dirTree.model().rowCount(curr_idx)}')
             if self.ui.dirTree.model().is_virtual(curr_idx):
                 self._populate_virtual(dir_idx.dir_id)
             else:
@@ -1158,7 +1150,7 @@ class FilesCrt():
         restore expand state and current index of dirTree
         :return: current index
         """
-        print('--> _restore_path: same_db=', self.recent)
+        logger.debug(f'same_db: {self.recent}')
         model = self.ui.dirTree.model()
         parent = QModelIndex()
         if self.recent:
@@ -1173,11 +1165,11 @@ class FilesCrt():
                 parent = idx
 
         if parent.isValid():
-            print('   parent.isValid')
+            logger.debug('parent.isValid: True')
             return parent
 
         idx = model.index(0, 0, QModelIndex())
-        print('   idx.isValid', idx.isValid())
+        logger.debug(f'idx.isValid: {idx.isValid()}')
 
         self.ui.dirTree.setCurrentIndex(idx)
         return idx

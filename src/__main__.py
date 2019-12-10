@@ -17,9 +17,9 @@ from loguru import logger
 
 from PyQt5.QtWidgets import QApplication
 
-from core.gov_files import FilesCrt
-from core.main_window import AppWindow
-from core.db_choice import DBChoice
+from src.core.gov_files import FilesCrt
+from src.core.main_window import AppWindow
+from src.core.db_choice import DBChoice
 
 
 __all__ = ('main',)
@@ -27,11 +27,11 @@ __all__ = ('main',)
 _excepthook = sys.excepthook
 
 
-def my_exception_hook(exctype, value, traceback):
+def my_exception_hook(exc_, value, traceback):
     # Print the error and traceback
-    print(exctype, value, traceback)
+    logger.debug(f'{exc_}, {value}, {traceback}')
     # Call the normal Exception hook after
-    _excepthook(exctype, value, traceback)
+    _excepthook(exc_, value, traceback)
     sys.exit(1)
 
 sys.excepthook = my_exception_hook
@@ -41,7 +41,13 @@ def main():
     from PyQt5.QtCore import pyqtRemoveInputHook
 
     pyqtRemoveInputHook()
-    logger.add("cucu_{time}.log", enqueue=True)
+    # logger.add("cucu_{time}.log", enqueue=True)
+    logger.remove()
+    fmt = '<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | ' \
+          '<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> '   \
+          '- <level>{message}</level>'
+    logger.add(sys.stderr, format=fmt, enqueue = True)
+    # logger.add("cucu_{time:MMM-DD_HH-mm}.log", format=fmt, enqueue=True)
 
     logger.debug("logger add")
 

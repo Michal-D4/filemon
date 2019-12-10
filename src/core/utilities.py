@@ -31,8 +31,6 @@ Selects = {'TREE':  # (Dir name, DirID, ParentID, Full path of dir)
                 'and lvl <= {}) SELECT DirID FROM x order by DirID;',
                 ') SELECT DirID FROM x order by DirID;'),
 
-           'PRAGMA': 'PRAGMA foreign_keys = ON;',
-
            'FILE_IDS_ALL_TAG': ('select FileID from FileTag where TagID in ({}) '
                                 'group by FileID having count(*) = {};'),
            'PATH': 'select Path from Dirs where DirID = ?;',
@@ -199,7 +197,6 @@ def advanced_selection(param):
         return ()
 
     sql = generate_adv_sql(param)
-    # print(sql)
 
     if sql:
         return DB_Connection['Conn'].execute(sql)

@@ -48,6 +48,7 @@ class LoadFiles(QObject):
         logger.debug(' '.join((path_, '|', ext_, '|')))
         self.conn = sqlite3.connect(db_path, check_same_thread=False,
                                     detect_types=DETECT_TYPES)
+        self.conn.cursor().execute('PRAGMA foreign_keys = ON;')
         self.path_ = path_
         self.ext_ = ext_
         self.updated_dirs = None
@@ -79,6 +80,7 @@ class FileInfo(QObject):
         self.upd_dirs = updated_dirs
         self.conn = sqlite3.connect(db_path, check_same_thread=False,
                                     detect_types=DETECT_TYPES)
+        self.conn.cursor().execute('PRAGMA foreign_keys = ON;')
         self.cursor = self.conn.cursor()
         self.file_info = []
 
