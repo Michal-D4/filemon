@@ -38,6 +38,9 @@ class AppWindow(QMainWindow):
 
         self.open_dialog = Shared['DB choice dialog']
 
+    def show_message(self, message, time=3000):
+        self.ui.statusbar.showMessage(message, time)
+
     def set_actions(self):
         """
         Connect handlers to tool bar actions and widgets' events
