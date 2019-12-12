@@ -17,3 +17,4 @@ __pycache__/
 *.zip
 ui_*.py
 *_rc.py
+/src/call_chain.py
