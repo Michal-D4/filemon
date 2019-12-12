@@ -23,8 +23,7 @@ DROP_NO_ACTION, DROP_COPY_FOLDER, DROP_MOVE_FOLDER, DROP_COPY_FILE, DROP_MOVE_FI
 
 
 # mutable
-Shared = {'Controller': None,
-          'DB choice dialog': None,
+Shared = {'DB choice dialog': None,
           'DB utility': None}
 
 

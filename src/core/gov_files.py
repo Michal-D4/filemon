@@ -19,7 +19,7 @@ from src.core.table_model import TableModel, ProxyModel2
 from src.core.tree_model import TreeModel
 from src.core.edit_tree_model import EditTreeModel, EditTreeItem
 from src.core.file_info import FileInfo, LoadFiles
-from src.core.helper import (Fields, Shared, show_message, selected_db_indexes, finish_thread,
+from src.core.helper import (Fields, Shared, selected_db_indexes, finish_thread,
                              persistent_row_indexes, del_add_items, save_path)
 import src.core.utilities as ut
 from src.core.create_db import create_all_objects
@@ -60,7 +60,6 @@ class FilesCrt():
         view = Shared['AppWindow']
         self.ui = view.ui
         self.app_font = None
-        Shared['Controller'] = self
 
         self.status_label = QLabel(view)
         self.ui.statusbar.addPermanentWidget(self.status_label)
@@ -1104,7 +1103,7 @@ class FilesCrt():
         dirs = get_dirs()
         self._insert_virt_dirs(dirs)
 
-        model = EditTreeModel()
+        model = EditTreeModel(parent=self)
         model.set_alt_font(self.app_font)
 
         model.set_model_data(dirs)

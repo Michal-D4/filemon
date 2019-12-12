@@ -111,9 +111,10 @@ class EditTreeModel(QAbstractItemModel):
         EditTreeModel.alt_font.setItalic(True)
 
     def __init__(self, parent=None):
-        super(EditTreeModel, self).__init__(parent)
+        super(EditTreeModel, self).__init__(None)
 
         self.rootItem = EditTreeItem(data_=('',), user_data=(0, 0, 0, "Root"))
+        self.caller = parent
         ALL_ITEMS.clear()
 
     @staticmethod
@@ -359,9 +360,9 @@ class EditTreeModel(QAbstractItemModel):
         else:
             path = self.data(parent, role=Qt.UserRole).path
             if action == DROP_COPY_FILE:
-                Shared['Controller'].copy_files_to(path)
+                self.caller.copy_files_to(path)
             else:
-                Shared['Controller'].move_files_to(path)
+                self.caller.move_files_to(path)
 
             return True
 
@@ -385,7 +386,7 @@ class EditTreeModel(QAbstractItemModel):
                     ut.update_other('VIRTUAL_FILE_MOVE', (parent_dir_id, fav_id, file_id))
 
         if action == DROP_MOVE_FILE:          # update file list after moving files
-            Shared['Controller'].files_virtual_folder(fav_id)
+            self.caller.files_virtual_folder(fav_id)
 
         return (fav_id != -1)
 
