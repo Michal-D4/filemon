@@ -58,6 +58,7 @@ class FilesCrt():
     def __init__(self, app_window: AppWindow):
         self.app_window = app_window
         self.ui = self.app_window.ui
+        logger.debug(f'app_window type: {type(app_window)}')
         self.app_font = None
 
         self.status_label = QLabel(app_window)
@@ -71,6 +72,7 @@ class FilesCrt():
         self._restore_font()
         self._restore_fields()
         self._methods = self._on_data_methods()
+        logger.debug('finish')
 
     def _on_data_methods(self):
         return {'Author Remove unused': self._author_remove_unused,
@@ -107,7 +109,8 @@ class FilesCrt():
                 'Set fields': self._set_fields,
                 'Tag Remove unused': self._tag_remove_unused,
                 'Tag Rename': self._tag_rename,
-                'Tag Scan in names': self._scan_for_tags
+                'Tag Scan in names': self._scan_for_tags,
+                'start app': self._populate_all_widgets,
                 }
 
     def _add_group_folder(self):
@@ -374,6 +377,7 @@ class FilesCrt():
         :param action:
         :return:
         '''
+        logger.debug(f'{action}')
         try:
             act = action.split('/')
             if len(act) == 1:
@@ -1040,6 +1044,8 @@ class FilesCrt():
             model.update(idx, cur_date)
 
     def _populate_all_widgets(self):
+        logger.debug(ut.DB_Connection['Path'])
+        self.app_window.setWindowTitle(f"Current DB:{ut.DB_Connection['Path']}")
         self._populate_ext_list()
         self._restore_ext_selection()
         self._populate_tag_list()

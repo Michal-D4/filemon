@@ -2,6 +2,7 @@
 import os
 import sqlite3
 import datetime
+from loguru import logger
 
 from src.core.create_db import create_all_objects
 # from src.core.main_window import AppWindow
@@ -292,6 +293,7 @@ def on_db_connection(file_name, create, same_db):
     :param same_db: bool  True if last used db is opening
     :return: None
     """
+    logger.debug(f'|--> file_name: {file_name}, to create: {create}, same DB: {same_db}')
     DB_Connection['SameDB'] = same_db
     # to do - extract this if? use try-else - return connection or None, move it to helper
     #  call directly without signal
@@ -308,10 +310,7 @@ def on_db_connection(file_name, create, same_db):
             pass
         return None
 
-    # path = os.path.dirname(file_name)
-    # f_name = os.path.basename(file_name)
-    # self.app_window.setWindowTitle('Current DB:{}, located in {}'.format(f_name, path))
     DB_Connection['Path'] = file_name
     DB_Connection['Conn'] = _connection
     _connection.cursor().execute('PRAGMA foreign_keys = ON;')
-    # self._populate_all_widgets()
+    logger.debug('|---> end')

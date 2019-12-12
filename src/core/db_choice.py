@@ -60,6 +60,7 @@ class DBChoice(QDialog):
             self.init_data[1].remove(self.init_data[1][i])
 
     def accept(self):
+        logger.debug('|---> start')
         self.emit_open_dialog()
         self._save_settings()
         super(DBChoice, self).accept()
@@ -97,11 +98,14 @@ class DBChoice(QDialog):
         self.ui_db_choice.okButton.setDisabled(False)
 
     def emit_open_dialog(self):
+        logger.debug('|--> start')
         if self.ui_db_choice.listOfBDs.currentIndex().isValid():
+            logger.debug('isValid()')
             file_name = self.ui_db_choice.listOfBDs.currentItem().text()
             # todo - if self.last_db_no == self.init_data[1]: not create new connection -
             # the last param not need
             self.DB_connect_signal.emit(file_name, False, self.last_db_no == self.init_data[0])
+        logger.debug('|--> end')
 
     def initiate_window(self):
         '''

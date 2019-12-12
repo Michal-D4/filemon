@@ -1,5 +1,7 @@
 # main_window.py
 
+from loguru import logger
+
 from PyQt5.QtCore import (pyqtSignal, QSettings, QVariant, QSize, Qt, QUrl, QEvent, QMimeData)
 from PyQt5.QtGui import QResizeEvent, QDrag, QPixmap, QDropEvent, QDragMoveEvent
 from PyQt5.QtWidgets import QMainWindow, QMenu, QWidget
@@ -37,6 +39,7 @@ class AppWindow(QMainWindow):
         self.setup_context_menu()
 
         self.open_dialog = None
+        logger.debug('finish')
 
     def show_message(self, message, time=3000):
         self.ui.statusbar.showMessage(message, time)
@@ -323,11 +326,15 @@ class AppWindow(QMainWindow):
         super().moveEvent(event)
 
     def showEvent(self, ev):
+        logger.debug(f'event type {type(ev)}')
         if not ev.spontaneous():
             self.open_dialog = DBChoice()
             self.open_dialog.DB_connect_signal.connect(ut.on_db_connection)
             self.open_dialog.emit_open_dialog()
-            # self.app_window.setWindowTitle('Current DB:{}, located in {}'.format(f_name, path))
+            logger.debug("|---> before :  emit('start app')")
+            # self.change_data_signal.emit('start app')
+        logger.debug('|---> end')
+
         return QMainWindow.showEvent(self, ev)
 
     def restore_setting(self):

@@ -50,7 +50,7 @@ def main():
     QCoreApplication.setOrganizationName(ORG_NAME)
 
     pyqtRemoveInputHook()
-    # logger.add("cucu_{time}.log", enqueue=True)
+
     logger.remove()
     fmt = '<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | ' \
           '<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> '   \
