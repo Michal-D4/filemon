@@ -7,8 +7,9 @@ from PyQt5.QtWidgets import QMainWindow, QMenu, QWidget
 from src.ui.ui_main_window import Ui_MainWindow
 from src.core.helper import (REAL_FOLDER, VIRTUAL_FOLDER, REAL_FILE,
                              VIRTUAL_FILE, MimeTypes, DROP_NO_ACTION,
-                             DROP_COPY_FOLDER, DROP_MOVE_FOLDER,
-                             DROP_COPY_FILE, Shared)
+                             DROP_COPY_FOLDER, DROP_MOVE_FOLDER, DROP_COPY_FILE)
+from src.core.db_choice import DBChoice
+import src.core.utilities as ut
 
 
 def restore_obj_state(obj: QWidget, settings_value: QVariant):
@@ -24,7 +25,6 @@ class AppWindow(QMainWindow):
         QMainWindow.__init__(self, parent)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        Shared['AppWindow'] = self
 
         self.old_size = None
         self.old_pos = None
@@ -36,7 +36,7 @@ class AppWindow(QMainWindow):
 
         self.setup_context_menu()
 
-        self.open_dialog = Shared['DB choice dialog']
+        self.open_dialog = None
 
     def show_message(self, message, time=3000):
         self.ui.statusbar.showMessage(message, time)
@@ -322,6 +322,14 @@ class AppWindow(QMainWindow):
         settings.setValue("MainFlow/Position", QVariant(self.pos()))
         super().moveEvent(event)
 
+    def showEvent(self, ev):
+        if not ev.spontaneous():
+            self.open_dialog = DBChoice()
+            self.open_dialog.DB_connect_signal.connect(ut.on_db_connection)
+            self.open_dialog.emit_open_dialog()
+            # self.app_window.setWindowTitle('Current DB:{}, located in {}'.format(f_name, path))
+        return QMainWindow.showEvent(self, ev)
+
     def restore_setting(self):
         settings = QSettings()
         if settings.contains("MainFlow/Size"):
@@ -340,18 +348,7 @@ class AppWindow(QMainWindow):
             self.ui.splitter_files.setStretchFactor(0, 5)
             self.ui.splitter_files.setStretchFactor(1, 2)
 
-    def first_open_data_base(self):
-        """
-        Open DB when application starts
-        :return:
-        """
-        if not self.open_dialog.skip_open_dialog():
-            self.open_dialog.exec_()
-        else:
-            self.open_dialog.emit_open_dialog()
-
     def closeEvent(self, event):
-        self.open_dialog.save_init_data()
         settings = QSettings()
         settings.setValue("MainFlow/State", QVariant(self.saveState()))
         settings.setValue("FilesSplitter", QVariant(self.ui.splitter_files.saveState()))

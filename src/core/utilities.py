@@ -1,7 +1,10 @@
-# model/utilities.py
-
+# utilities.py
+import os
 import sqlite3
 import datetime
+
+from src.core.create_db import create_all_objects
+# from src.core.main_window import AppWindow
 
 EXT_ID_INCREMENT = 100000
 DETECT_TYPES = sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
@@ -156,6 +159,7 @@ Delete = {'EXT': 'delete from Extensions where ExtID = ?;',
 
 DB_Connection = {'Path': '',
                  'Conn': None,
+                 'SameDB' : False,
                 }
 
 
@@ -278,3 +282,36 @@ def delete_other(sql, data):
 def delete_other2(sql, data):
     DB_Connection['Conn'].cursor().execute(Delete[sql].format(*data))
     DB_Connection['Conn'].commit()
+
+
+def on_db_connection(file_name, create, same_db):
+    """
+    Open or Create DB
+    :param file_name: full file name of DB
+    :param create: bool, Create DB if True, otherwise - Open
+    :param same_db: bool  True if last used db is opening
+    :return: None
+    """
+    DB_Connection['SameDB'] = same_db
+    # to do - extract this if? use try-else - return connection or None, move it to helper
+    #  call directly without signal
+    if create:
+        _connection = sqlite3.connect(file_name, check_same_thread=False,
+                                      detect_types=ut.DETECT_TYPES)
+        create_all_objects(_connection)
+    else:
+        if os.path.isfile(file_name):
+            _connection = sqlite3.connect(file_name, check_same_thread=False,
+                                          detect_types=DETECT_TYPES)
+        else:
+            # AppWindow.show_message("Data base does not exist")
+            pass
+        return None
+
+    # path = os.path.dirname(file_name)
+    # f_name = os.path.basename(file_name)
+    # self.app_window.setWindowTitle('Current DB:{}, located in {}'.format(f_name, path))
+    DB_Connection['Path'] = file_name
+    DB_Connection['Conn'] = _connection
+    _connection.cursor().execute('PRAGMA foreign_keys = ON;')
+    # self._populate_all_widgets()

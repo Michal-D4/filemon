@@ -16,10 +16,15 @@ import sys
 from loguru import logger
 
 from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QCoreApplication
 
 from src.core.gov_files import FilesCrt
 from src.core.main_window import AppWindow
-from src.core.db_choice import DBChoice
+
+
+APP_NAME = 'File manager'
+ORG_DOMAIN = 'fake_domain.org'
+ORG_NAME = 'Fake organization'
 
 
 __all__ = ('main',)
@@ -40,6 +45,10 @@ sys.excepthook = my_exception_hook
 def main():
     from PyQt5.QtCore import pyqtRemoveInputHook
 
+    QCoreApplication.setApplicationName(APP_NAME)
+    QCoreApplication.setOrganizationDomain(ORG_DOMAIN)
+    QCoreApplication.setOrganizationName(ORG_NAME)
+
     pyqtRemoveInputHook()
     # logger.add("cucu_{time}.log", enqueue=True)
     logger.remove()
@@ -52,19 +61,19 @@ def main():
     logger.debug("logger add")
 
     app = QApplication(sys.argv)
-    DBChoice()
+
     main_window = AppWindow()
 
-    _controller = FilesCrt()
+    _controller = FilesCrt(main_window)
     main_window.scan_files_signal.connect(_controller.on_scan_files)
 
     # when data changed on any widget
     main_window.change_data_signal.connect(_controller.on_change_data)
 
     # signal from open_dialog=dlg
-    main_window.open_dialog.DB_connect_signal.connect(_controller.on_db_connection)
+    # main_window.open_dialog.DB_connect_signal.connect(_controller.on_db_connection)
 
-    main_window.first_open_data_base()
+    # main_window.first_open_data_base()
 
     main_window.show()
     sys.exit(app.exec_())

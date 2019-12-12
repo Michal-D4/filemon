@@ -19,10 +19,9 @@ from src.core.table_model import TableModel, ProxyModel2
 from src.core.tree_model import TreeModel
 from src.core.edit_tree_model import EditTreeModel, EditTreeItem
 from src.core.file_info import FileInfo, LoadFiles
-from src.core.helper import (Fields, Shared, selected_db_indexes, finish_thread,
+from src.core.helper import (Fields, selected_db_indexes, finish_thread,
                              persistent_row_indexes, del_add_items, save_path)
 import src.core.utilities as ut
-from src.core.create_db import create_all_objects
 from src.core.load_db_data import LoadDBData
 from src.core.input_date import DateInputDialog
 from src.core.item_edit import ItemEdit
@@ -56,16 +55,15 @@ def _exist_in_virt_dirs(dir_id: int, parent_id: int):
 class FilesCrt():
     FOLDER, VIRTUAL, ADVANCE = (1, 2, 4)
 
-    def __init__(self):
-        view = Shared['AppWindow']
-        self.ui = view.ui
+    def __init__(self, app_window: AppWindow):
+        self.app_window = app_window
+        self.ui = self.app_window.ui
         self.app_font = None
 
-        self.status_label = QLabel(view)
+        self.status_label = QLabel(app_window)
         self.ui.statusbar.addPermanentWidget(self.status_label)
 
         self.fields: Fields = Fields._make(((), (), ()))
-        self.recent = False    # todo remove it? - used only for restoring setting
         self.obj_thread: QObject = None
         self.in_thread: QThread = None
         self.file_list_source = FilesCrt.FOLDER
@@ -369,38 +367,6 @@ class FilesCrt():
 
     def get_db_utils(self):
         return ut
-
-    def on_db_connection(self, file_name, create, last_used):
-        """
-        Open or Create DB
-        :param file_name: full file name of DB
-        :param create: bool, Create DB if True, otherwise - Open
-        :param last_used: bool if last used db is opened
-        :return: None
-        """
-        self.recent = last_used
-        # to do - extract this if? use try-else - return connection or None, move it to helper
-        #  call dirrectly without signal
-        if create:
-            _connection = sqlite3.connect(file_name, check_same_thread=False,
-                                          detect_types=ut.DETECT_TYPES)
-            create_all_objects(_connection)
-        else:
-            if os.path.isfile(file_name):
-                _connection = sqlite3.connect(file_name, check_same_thread=False,
-                                              detect_types=ut.DETECT_TYPES)
-            else:
-                AppWindow.show_message("Data base does not exist")
-                return
-
-        path = os.path.dirname(file_name)
-        f_name = os.path.basename(file_name)
-        Shared['AppWindow'].setWindowTitle('Current DB:{}, located in {}'.
-                                           format(f_name, path))
-        ut.DB_Connection['Path'] = file_name
-        ut.DB_Connection['Conn'] = _connection
-        _connection.cursor().execute('PRAGMA foreign_keys = ON;')
-        self._populate_all_widgets()
 
     def on_change_data(self, action):
         '''
@@ -816,7 +782,7 @@ class FilesCrt():
         # TODO check curr_dir_idx before call _restore_file_list ???
         if not curr_dir_idx.isValid():
             curr_dir_idx = self.ui.dirTree.model().index(0, 0)
-        if self.recent:
+        if ut.DB_Connection['SameDB']:
             settings = QSettings()
             self.file_list_source = settings.value(
                 'FILE_LIST_SOURCE', FilesCrt.FOLDER)
@@ -925,7 +891,7 @@ class FilesCrt():
         settings.setValue('TAG_SEL_LIST', sel)
 
     def _restore_tag_selection(self):
-        if self.recent:
+        if ut.DB_Connection['SameDB']:
             settings = QSettings()
             sel = settings.value('TAG_SEL_LIST', [])
             model = self.ui.tagsList.model()
@@ -952,7 +918,7 @@ class FilesCrt():
         settings.setValue('AUTHOR_SEL_LIST', sel)
 
     def _restore_author_selection(self):
-        if self.recent:
+        if ut.DB_Connection['SameDB']:
             settings = QSettings()
             sel = settings.value('AUTHOR_SEL_LIST', [])
             model = self.ui.authorsList.model()
@@ -1083,7 +1049,7 @@ class FilesCrt():
         self._populate_directory_tree()
 
     def _restore_ext_selection(self):
-        if self.recent:
+        if ut.DB_Connection['SameDB']:
             settings = QSettings()
             sel = settings.value('EXT_SEL_LIST', [])
             model = self.ui.extList.model()
@@ -1153,10 +1119,10 @@ class FilesCrt():
         restore expand state and current index of dirTree
         :return: current index
         """
-        logger.debug(f'same_db: {self.recent}')
+        logger.debug(f"same_db: {ut.DB_Connection['SameDB']}")
         model = self.ui.dirTree.model()
         parent = QModelIndex()
-        if self.recent:
+        if ut.DB_Connection['SameDB']:
             settings = QSettings()
             aux = settings.value('TREE_SEL_IDX', [0])
             for id_ in aux:

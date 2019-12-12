@@ -22,11 +22,6 @@ MimeTypes = ["application/x-folder-list",
 DROP_NO_ACTION, DROP_COPY_FOLDER, DROP_MOVE_FOLDER, DROP_COPY_FILE, DROP_MOVE_FILE = (0, 1, 2, 4, 8)
 
 
-# mutable
-Shared = {'DB choice dialog': None,
-          'DB utility': None}
-
-
 def get_file_extension(file_name):
     if file_name.rfind('.') > 0:
         return str.lower(file_name.rpartition('.')[2])

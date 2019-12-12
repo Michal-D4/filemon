@@ -5,7 +5,7 @@ import os
 import pathlib
 from typing import Optional
 
-from .helper import Shared, get_file_extension
+from .helper import get_file_extension
 from .utilities import DB_Connection
 
 FIND_PART_PATH = 'select ParentID from Dirs where Path like :newPath;'
