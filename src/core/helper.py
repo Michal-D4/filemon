@@ -3,7 +3,6 @@
 from collections import namedtuple
 
 from PyQt5.QtCore import Qt, QPersistentModelIndex, QModelIndex, QSettings, QVariant
-from PyQt5.QtGui import QFontDatabase
 
 # Shared things
 # immutable
@@ -24,8 +23,7 @@ DROP_NO_ACTION, DROP_COPY_FOLDER, DROP_MOVE_FOLDER, DROP_COPY_FILE, DROP_MOVE_FI
 
 
 # mutable
-Shared = {'AppFont': QFontDatabase.systemFont(QFontDatabase.GeneralFont),
-          'AppWindow': None,
+Shared = {'AppWindow': None,
           'Controller': None,
           'DB choice dialog': None,
           'DB utility': None}

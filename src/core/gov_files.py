@@ -12,6 +12,7 @@ from PyQt5.QtCore import (Qt, QModelIndex, QItemSelectionModel, QSettings, QDate
                           QPersistentModelIndex)
 from PyQt5.QtWidgets import (QInputDialog, QLineEdit, QFileDialog, QLabel,
                              QFontDialog, QApplication)
+from PyQt5.QtGui import QFontDatabase
 
 from src.core.table_model import TableModel, ProxyModel2
 from src.core.tree_model import TreeModel
@@ -27,6 +28,7 @@ from src.core.item_edit import ItemEdit
 from src.core.sel_opt import SelOpt
 from src.core.set_fields import SetFields
 
+DefFont = QFontDatabase.systemFont(QFontDatabase.GeneralFont)
 FileData = namedtuple('FileData', 'file_id dir_id comment_id ext_id source')
 # file_id: int, dir_id: int, comment_id: int, ext_id: int,
 # source: int - one of the FOLDER, VIRTUAL, ADVANCE constants
@@ -56,6 +58,7 @@ class FilesCrt():
     def __init__(self):
         view = Shared['AppWindow']
         self.ui = view.ui
+        self.app_font = None
         Shared['Controller'] = self
 
         self.status_label = QLabel(view)
@@ -449,26 +452,26 @@ class FilesCrt():
         return []
 
     def _ask_for_change_font(self):
-        Shared['AppFont'], ok_ = QFontDialog.getFont(
+        self.app_font, ok_ = QFontDialog.getFont(
             self.ui.dirTree.font(), self.ui.dirTree)
         if ok_:
             self._change_font()
             settings = QSettings()
-            settings.setValue('FONT', Shared['AppFont'])
+            settings.setValue('FONT', self.app_font)
 
     def _restore_font(self):
         settings = QSettings()
-        Shared['AppFont'] = settings.value('FONT', None)
-        if Shared['AppFont']:
+        self.app_font = settings.value('FONT', DefFont)
+        if self.app_font:
             self._change_font()
 
     def _change_font(self):
-        self.ui.dirTree.setFont(Shared['AppFont'])
-        self.ui.extList.setFont(Shared['AppFont'])
-        self.ui.filesList.setFont(Shared['AppFont'])
-        self.ui.tagsList.setFont(Shared['AppFont'])
-        self.ui.authorsList.setFont(Shared['AppFont'])
-        self.ui.commentField.setFont(Shared['AppFont'])
+        self.ui.dirTree.setFont(self.app_font)
+        self.ui.extList.setFont(self.app_font)
+        self.ui.filesList.setFont(self.app_font)
+        self.ui.tagsList.setFont(self.app_font)
+        self.ui.authorsList.setFont(self.app_font)
+        self.ui.commentField.setFont(self.app_font)
 
     def _author_remove_unused(self):
         ut.delete_other('UNUSED_AUTHORS', ())
@@ -1101,7 +1104,7 @@ class FilesCrt():
         self._insert_virt_dirs(dirs)
 
         model = EditTreeModel()
-        model.set_alt_font(Shared['AppFont'])
+        model.set_alt_font(self.app_font)
 
         model.set_model_data(dirs)
 
