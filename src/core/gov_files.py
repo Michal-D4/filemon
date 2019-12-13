@@ -19,8 +19,8 @@ from src.core.table_model import TableModel, ProxyModel2
 from src.core.tree_model import TreeModel
 from src.core.edit_tree_model import EditTreeModel, EditTreeItem
 from src.core.file_info import FileInfo, LoadFiles
-from src.core.helper import (Fields, selected_db_indexes, finish_thread,
-                             persistent_row_indexes, del_add_items, save_path)
+from src.core.helper import (Fields, selected_db_indexes, persistent_row_indexes,
+                             del_add_items, save_path)
 import src.core.utilities as ut
 from src.core.load_db_data import LoadDBData
 from src.core.input_date import DateInputDialog
@@ -51,6 +51,18 @@ def get_dirs():
 
 def _exist_in_virt_dirs(dir_id: int, parent_id: int):
     return ut.select_other('EXIST_IN_VIRT_DIRS', (dir_id, parent_id)).fetchone()
+
+
+def collect_all_ext(ids):
+    all_id = set()
+    for id_ in ids:
+        if id_ < ut.EXT_ID_INCREMENT:
+            curr = ut.select_other('EXT_ID_IN_GROUP', (id_,))
+            for idd in curr:
+                all_id.add(idd[0])
+        else:
+            all_id.add(id_ - ut.EXT_ID_INCREMENT)
+    return all_id
 
 
 class FilesCrt():
@@ -371,7 +383,7 @@ class FilesCrt():
     def get_db_utils(self):
         return ut
 
-    def on_change_data(self, action):
+    def on_change_data(self, action: str) -> None:
         '''
         run methods for change_data_signal
         :param action:
@@ -394,7 +406,7 @@ class FilesCrt():
         """
         AppWindow.show_message('Scan in files with selected extensions')
         ext_idx = selected_db_indexes(self.ui.extList)
-        all_id = self._collect_all_ext(ext_idx)
+        all_id = collect_all_ext(ext_idx)
 
         sel_tag = self.get_selected_tags()
         for tag in sel_tag:
@@ -473,7 +485,7 @@ class FilesCrt():
                                                           '')
             if ok_pressed:
                 gr_id = ut.insert_other('EXT_GROUP', (group_name,))
-                all_id = self._collect_all_ext(ids)
+                all_id = collect_all_ext(ids)
 
                 for id_ in all_id:
                     ut.update_other('EXT_GROUP', (gr_id, id_))
@@ -482,24 +494,13 @@ class FilesCrt():
 
                 self._populate_ext_list()
 
-    def _collect_all_ext(self, ids):
-        all_id = set()
-        for id_ in ids:
-            if id_ < ut.EXT_ID_INCREMENT:
-                curr = ut.select_other('EXT_ID_IN_GROUP', (id_,))
-                for idd in curr:
-                    all_id.add(idd[0])
-            else:
-                all_id.add(id_ - ut.EXT_ID_INCREMENT)
-        return all_id
-
     def _dir_update(self) -> None:
         updated_dirs = self.obj_thread.get_updated_dirs()
         self._populate_directory_tree()
         self._populate_ext_list()
 
         self.obj_thread = FileInfo(updated_dirs, ut.DB_Connection['Path'])
-        self._run_in_qthread(finish_thread)
+        self._run_in_qthread(self._dir_update_finish)
 
     def _run_in_qthread(self, run_at_finish) -> None:
         self.in_thread = QThread()
@@ -508,6 +509,9 @@ class FilesCrt():
         self.in_thread.finished.connect(run_at_finish)
         self.in_thread.started.connect(self.obj_thread.run)
         self.in_thread.start()
+
+    def _dir_update_finish(self):
+        AppWindow.show_message("Updating of files is finished.", 5000)
 
     def _favorite_file_list(self) -> None:
 
@@ -1163,7 +1167,7 @@ class FilesCrt():
         if ok_pressed:
             self._load_files(dir_.path, ext_item.strip())
 
-    def on_scan_files(self):
+    def on_scan_files(self) -> None:
         """
         The purpose is to fill the data base with files by means of
         scanning the file system
@@ -1209,7 +1213,7 @@ class FilesCrt():
 
     def _resize_columns(self):
         w = self.ui.filesList.width() - 2
-        widths = self._calc_collumns_width()
+        widths = self._calc_columns_width()
         if len(widths) > 1:
             ww = w * 0.75
             sum_w = sum(widths)
@@ -1224,7 +1228,7 @@ class FilesCrt():
         else:
             self.ui.filesList.setColumnWidth(0, w)
 
-    def _calc_collumns_width(self):
+    def _calc_columns_width(self):
         width = [0]
         font_metrics = self.ui.filesList.fontMetrics()
         heads = self.ui.filesList.model().get_headers()
@@ -1234,3 +1238,4 @@ class FilesCrt():
                 width.append(font_metrics.boundingRect(
                     SetFields.Masks[ind]).width())
         return width
+

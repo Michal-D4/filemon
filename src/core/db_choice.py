@@ -80,7 +80,7 @@ class DBChoice(QDialog):
                 logger.debug(' | '.join(('--> new_db', file_name)))
                 self.create_db_(file_name)
                 self.DB_connect_signal.emit(file_name, True, False)
-                QDialog.accept()
+                super(DBChoice, self).accept()
             else:
                 self.ui_db_choice.listOfBDs.setCurrentRow(self.init_data[1].index(file_name))
 
@@ -121,6 +121,7 @@ class DBChoice(QDialog):
             db_index = self.init_data[0]
             logger.debug(f'db idx.: {db_index}')
             if self.init_data[1]:
+                self.ui_db_choice.listOfBDs.clear()
                 for db in self.init_data[1]:
                     self.ui_db_choice.listOfBDs.addItem(db)
                 self.ui_db_choice.listOfBDs.setCurrentRow(db_index)

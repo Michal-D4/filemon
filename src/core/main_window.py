@@ -1,10 +1,15 @@
 # main_window.py
+import os
+import sqlite3
 
 from loguru import logger
 
 from PyQt5.QtCore import (pyqtSignal, QSettings, QVariant, QSize, Qt, QUrl, QEvent, QMimeData)
 from PyQt5.QtGui import QResizeEvent, QDrag, QPixmap, QDropEvent, QDragMoveEvent
 from PyQt5.QtWidgets import QMainWindow, QMenu, QWidget
+
+from src.core.create_db import create_all_objects
+from src.core.utilities import DB_Connection, DETECT_TYPES
 
 from src.ui.ui_main_window import Ui_MainWindow
 from src.core.helper import (REAL_FOLDER, VIRTUAL_FOLDER, REAL_FILE,
@@ -329,10 +334,8 @@ class AppWindow(QMainWindow):
         logger.debug(f'event type {type(ev)}')
         if not ev.spontaneous():
             self.open_dialog = DBChoice()
-            self.open_dialog.DB_connect_signal.connect(ut.on_db_connection)
+            self.open_dialog.DB_connect_signal.connect(self.on_db_connection)
             self.open_dialog.emit_open_dialog()
-            logger.debug("|---> before :  emit('start app')")
-            self.change_data_signal.emit('start app')
         logger.debug('|---> end')
 
         return QMainWindow.showEvent(self, ev)
@@ -362,3 +365,33 @@ class AppWindow(QMainWindow):
         settings.setValue("OptSplitter", QVariant(self.ui.opt_splitter.saveState()))
         settings.setValue("MainSplitter", QVariant(self.ui.main_splitter.saveState()))
         super(AppWindow, self).closeEvent(event)
+
+    def on_db_connection(self, file_name: str, create: bool, same_db: bool) -> None:
+        """
+        Open or Create DB
+        :param file_name: full file name of DB
+        :param create: bool, Create DB if True, otherwise - Open
+        :param same_db: bool  True if last used db is opening
+        :return: None
+        """
+        logger.debug(f'|--> file_name: {file_name}, to create: {create}, same DB: {same_db}')
+        DB_Connection['SameDB'] = same_db
+
+        if create:
+            _connection = sqlite3.connect(file_name, check_same_thread=False,
+                                          detect_types=ut.DETECT_TYPES)
+            create_all_objects(_connection)
+        else:
+            if os.path.isfile(file_name):
+                _connection = sqlite3.connect(file_name, check_same_thread=False,
+                                              detect_types=DETECT_TYPES)
+            else:
+                self.show_message("Data base does not exist")
+                return None
+
+        DB_Connection['Path'] = file_name
+        DB_Connection['Conn'] = _connection
+        _connection.cursor().execute('PRAGMA foreign_keys = ON;')
+        self.change_data_signal.emit('start app')
+        logger.debug('|---> end')
+        return None

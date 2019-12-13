@@ -43,10 +43,6 @@ def selected_db_indexes(view: QAbstractItemView) -> list:
     return ids
 
 
-def finish_thread() -> None:
-    show_message('Updating of files is finished', 5000)
-
-
 def persistent_row_indexes(view_: QAbstractItemView) -> list:
     """
 

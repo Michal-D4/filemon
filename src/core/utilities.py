@@ -1,10 +1,7 @@
 # utilities.py
-import os
 import sqlite3
 import datetime
-from loguru import logger
 
-from src.core.create_db import create_all_objects
 # from src.core.main_window import AppWindow
 
 EXT_ID_INCREMENT = 100000
@@ -285,32 +282,3 @@ def delete_other2(sql, data):
     DB_Connection['Conn'].commit()
 
 
-def on_db_connection(file_name, create, same_db):
-    """
-    Open or Create DB
-    :param file_name: full file name of DB
-    :param create: bool, Create DB if True, otherwise - Open
-    :param same_db: bool  True if last used db is opening
-    :return: None
-    """
-    logger.debug(f'|--> file_name: {file_name}, to create: {create}, same DB: {same_db}')
-    DB_Connection['SameDB'] = same_db
-    # to do - extract this if? use try-else - return connection or None, move it to helper
-    #  call directly without signal
-    if create:
-        _connection = sqlite3.connect(file_name, check_same_thread=False,
-                                      detect_types=ut.DETECT_TYPES)
-        create_all_objects(_connection)
-    else:
-        if os.path.isfile(file_name):
-            _connection = sqlite3.connect(file_name, check_same_thread=False,
-                                          detect_types=DETECT_TYPES)
-        else:
-            # AppWindow.show_message("Data base does not exist")
-            pass
-        return None
-
-    DB_Connection['Path'] = file_name
-    DB_Connection['Conn'] = _connection
-    _connection.cursor().execute('PRAGMA foreign_keys = ON;')
-    logger.debug('|---> end')
