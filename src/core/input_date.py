@@ -19,7 +19,7 @@ class DateInputDialog(QDialog):
         dialog.ui.date.setDate(value)
         result = dialog.exec_()
         date_ = dialog.ui.date.date().toString(Qt.ISODate)
-        return (date_, result == QDialog.Accepted)
+        return date_, result == QDialog.Accepted
 
 if __name__ == "__main__":
     import sys

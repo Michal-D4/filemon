@@ -32,6 +32,7 @@ DefFont = QFontDatabase.systemFont(QFontDatabase.GeneralFont)
 FileData = namedtuple('FileData', 'file_id dir_id comment_id ext_id source')
 # file_id: int, dir_id: int, comment_id: int, ext_id: int,
 # source: int - one of the FOLDER, VIRTUAL, ADVANCE constants
+FOLDER, VIRTUAL, ADVANCE = (1, 2, 4)
 
 
 def get_dirs():
@@ -53,7 +54,6 @@ def _exist_in_virt_dirs(dir_id: int, parent_id: int):
 
 
 class FilesCrt():
-    FOLDER, VIRTUAL, ADVANCE = (1, 2, 4)
 
     def __init__(self, app_window: AppWindow):
         self.app_window = app_window
@@ -67,7 +67,7 @@ class FilesCrt():
         self.fields: Fields = Fields._make(((), (), ()))
         self.obj_thread: QObject = None
         self.in_thread: QThread = None
-        self.file_list_source = FilesCrt.FOLDER
+        self.file_list_source = FOLDER
         self._opt = SelOpt(self)
         self._restore_font()
         self._restore_fields()
@@ -521,7 +521,7 @@ class FilesCrt():
         :param dir_id:
         :return: None
         """
-        self.file_list_source = FilesCrt.VIRTUAL
+        self.file_list_source = VIRTUAL
         settings = QSettings()
         settings.setValue('FILE_LIST_SOURCE', self.file_list_source)
         res = self.files_virtual_folder(dir_id)
@@ -560,7 +560,7 @@ class FilesCrt():
         curs = ut.advanced_selection(res)
         if curs:
             self.show_files(curs, model, -1)
-            self.file_list_source = FilesCrt.ADVANCE
+            self.file_list_source = ADVANCE
             settings = QSettings()
             settings.setValue('FILE_LIST_SOURCE', self.file_list_source)
         else:
@@ -789,22 +789,22 @@ class FilesCrt():
         if ut.DB_Connection['SameDB']:
             settings = QSettings()
             self.file_list_source = settings.value(
-                'FILE_LIST_SOURCE', FilesCrt.FOLDER)
+                'FILE_LIST_SOURCE', FOLDER)
             row = settings.value('FILE_IDX', 0)
         else:
             if self.ui.dirTree.model().is_virtual(curr_dir_idx):
-                self.file_list_source = FilesCrt.VIRTUAL
+                self.file_list_source = VIRTUAL
             else:
-                self.file_list_source = FilesCrt.FOLDER
+                self.file_list_source = FOLDER
             row = 0
 
         dir_idx = self.ui.dirTree.model().data(curr_dir_idx, Qt.UserRole)
         logger.debug(f'dir_idx: {dir_idx}')
-        if self.file_list_source == FilesCrt.VIRTUAL:
+        if self.file_list_source == VIRTUAL:
             self._populate_virtual(dir_idx.dir_id)
-        elif self.file_list_source == FilesCrt.FOLDER:
+        elif self.file_list_source == FOLDER:
             self._populate_file_list(dir_idx)
-        else:                       # FilesCrt.ADVANCE
+        else:                       # ADVANCE
             self._list_of_selected_files()
 
         if self.ui.filesList.model().rowCount() == 0:
@@ -945,7 +945,7 @@ class FilesCrt():
         self._populate_virtual(dir_idx[0])
 
     def _from_real_folder(self, dir_idx):
-        self.file_list_source = FilesCrt.FOLDER
+        self.file_list_source = FOLDER
         settings = QSettings()
         settings.setValue('FILE_LIST_SOURCE', self.file_list_source)
         model = self._set_file_model()

@@ -1,4 +1,4 @@
-# my_db_choice.py
+# db_choice.py
 
 from loguru import logger
 from PyQt5.QtCore import pyqtSignal, QSettings, QCoreApplication
@@ -68,7 +68,7 @@ class DBChoice(QDialog):
     def new_db(self):
         """
         the program is called by click of 'New' button
-        and shows the file dialog to create new file
+        and shows the file dialog to enter new file name
         :return:
         """
         options = QFileDialog.Options(QFileDialog.HideNameFilterDetails |
@@ -116,38 +116,30 @@ class DBChoice(QDialog):
             2 - list of DBs
         :return: None
         '''
+        logger.debug('|---> start')
         if self.init_data:
             db_index = self.init_data[0]
+            logger.debug(f'db idx.: {db_index}')
             if self.init_data[1]:
                 for db in self.init_data[1]:
                     self.ui_db_choice.listOfBDs.addItem(db)
                 self.ui_db_choice.listOfBDs.setCurrentRow(db_index)
             if self.ui_db_choice.listOfBDs.count() == 0:
                 self.ui_db_choice.okButton.setDisabled(True)
-
-    def get_file_name(self):
-        return self.init_data[1][self.init_data[0]]
+        logger.debug('|---> end')
 
     def restore_settings(self):
         setting = QSettings()
         _data = [setting.value('DB/current_index', 0, type=int),
                  setting.value('DB/list_of_DB', [], type=list)]
-        self.last_db_no = _data[1]
+        logger.debug(f'{_data}')
+        self.last_db_no = _data[0]
         self.init_data = _data
+        self.initiate_window()
 
     def _save_settings(self):
         setting = QSettings()
+        logger.debug(f'{self.init_data}')
         setting.setValue('DB/current_index', self.init_data[0])
         setting.setValue('DB/list_of_DB', self.init_data[1])
 
-
-if __name__ == "__main__":
-    import sys
-
-    from PyQt5.QtWidgets import QApplication
-
-    app = QApplication(sys.argv)
-    myapp = DBChoice()
-    if myapp.exec_() == QDialog.Accepted:
-        logger.debug(' | '.join(('name of DB file =', myapp.get_file_name())))
-    sys.exit(app.exec_())

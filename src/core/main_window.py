@@ -332,7 +332,7 @@ class AppWindow(QMainWindow):
             self.open_dialog.DB_connect_signal.connect(ut.on_db_connection)
             self.open_dialog.emit_open_dialog()
             logger.debug("|---> before :  emit('start app')")
-            # self.change_data_signal.emit('start app')
+            self.change_data_signal.emit('start app')
         logger.debug('|---> end')
 
         return QMainWindow.showEvent(self, ev)

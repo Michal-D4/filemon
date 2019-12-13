@@ -241,20 +241,4 @@ class SelOpt(QDialog):
 
 
 if __name__ == "__main__":
-    import sys
-    from PyQt5.QtWidgets import QApplication
-    from src.core.gov_files import FilesCrt
-
-    app = QApplication(sys.argv)
-
-    _controller = FilesCrt()
-
-    set_opt = SelOpt(_controller)
-
-    if set_opt.exec_():
-        # print(set_opt.get_result())
-        pass
-    sys.exit(app.exec_())
-
-    # sys.exit(app.exec_())
-
+    pass
