@@ -9,7 +9,6 @@ from PyQt5.QtGui import QResizeEvent, QDrag, QPixmap, QDropEvent, QDragMoveEvent
 from PyQt5.QtWidgets import QMainWindow, QMenu, QWidget
 
 from src.core.create_db import create_all_objects
-from src.core.utilities import DB_Connection, DETECT_TYPES
 
 from src.ui.ui_main_window import Ui_MainWindow
 from src.core.helper import (REAL_FOLDER, VIRTUAL_FOLDER, REAL_FILE,
@@ -375,7 +374,7 @@ class AppWindow(QMainWindow):
         :return: None
         """
         logger.debug(f'|--> file_name: {file_name}, to create: {create}, same DB: {same_db}')
-        DB_Connection['SameDB'] = same_db
+        ut.DB_Connection['SameDB'] = same_db
 
         if create:
             _connection = sqlite3.connect(file_name, check_same_thread=False,
@@ -384,13 +383,13 @@ class AppWindow(QMainWindow):
         else:
             if os.path.isfile(file_name):
                 _connection = sqlite3.connect(file_name, check_same_thread=False,
-                                              detect_types=DETECT_TYPES)
+                                              detect_types=ut.DETECT_TYPES)
             else:
                 self.show_message("Data base does not exist")
                 return None
 
-        DB_Connection['Path'] = file_name
-        DB_Connection['Conn'] = _connection
+        ut.DB_Connection['Path'] = file_name
+        ut.DB_Connection['Conn'] = _connection
         _connection.cursor().execute('PRAGMA foreign_keys = ON;')
         self.change_data_signal.emit('start app')
         logger.debug('|---> end')

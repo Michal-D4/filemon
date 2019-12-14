@@ -60,7 +60,7 @@ class DBChoice(QDialog):
             self.init_data[1].remove(self.init_data[1][i])
 
     def accept(self):
-        logger.debug('|---> start')
+        logger.trace('|---> start')
         self.emit_open_dialog()
         self._save_settings()
         super(DBChoice, self).accept()
@@ -98,28 +98,26 @@ class DBChoice(QDialog):
         self.ui_db_choice.okButton.setDisabled(False)
 
     def emit_open_dialog(self):
-        logger.debug('|--> start')
+        logger.trace('|--> start')
         if self.ui_db_choice.listOfBDs.currentIndex().isValid():
-            logger.debug('isValid()')
             file_name = self.ui_db_choice.listOfBDs.currentItem().text()
             # todo - if self.last_db_no == self.init_data[1]: not create new connection -
             # the last param not need
             self.DB_connect_signal.emit(file_name, False, self.last_db_no == self.init_data[0])
-        logger.debug('|--> end')
+        logger.trace('|--> end')
 
     def initiate_window(self):
         '''
         Initiate data in widgets
-        :param init_data: list of 3 items:
-            0 - skipThisWindow flag, 0 or 2; 2 - skip
-            1 - index of last used DB
-            2 - list of DBs
+        :param init_data: list of 2 items:
+            0 - index of last used DB
+            1 - list of DBs
         :return: None
         '''
-        logger.debug('|---> start')
+        logger.trace('|---> start')
         if self.init_data:
             db_index = self.init_data[0]
-            logger.debug(f'db idx.: {db_index}')
+            logger.trace(f'db idx.: {db_index}')
             if self.init_data[1]:
                 self.ui_db_choice.listOfBDs.clear()
                 for db in self.init_data[1]:
@@ -127,20 +125,20 @@ class DBChoice(QDialog):
                 self.ui_db_choice.listOfBDs.setCurrentRow(db_index)
             if self.ui_db_choice.listOfBDs.count() == 0:
                 self.ui_db_choice.okButton.setDisabled(True)
-        logger.debug('|---> end')
+        logger.trace('|---> end')
 
     def restore_settings(self):
         setting = QSettings()
         _data = [setting.value('DB/current_index', 0, type=int),
                  setting.value('DB/list_of_DB', [], type=list)]
-        logger.debug(f'{_data}')
+        logger.trace(f'{_data}')
         self.last_db_no = _data[0]
         self.init_data = _data
         self.initiate_window()
 
     def _save_settings(self):
         setting = QSettings()
-        logger.debug(f'{self.init_data}')
+        logger.trace(f'{self.init_data}')
         setting.setValue('DB/current_index', self.init_data[0])
         setting.setValue('DB/list_of_DB', self.init_data[1])
 

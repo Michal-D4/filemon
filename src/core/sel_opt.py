@@ -6,7 +6,6 @@ from loguru import logger
 from PyQt5.QtCore import Qt, QSettings
 from PyQt5.QtWidgets import QDialog, QAbstractItemView
 
-from src.core.helper import get_selected_items
 import src.core.utilities as ut
 from src.ui.ui_sel_opt import Ui_SelOpt
 
@@ -23,6 +22,16 @@ def get_items_id(view: QAbstractItemView) -> str:
         aux.append(model.data(id_, Qt.UserRole))
     aux.sort()
     return ','.join([str(id_) for id_ in aux])
+
+
+def get_selected_items(view: QAbstractItemView) -> str:
+    idxs = view.selectedIndexes()
+    if idxs:
+        model = view.model()
+        items_str = ', '.join(model.data(i, Qt.DisplayRole) for i in idxs)
+    else:
+        items_str = ''
+    return items_str
 
 
 class SelOpt(QDialog):
@@ -242,3 +251,4 @@ class SelOpt(QDialog):
 
 if __name__ == "__main__":
     pass
+
