@@ -1,16 +1,25 @@
-import _sqlite3
+import sqlite3
 import pytest
+import src.core.create_db as db
+
+
+PATH_TO_DATA = '../tmp/CSV'
+
+# Files with input data for DB
+FILES = ['dirs.csv',
+         'VirtDirs.csv',
+         'Files.csv',
+         'VirtFiles.csv',
+         'Comments.csv',
+         'extensions.csv',
+         'ExtGroups.csv',
+         'FileAuthor.csv',
+         'Tags.csv',
+         'FileTag.csv',
+         ]
 
 
 @pytest.fixture()
-def start_db():
-    return _sqlite3.connect(":memory:")
-
-
-@pytest.fixture()
-def schema_db():
-    lines = []
-    with open('./src/test/file.sql') as fl:
-        for line in fl:
-            lines.append((line.strip(),))
-    return lines
+def init_db():
+    conn = sqlite3.connect(":memory:")
+    db.create_all_objects(conn)
