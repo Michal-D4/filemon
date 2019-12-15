@@ -42,3 +42,19 @@ def test_create_all_objects(start_db, schema_db):
         assert row[0] == expected[i]
         i += 1
 
+
+def test_load_data(init_db, expected):
+    conn: sqlite3.Connection = init_db
+    exp: dict = expected
+
+    for key, it in exp.items():
+        if it:
+            print(key)
+            sql = f'select * from {key};'
+            curs = conn.execute(sql)
+            i = 0
+            for row in curs:
+                print(row)
+                if None not in row:
+                    assert tuple(map(str,row)) == it[i]
+                i += 1
