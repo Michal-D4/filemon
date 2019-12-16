@@ -9,7 +9,7 @@ from collections import namedtuple
 
 from PyQt5.QtCore import (Qt, QModelIndex, QItemSelectionModel, QSettings, QDate,
                           QDateTime, QItemSelection, QThread, QObject,
-                          QPersistentModelIndex)
+                          QPersistentModelIndex, QThreadPool)
 from PyQt5.QtWidgets import (QInputDialog, QLineEdit, QFileDialog, QLabel,
                              QFontDialog, QApplication, QAbstractItemView)
 from PyQt5.QtGui import QFontDatabase
@@ -142,6 +142,7 @@ class FilesCrt():
         self.ui.statusbar.addPermanentWidget(self.status_label)
 
         self.fields: Fields = Fields._make(((), (), ()))
+        self.thread_pool = QThreadPool()
         self.obj_thread: QObject = None
         self.in_thread: QThread = None
         self.file_list_source = FOLDER
@@ -1248,7 +1249,9 @@ class FilesCrt():
 
     def _load_files(self, path_: str, ext_):
         logger.debug(' | '.join((path_, '|', ext_, '|')))
-        self.obj_thread = LoadFiles(path_, ext_, ut.DB_Connection['Path'])
+        obj_thread = LoadFiles(path_, ext_, ut.DB_Connection['Path'])
+        obj_thread.finished.connect()
+        self.thread_pool.start(obj_thread)
         self._run_in_qthread(self._dir_update)
 
     def _scan_file_system(self) -> (str, str):
