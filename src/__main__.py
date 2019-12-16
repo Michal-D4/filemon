@@ -29,18 +29,22 @@ ORG_NAME = 'Fake organization'
 
 __all__ = ('main',)
 
+# ---------------------------------------------------------
+# doesn't catch exception without this code in Windows ! ! !
 _excepthook = sys.excepthook
 
 
 def my_exception_hook(exc_, value, traceback):
     # Print the error and traceback
-    logger.debug(f'{exc_}, {value}, {traceback}')
+    # logger.debug(f'{exc_}, {value}, {traceback}')
+    print(traceback)
     # Call the normal Exception hook after
     _excepthook(exc_, value, traceback)
     sys.exit(1)
 
-sys.excepthook = my_exception_hook
 
+sys.excepthook = my_exception_hook
+# ---------------------------------------------------------
 
 def main():
     from PyQt5.QtCore import pyqtRemoveInputHook
