@@ -9,9 +9,9 @@ from collections import namedtuple
 
 from PyQt5.QtCore import (Qt, QModelIndex, QItemSelectionModel, QSettings, QDate,
                           QDateTime, QItemSelection, QThread, QObject,
-                          QPersistentModelIndex, QVariant)
+                          QPersistentModelIndex)
 from PyQt5.QtWidgets import (QInputDialog, QLineEdit, QFileDialog, QLabel,
-                             QFontDialog, QApplication, QAbstractItemView)
+                             QFontDialog, QApplication)
 from PyQt5.QtGui import QFontDatabase
 
 from src.core.main_window import AppWindow
@@ -142,6 +142,7 @@ class FilesCrt():
         self.ui.statusbar.addPermanentWidget(self.status_label)
 
         self.fields: Fields = Fields._make(((), (), ()))
+        self.thread_pool = QThreadPool()
         self.obj_thread: QObject = None
         self.in_thread: QThread = None
         self.file_list_source = FOLDER
@@ -313,8 +314,8 @@ class FilesCrt():
             ut.update_other('FILE_DIR_ID', (dir_id, file[2][0]))
             self.ui.filesList.model().sourceModel().delete_row(file[0])
         except IOError:
-            AppWindow.show_message("Can't move file \"{}\" into folder \"{}\"".
-                                   format(file[3], to_path), 5000)
+            self.app_window.show_message("Can't move file \"{}\" into folder \"{}\"".
+                                         format(file[3], to_path), 5000)
 
     def _copy_file_to(self, dir_id, to_path, file_):
         # file_ = namedtuple('file_', 'index name_with_path user_data name')
@@ -334,8 +335,8 @@ class FilesCrt():
             ut.insert_other2(
                 'COPY_AUTHORS', (new_file_id, file_.user_data[0]))
         except IOError:
-            AppWindow.show_message("Can't copy file \"{}\" into folder \"{}\"".
-                                   format(file_[3], to_path), 5000)
+            self.app_window.show_message("Can't copy file \"{}\" into folder \"{}\"".
+                                         format(file_[3], to_path), 5000)
 
     def _get_dir_id(self, to_path: str) -> (int, bool):
         '''
@@ -371,7 +372,7 @@ class FilesCrt():
             self._delete_from_db(file_[2])
             self.ui.filesList.model().sourceModel().delete_row(file_[0])
         except FileNotFoundError:
-            AppWindow.show_message('File "{}" not found'.format(file_[1]))
+            self.app_window.show_message('File "{}" not found'.format(file_[1]))
 
     def _remove_files(self):
         selected_files = self._selected_files()
@@ -459,14 +460,14 @@ class FilesCrt():
             else:
                 self._methods[act[0]](act[1:])
         except KeyError:
-            AppWindow.show_message('Action "{}" not implemented'.format(action), 5000)
+            self.app_window.show_message('Action "{}" not implemented'.format(action), 5000)
 
     def _scan_for_tags(self):
         """
         Tags are searched if files with selected EXTENSIONS
         :return:
         """
-        AppWindow.show_message('Scan in files with selected extensions')
+        self.app_window.show_message('Scan in files with selected extensions')
         ext_idx = selected_db_indexes(self.ui.extList)
         all_id = collect_all_ext(ext_idx)
 
@@ -573,7 +574,7 @@ class FilesCrt():
         self.in_thread.start()
 
     def _dir_update_finish(self):
-        AppWindow.show_message("Updating of files is finished.", 5000)
+        self.app_window.show_message("Updating of files is finished.", 5000)
 
     def _favorite_file_list(self) -> None:
 
@@ -630,7 +631,7 @@ class FilesCrt():
             settings = QSettings()
             settings.setValue('FILE_LIST_SOURCE', self.file_list_source)
         else:
-            AppWindow.show_message("Nothing found. Change your choice.", 5000)
+            self.app_window.show_message("Nothing found. Change your choice.", 5000)
 
     def _add_file_to_favorites(self) -> None:
         f_idx = self.ui.filesList.currentIndex()
@@ -671,7 +672,7 @@ class FilesCrt():
         try:
             webbrowser.open(path_)
         except webbrowser.Error:
-            AppWindow.show_message('Folder is inaccessible on "{}"'.format(path_))
+            self.app_window.show_message('Folder is inaccessible on "{}"'.format(path_))
         else:
             pass
 
@@ -727,9 +728,9 @@ class FilesCrt():
                     idx_s = model.sourceModel().createIndex(idx.row(), heads.index('Opened'))
                     model.sourceModel().update(idx_s, cur_date)
             except OSError:
-                AppWindow.show_message('Can\'t open file "{}"'.format(full_file_name))
+                self.app_window.show_message('Can\'t open file "{}"'.format(full_file_name))
         else:
-            AppWindow.show_message("Can't find file \"{}\"".format(full_file_name))
+            self.app_window.show_message("Can't find file \"{}\"".format(full_file_name))
 
     def _file_path(self) -> (str, str, int, int):
         # todo   is it exist currentRow() method ?
@@ -865,7 +866,9 @@ class FilesCrt():
             row = 0
 
         dir_idx = self.ui.dirTree.model().data(curr_dir_idx, Qt.UserRole)
-        logger.debug(f'dir_idx: {dir_idx}')
+        # logger.debug(f'dir_idx: {dir_idx}')
+        if dir_idx is None:
+            return
         if self.file_list_source == VIRTUAL:
             self._populate_virtual(dir_idx.dir_id)
         elif self.file_list_source == FOLDER:
@@ -1002,6 +1005,8 @@ class FilesCrt():
         :return:
         """
         logger.debug(f'dir idx: {dir_idx}')
+        if dir_idx is None:            # no any dir in Dirs table
+            return
         if dir_idx[-2] > 0:
             self._form_virtual_folder(dir_idx)
         else:
@@ -1151,6 +1156,7 @@ class FilesCrt():
 
         self.ui.dirTree.selectionModel().currentRowChanged.connect(self._cur_dir_changed)
         cur_dir_idx = self._restore_path()
+        logger.debug(cur_dir_idx)
 
         self._restore_file_list(cur_dir_idx)
 
@@ -1206,7 +1212,7 @@ class FilesCrt():
                 parent = idx
 
         if parent.isValid():
-            logger.debug('parent.isValid: True')
+            # logger.debug('parent.isValid: True')
             return parent
 
         idx = model.index(0, 0, QModelIndex())
@@ -1240,7 +1246,9 @@ class FilesCrt():
 
     def _load_files(self, path_: str, ext_):
         logger.debug(' | '.join((path_, '|', ext_, '|')))
-        self.obj_thread = LoadFiles(path_, ext_, ut.DB_Connection['Path'])
+        obj_thread = LoadFiles(path_, ext_, ut.DB_Connection['Path'])
+        obj_thread.finished.connect()
+        self.thread_pool.start(obj_thread)
         self._run_in_qthread(self._dir_update)
 
     def _scan_file_system(self) -> (str, str):

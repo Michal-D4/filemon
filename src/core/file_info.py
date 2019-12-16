@@ -8,7 +8,7 @@ import re
 import sqlite3
 
 from PyPDF2 import PdfFileReader, utils
-from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot
+from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot, QRunnable
 
 from src.core.helper import get_file_extension
 from src.core.load_db_data import LoadDBData
@@ -40,33 +40,39 @@ UPDATE_FILE = ' '.join(('update Files set',
                         'where FileID = :file_id;'))
 
 
-class LoadFiles(QObject):
-    finished = pyqtSignal()
+class LoadFiles(QRunnable):
+    """
+    Load files with of extensions from list 'ext_' located under Path 'path_'
 
-    def __init__(self, path_, ext_, db_path):
-        super().__init__()
+    :param path_: location of collected files (and all subdirs)
+    :param ext_: list of extensions
+    :param db_name: full name of DB file
+    :param updated_dirs: list to return the dirID created/updated in the DB
+    """
+
+    def __init__(self, path_, ext_, db_name, updated_dirs: list):
+        """
+        Load files with list of extensions 'ext_' from Path 'path_'
+        """
+        super(LoadFiles, self).__init__()
         logger.debug(' '.join((path_, '|', ext_, '|')))
-        self.conn = sqlite3.connect(db_path, check_same_thread=False,
+        self.conn = sqlite3.connect(db_name, check_same_thread=False,
                                     detect_types=DETECT_TYPES)
         self.conn.cursor().execute('PRAGMA foreign_keys = ON;')
         self.path_ = path_
         self.ext_ = ext_
-        self.updated_dirs = None
+        self.updated_dirs = updated_dirs
+        self.finished = pyqtSignal()
 
     @pyqtSlot()
     def run(self):
         files = LoadDBData()
         logger.debug(' | '.join((self.path_, self.ext_)))
         files.load_data(self.path_, self.ext_)
-        self.updated_dirs = files.get_updated_dirs()
-        self.finished.emit()
-
-    def get_updated_dirs(self):
-        return self.updated_dirs
+        self.updated_dirs.append(files.get_updated_dirs())
 
 
-class FileInfo(QObject):
-    finished = pyqtSignal()
+class FileInfo(QRunnable):
 
     @pyqtSlot()
     def run(self):
@@ -75,7 +81,7 @@ class FileInfo(QObject):
         self.finished.emit()           # 'Updating of files is finished'
 
     def __init__(self, updated_dirs, db_path):
-        super().__init__()
+        super(FileInfo, self).__init__()
         logger.debug('--> FileInfo.__init__')
         self.upd_dirs = updated_dirs
         self.conn = sqlite3.connect(db_path, check_same_thread=False,
@@ -83,6 +89,7 @@ class FileInfo(QObject):
         self.conn.cursor().execute('PRAGMA foreign_keys = ON;')
         self.cursor = self.conn.cursor()
         self.file_info = []
+        self.finished = pyqtSignal()
 
     def _insert_author(self, file_id):
         authors = re.split(r',|;|&|\band\b', self.file_info[3])
