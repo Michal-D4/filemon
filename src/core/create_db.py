@@ -109,9 +109,7 @@ def create_all_objects(connection):
 def initiate_db(connection):
     cursor = connection.cursor()
     try:
-        cursor.execute('insert into Dirs (DirID) values (0);')
-        cursor.execute(' '.join(('insert into Dirs (Path, ParentID, FolderType)',
-                                 ' values ("Favorites", 0, 1);')))
+        cursor.execute('insert into Dirs (DirID) values (0);')  # common root - without parent
     except sqlite3.Error as err:
         print("An error occurred:", err.args[0])
 
