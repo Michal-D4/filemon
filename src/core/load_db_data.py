@@ -33,22 +33,21 @@ def yield_files(root: str, extensions: str):
     :param extensions: list of extensions as comma separated string
     :return: generator
     """
-    logger.debug(' | '.join(("extensions:", extensions)))
+    r_path = pathlib.Path(root)
     ext_ = tuple(x.strip('. ') for x in extensions.split(','))
-    logger.debug(' | '.join(("ext_:", *ext_)))
-    for dir_name, _, file_names in os.walk(root):
-        logger.debug(dir_name)
-        if (not extensions) | (extensions == '*'):
-            # collect all files regardless its extensions
-            for filename in file_names:
-                logger.debug(filename)
-                yield os.path.join(dir_name, filename)
+    for filename in r_path.rglob('*'):
+        logger.debug(f'{extensions}, type {type(extensions)}')
+        logger.debug(f'filename type {type(filename)}')
+        if not filename.is_file():
+            continue
+        elif (not extensions) and filename.suffix == '':
+            yield filename
+        elif '*' in ext_:
+            yield filename
+        elif filename.suffix in ext_:
+            yield filename
         else:
-            # collect files with extensions from list "ext_"
-            for filename in file_names:
-                if get_file_extension(filename) in ext_:
-                    logger.debug(filename)
-                    yield os.path.join(dir_name, filename)
+            continue
 
 
 class LoadDBData:
