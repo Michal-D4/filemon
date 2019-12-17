@@ -11,12 +11,14 @@ def expected_files():
     files = []
     with open(PATH_TO_DATA / 'file_list.txt') as fl:
         for line in fl:
-            files.append(line.strip())
+            files.append(tuple(line.strip().split('/')))
     return files
 
 
 def test_yield_files(expected_files):
+    ll = len(ROOT.parts) - 1
     files = ld.yield_files(ROOT,'*')
     exp = expected_files
     for file in files:
-        assert file in exp
+        ff = Path(file).parts[ll:]
+        assert ff in exp
