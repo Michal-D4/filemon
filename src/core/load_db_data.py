@@ -26,11 +26,11 @@ FIND_EXT = 'select ExtID from Extensions where Extension = ?;'
 INSERT_EXT = 'insert into Extensions (Extension, GroupID) values (:ext, 0);'
 
 
-def yield_files(root, extensions):
+def yield_files(root: str, extensions: str):
     """
     generator of file list
     :param root: root directory
-    :param extensions: list of extensions
+    :param extensions: list of extensions as comma separated string
     :return: generator
     """
     logger.debug(' | '.join(("extensions:", extensions)))
@@ -55,12 +55,12 @@ class LoadDBData:
     """
     class LoadDBData
     """
-    def __init__(self):
+    def __init__(self, conn):
         """
         class LoadDBData
         :param connection: - connection to database
         """
-        self.conn = DB_Connection['Conn']
+        self.conn = conn
         self.cursor = self.conn.cursor()
         self.updated_dirs = set()
 
@@ -128,7 +128,7 @@ class LoadDBData:
         Insert directory into Dirs table
         :param path:
         :return: (dirID, is_created)
-        "is_created = false" doesn't mean error, dirID already exists
+        "is_created = false" means that dirID already exists; doesn't mean error
         '''
         idx, parent_path = self.search_closest_parent(path)
         if parent_path == path:

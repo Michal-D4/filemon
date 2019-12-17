@@ -8,10 +8,10 @@ import webbrowser
 from collections import namedtuple
 
 from PyQt5.QtCore import (Qt, QModelIndex, QItemSelectionModel, QSettings, QDate,
-                          QDateTime, QItemSelection, QThread, QObject,
+                          QDateTime, QItemSelection, QVariant, QThreadPool,
                           QPersistentModelIndex)
 from PyQt5.QtWidgets import (QInputDialog, QLineEdit, QFileDialog, QLabel,
-                             QFontDialog, QApplication)
+                             QFontDialog, QApplication, QAbstractItemView)
 from PyQt5.QtGui import QFontDatabase
 
 from src.core.main_window import AppWindow
@@ -143,8 +143,6 @@ class FilesCrt():
 
         self.fields: Fields = Fields._make(((), (), ()))
         self.thread_pool = QThreadPool()
-        self.obj_thread: QObject = None
-        self.in_thread: QThread = None
         self.file_list_source = FOLDER
         self._opt = SelOpt(self)
         self._restore_font()
@@ -300,10 +298,10 @@ class FilesCrt():
             if idx.column() == 0:
                 file_name = model.data(idx)
                 u_dat = model.data(idx, Qt.UserRole)
-                file_path, _ = ut.select_other(
+                file_path = ut.select_other(
                     'PATH', (u_dat.dir_id,)).fetchone()
                 file_data = file_._make(
-                    (idx, os.path.join(file_path, file_name), u_dat, file_name))
+                    (idx, os.path.join(file_path[0], file_name), u_dat, file_name))
                 files.append(file_data)
         return files
 
@@ -340,11 +338,11 @@ class FilesCrt():
 
     def _get_dir_id(self, to_path: str) -> (int, bool):
         '''
-        _get_dir_id - auxilary method for copying files to to_path dirrectory
-        to_path  target directory
-        returns (DirId: int, isNewDirID: bool) for target directory
+        copy files to to_path directory
+        :param to_path:  target directory
+        returns (DirId: int, isNewDirID: bool) ID of target directory
         '''
-        ld = LoadDBData()
+        ld = LoadDBData(ut.DB_Connection['Conn'])
         return ld.insert_dir(to_path)
 
     def _copy_files(self):
@@ -557,21 +555,13 @@ class FilesCrt():
 
                 self._populate_ext_list()
 
-    def _dir_update(self) -> None:
-        updated_dirs = self.obj_thread.get_updated_dirs()
+    def _dir_update(self, updated_dirs) -> None:
         self._populate_directory_tree()
         self._populate_ext_list()
 
-        self.obj_thread = FileInfo(updated_dirs, ut.DB_Connection['Path'])
-        self._run_in_qthread(self._dir_update_finish)
-
-    def _run_in_qthread(self, run_at_finish) -> None:
-        self.in_thread = QThread()
-        self.obj_thread.moveToThread(self.in_thread)
-        self.obj_thread.finished.connect(self.in_thread.quit)
-        self.in_thread.finished.connect(run_at_finish)
-        self.in_thread.started.connect(self.obj_thread.run)
-        self.in_thread.start()
+        files_ = FileInfo(updated_dirs, ut.DB_Connection['Path'])
+        files_.signal.finished.connect(self._dir_update_finish)
+        self.thread_pool.start(files_)
 
     def _dir_update_finish(self):
         self.app_window.show_message("Updating of files is finished.", 5000)
@@ -1246,10 +1236,9 @@ class FilesCrt():
 
     def _load_files(self, path_: str, ext_):
         logger.debug(' | '.join((path_, '|', ext_, '|')))
-        obj_thread = LoadFiles(path_, ext_, ut.DB_Connection['Path'])
-        obj_thread.finished.connect()
-        self.thread_pool.start(obj_thread)
-        self._run_in_qthread(self._dir_update)
+        load_ = LoadFiles(path_, ext_, ut.DB_Connection['Path'])
+        load_.signal.finished.connect(self._dir_update)
+        self.thread_pool.start(load_)
 
     def _scan_file_system(self) -> (str, str):
         ext_: str = self._get_selected_ext()

@@ -40,20 +40,25 @@ UPDATE_FILE = ' '.join(('update Files set',
                         'where FileID = :file_id;'))
 
 
+class LFSignal(QObject):
+    finished = pyqtSignal(object)
+
+
+class FISignal(QObject):
+    finished = pyqtSignal()
+
+
 class LoadFiles(QRunnable):
     """
     Load files with of extensions from list 'ext_' located under Path 'path_'
+    Run in thread
 
     :param path_: location of collected files (and all subdirs)
     :param ext_: list of extensions
     :param db_name: full name of DB file
-    :param updated_dirs: list to return the dirID created/updated in the DB
     """
 
-    def __init__(self, path_, ext_, db_name, updated_dirs: list):
-        """
-        Load files with list of extensions 'ext_' from Path 'path_'
-        """
+    def __init__(self, path_: str, ext_: str, db_name: str):
         super(LoadFiles, self).__init__()
         logger.debug(' '.join((path_, '|', ext_, '|')))
         self.conn = sqlite3.connect(db_name, check_same_thread=False,
@@ -61,35 +66,43 @@ class LoadFiles(QRunnable):
         self.conn.cursor().execute('PRAGMA foreign_keys = ON;')
         self.path_ = path_
         self.ext_ = ext_
-        self.updated_dirs = updated_dirs
-        self.finished = pyqtSignal()
+        self.signal = LFSignal()   # send set of ID of updated dirs
 
     @pyqtSlot()
     def run(self):
-        files = LoadDBData()
+        """
+        Load files using LoadDBData class
+        """
+        files = LoadDBData(self.conn)
         logger.debug(' | '.join((self.path_, self.ext_)))
         files.load_data(self.path_, self.ext_)
-        self.updated_dirs.append(files.get_updated_dirs())
+        self.signal.finished.emit(files.get_updated_dirs())
 
 
 class FileInfo(QRunnable):
+    """
+    Collect data about all files in the updated by LoadFiles dirs
+    Run in thread
+    :param updated_dirs: IDs of updated dirs
+    :param db_name: full name of DB file
+    """
 
     @pyqtSlot()
     def run(self):
         logger.debug('--> FileInfo.run')
         self._update_files()
-        self.finished.emit()           # 'Updating of files is finished'
+        self.signal.finished.emit()
 
-    def __init__(self, updated_dirs, db_path):
+    def __init__(self, updated_dirs: set, db_name: str):
         super(FileInfo, self).__init__()
         logger.debug('--> FileInfo.__init__')
         self.upd_dirs = updated_dirs
-        self.conn = sqlite3.connect(db_path, check_same_thread=False,
+        self.conn = sqlite3.connect(db_name, check_same_thread=False,
                                     detect_types=DETECT_TYPES)
         self.conn.cursor().execute('PRAGMA foreign_keys = ON;')
         self.cursor = self.conn.cursor()
         self.file_info = []
-        self.finished = pyqtSignal()
+        self.signal = FISignal()
 
     def _insert_author(self, file_id):
         authors = re.split(r',|;|&|\band\b', self.file_info[3])
@@ -197,7 +210,7 @@ class FileInfo(QRunnable):
             self._insert_author(file_.file_id)
 
     def _update_files(self):
-        logger.debug("_update_files <- start")
+        logger.debug("<- start")
         db_file_info = namedtuple('db_file_info',
                                   'file_id full_name comment_id issue_date pages')
         # file_id: int, full_name: str, comment_id: int issue_date: date, pages: int
@@ -211,4 +224,4 @@ class FileInfo(QRunnable):
             file_ = db_file_info._make((file_descr[0], file_name) + file_descr[-3:])
             self._update_file(file_)
 
-        logger.debug("_update_files <- finish")
+        logger.debug("<- finish")
