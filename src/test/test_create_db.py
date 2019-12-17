@@ -57,4 +57,4 @@ def test_load_data(init_db, expected):
                 print(row)
                 if None not in row:
                     assert tuple(map(str,row)) == it[i]
-                i += 1
+                    i += 1

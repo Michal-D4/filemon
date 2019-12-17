@@ -9,28 +9,17 @@ import src.core.create_db as db
 PATH_TO_DATA = Path('data')
 
 # Files with input data for DB (name, autoincrement)
-FILES = [('inDirs.csv', 1),
-         ('VirtDirs.csv', 0),
-         ('Files.csv', 1),
-         ('VirtFiles.csv', 0),
-         ('Comments.csv', 1),
-         ('Extensions.csv', 1),
-         ('ExtGroups.csv', 1),
-         ('FileAuthor.csv', 0),
-         ('Tags.csv', 1),
-         ('FileTag.csv', 0),
-         ]
-
-FILEI = ['Dirs.csv',   # because of "Favorites"
-         'VirtDirs.csv',
-         'Files.csv',
-         'VirtFiles.csv',
-         'Comments.csv',
-         'Extensions.csv',
-         'ExtGroups.csv',
-         'FileAuthor.csv',
-         'Tags.csv',
-         'FileTag.csv',
+#  if "autoincrement" then the ID (first field) should be skipped: [1:]
+FILES = [('Dirs.txt', 1),
+         ('VirtDirs.txt', 0),
+         ('Files.txt', 1),
+         ('VirtFiles.txt', 0),
+         ('Comments.txt', 1),
+         ('Extensions.txt', 1),
+         ('ExtGroups.txt', 1),
+         ('FileAuthor.txt', 0),
+         ('Tags.txt', 1),
+         ('FileTag.txt', 0),
          ]
 
 
@@ -46,10 +35,10 @@ def init_db() -> sqlite3.Connection:
     db.create_all_objects(conn)
     for fl in FILES:
         fll = PATH_TO_DATA / fl[0]
-        if fl[0].startswith('inDirs'):
-            tbl = 'Dirs'
-        else:
-            tbl = fl[0].split('.')[0]
+        # if fl[0].startswith('inDirs'):
+        #     tbl = 'Dirs'
+        # else:
+        tbl = fl[0].split('.')[0]
         vals = []
         sql = ''
         with open(fll) as fi:
@@ -71,8 +60,8 @@ def init_db() -> sqlite3.Connection:
 @pytest.fixture()
 def expected() -> dict():
     res = dict()
-    for fl in FILEI:
-        fll = PATH_TO_DATA / fl
+    for fl in FILES:
+        fll = PATH_TO_DATA / fl[0]
         vals = []
         with open(fll) as fi:
             skip_line = True
@@ -82,5 +71,5 @@ def expected() -> dict():
                 else:
                     vals.append(tuple(line.strip('\n').split('|')))
 
-        res[fl.split('.')[0]] = vals
+        res[fl[0].split('.')[0]] = vals
     return res
