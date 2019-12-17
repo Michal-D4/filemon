@@ -11,7 +11,7 @@ def start_db():
 @pytest.fixture()
 def schema_db():
     lines = []
-    with open('file.sql') as fl:
+    with open('data/file.sql') as fl:
         curr = next(fl)
         for line in fl:
             if line.startswith('CREATE'):

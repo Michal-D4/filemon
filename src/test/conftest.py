@@ -6,7 +6,7 @@ from typing import Iterable
 import src.core.create_db as db
 
 
-PATH_TO_DATA = Path.cwd().parent.parent / 'tmp/CSV'
+PATH_TO_DATA = Path('data')
 
 # Files with input data for DB (name, autoincrement)
 FILES = [('inDirs.csv', 1),
