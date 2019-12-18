@@ -41,6 +41,12 @@ UPDATE_FILE = ' '.join(('update Files set',
 
 
 def ext_translate(ext: str):
+    """
+    String of file extensions separated by comma
+    converted into tuple of extensions without dot
+    @param ext: string of file extensions
+    @return: tuple of extensions
+    """
     ext_ = tuple(x.strip('. ') for x in ext.split(','))
     return '*' if '*' in ext_ else ext_
 
