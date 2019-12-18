@@ -3,6 +3,11 @@ import src.core.file_info as lf   # lf ~ fiLe_inFo
 
 
 def test_ext_translate():
+    """
+    test whether any type of inputted list of extensions in string format
+    correctly converted into tuple
+    @return: None
+    """
     ex1 = ''
     tx1 = lf.ext_translate(ex1)
     assert tx1 == ('',)
