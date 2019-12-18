@@ -49,8 +49,8 @@ def init_load() -> (ld.LoadDBData, sqlite3.Connection):
 
 @pytest.mark.parametrize('root, ext, expect',
                          [(ROOT / '.dir3', ('txt', 'py'), 2),
-                          (ROOT, '*', 11),
-                          (ROOT, '', 0),     # because files without extension are not loaded
+                          (ROOT, '*', 14),
+                          (ROOT, '', 3),
                           ])
 def test_load_data_file_count(init_load, root, ext, expect):
     """
