@@ -26,25 +26,24 @@ FIND_EXT = 'select ExtID from Extensions where Extension = ?;'
 INSERT_EXT = 'insert into Extensions (Extension, GroupID) values (:ext, 0);'
 
 
-def yield_files(root: str, extensions: str):
+def yield_files(root: str, ext: str):
     """
     generator of file list
     :param root: root directory
-    :param extensions: list of extensions as comma separated string
+    :param ext: list of extensions as comma separated string
     :return: generator
     """
     r_path = pathlib.Path(root)
-    ext_ = tuple(x.strip('. ') for x in extensions.split(','))
     for filename in r_path.rglob('*'):
-        logger.debug(f'{extensions}, type {type(extensions)}')
+        logger.debug(f'{ext}, type {type(ext)}')
         logger.debug(f'filename type {type(filename)}')
         if not filename.is_file():
             continue
-        elif (not extensions) and filename.suffix == '':
+        elif (not ext) and filename.suffix == '':
             yield filename
-        elif '*' in ext_:
+        elif '*' in ext:
             yield filename
-        elif filename.suffix in ext_:
+        elif filename.suffix in ext:
             yield filename
         else:
             continue
@@ -72,7 +71,7 @@ class LoadDBData:
         :param data: - iterable lines of file names with full path
         :return: None
         """
-        logger.debug(' | '.join((path_, ext_)))
+        logger.debug(f'{path_} | {ext_}')
         # breakpoint()
         files = yield_files(path_, ext_)
         for line in files:

@@ -40,6 +40,11 @@ UPDATE_FILE = ' '.join(('update Files set',
                         'where FileID = :file_id;'))
 
 
+def ext_translate(ext: str):
+    ext_ = tuple(x.strip('. ') for x in ext.split(','))
+    return '*' if '*' in ext_ else ext_
+
+
 class LFSignal(QObject):
     finished = pyqtSignal(object)
 
@@ -65,7 +70,7 @@ class LoadFiles(QRunnable):
                                     detect_types=DETECT_TYPES)
         self.conn.cursor().execute('PRAGMA foreign_keys = ON;')
         self.path_ = path_
-        self.ext_ = ext_
+        self.ext_ = ext_translate(ext_)
         self.signal = LFSignal()   # send set of ID of updated dirs
 
     @pyqtSlot()
