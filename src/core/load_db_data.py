@@ -39,7 +39,7 @@ def yield_files(root: str, ext: str):
             continue
         elif '*' in ext:
             yield filename
-        elif filename.suffix in ext:
+        elif filename.suffix.strip('.') in ext:
             yield filename
         else:
             continue
@@ -71,40 +71,41 @@ class LoadDBData:
         files = yield_files(path_, ext_)
         for line in files:
             logger.debug(line)
-            path = pathlib.Path(line).parent
+            file = pathlib.Path(line)
+            path = file.parent
             idx, _ = self.insert_dir(path)
             self.updated_dirs.add(str(idx))
-            self.insert_file(idx, line)
+            self.insert_file(idx, file)
         self.conn.commit()
         logger.debug(f'end | {len(self.updated_dirs)}')
 
-    def insert_file(self, dir_id: int, full_file_name: str):
+    def insert_file(self, dir_id: int, full_file_name: pathlib.Path):
         """
         Insert file into Files table
         :param dir_id:
         :param full_file_name:
         :return: None
         """
-        logger.debug(' | '.join((str(dir_id), full_file_name)))
-        file_ = os.path.basename(full_file_name)
+        logger.debug(f'{dir_id} | {full_file_name}')
+        file_ = full_file_name.name
 
         logger.debug(file_)
 
         item = self.cursor.execute(FIND_FILE, {'dir_id': dir_id, 'file': file_}).fetchone()
         if not item:
-            ext_id, _ = self.insert_extension(file_)
+            ext_id, _ = self.insert_extension(full_file_name)
             if ext_id:      # files with an empty extension are not handled
                 self.cursor.execute(INSERT_FILE, {'dir_id': dir_id,
                                                   'file': file_,
                                                   'ext_id': ext_id})
 
-    def insert_extension(self, file: str) -> (int, str):
+    def insert_extension(self, file: pathlib.Path) -> (int, str):
         '''
         insert or find extension in DB
         :param file - file name
         returns (ext_id, extension_of_file)
         '''
-        ext = get_file_extension(file)
+        ext = file.suffix.strip('.')
         if ext:
             item = self.cursor.execute(FIND_EXT, (ext,)).fetchone()
             if item:
@@ -138,24 +139,24 @@ class LoadDBData:
     def change_parent(self, new_parent_id: int, path: pathlib.PurePath):
         """
         The purpose of this method is to check whether the path
-        to the new file can be parent for existing folders,
-        and if so, apply it as the parent for them.
+        to the new file can be a parent for existing folders,
+        and if so, apply it as the parent for these folders.
         :param new_parent_id: id of new dir
         :param path: path of new dir
         """
         old_parent_id = self.parent_id_for_child(path)
         if old_parent_id != -1:
             self.cursor.execute(CHANGE_PARENT_ID, {'currId': old_parent_id,
-                                                       'newId': new_parent_id,
-                                                       'newPath': str(path) + '%'})
+                                                   'newId': new_parent_id,
+                                                   'newPath': str(path) + '%'})
 
     def parent_id_for_child(self, path: pathlib.PurePath) -> int:
-        '''
+        """
         Check the new file path:
-          if it can be parent for other directories
+          whether it can be parent for other directories
         :param path:
         :return: parent Id of first found child, -1 if not children
-        '''
+        """
         item = self.cursor.execute(FIND_PART_PATH, {'newPath': str(path) + '%'}).fetchone()
         if item:
             return item[0]
@@ -163,20 +164,20 @@ class LoadDBData:
         return -1
 
     def search_closest_parent(self, path: pathlib.PurePath) -> (int, pathlib.PurePath):
-        '''
+        """
         Search parent directory in DB
         :param path:  file path
         :rtype: tuple(parent_id: int, parent_path: str) or (0, None)
-        '''
-        # 'path / 'a' is workaround. Need check the path itself
-        # and all its parents, not only parents
-        for path_ in (path / 'a').parents:
+        """
+        # WORKAROUND: the dummy path "path / '@'", that is path is a parent for it.
+        # So parents includes the path itself
+        for path_ in (path / '@').parents:
             logger.debug(path_)   # the issue that there is a different separator than stored in DB
             parent_id = self.cursor.execute(FIND_EXACT_PATH, (str(path_),)).fetchone()
             if parent_id:
-                return (parent_id[0], path_)
+                return parent_id[0], path_
 
-        return (0, None)
+        return 0, None
 
 
 if __name__ == "__main__":
