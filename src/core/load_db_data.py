@@ -93,11 +93,10 @@ class LoadDBData:
 
         item = self.cursor.execute(FIND_FILE, {'dir_id': dir_id, 'file': file_}).fetchone()
         if not item:
-            ext_id, _ = self.insert_extension(full_file_name)
-            if ext_id:      # files with an empty extension are not handled
-                self.cursor.execute(INSERT_FILE, {'dir_id': dir_id,
-                                                  'file': file_,
-                                                  'ext_id': ext_id})
+            ext_id = self.insert_extension(full_file_name)
+            self.cursor.execute(INSERT_FILE, {'dir_id': dir_id,
+                                              'file': file_,
+                                              'ext_id': ext_id})
 
     def insert_extension(self, file: pathlib.Path) -> (int, str):
         '''
@@ -106,17 +105,14 @@ class LoadDBData:
         returns (ext_id, extension_of_file)
         '''
         ext = file.suffix.strip('.')
-        if ext:
-            item = self.cursor.execute(FIND_EXT, (ext,)).fetchone()
-            if item:
-                idx = item[0]
-            else:
-                self.cursor.execute(INSERT_EXT, {'ext': ext})
-                idx = self.cursor.lastrowid
-                self.conn.commit()
-        else:
-            idx = 0
-        return idx, ext
+        item = self.cursor.execute(FIND_EXT, (ext,)).fetchone()
+        if item:
+            return item[0]
+
+        self.cursor.execute(INSERT_EXT, {'ext': ext})
+        idx = self.cursor.lastrowid
+        self.conn.commit()
+        return idx
 
     def insert_dir(self, path: pathlib.PurePath) -> (int, bool):
         '''
