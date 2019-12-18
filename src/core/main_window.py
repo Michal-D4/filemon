@@ -53,6 +53,7 @@ class AppWindow(QMainWindow):
         Connect handlers to tool bar actions and widgets' events
         :return:
         """
+        # toolbar buttons actions
         self.ui.actionOpenDB.triggered.connect(lambda: self.open_dialog.exec_())
         self.ui.actionScanFiles.triggered.connect(lambda: self.scan_files_signal.emit())
         self.ui.actionFileFilter.triggered.connect(lambda: self.change_data_signal.emit('Select files'))

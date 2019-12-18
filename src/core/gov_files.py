@@ -1215,12 +1215,19 @@ class FilesCrt():
         ut.delete_other('EMPTY_DIRS', ())
         self._populate_directory_tree()
 
-    def _rescan_dir(self):
+    def _rescan_dir(self) -> None:
+        """
+        Rescan the selected dirs for files with given extensions
+        Invoke dialog to input extensions
+        if list of extensions empty it searches files without extension
+        '*' means any extension
+        @return: None
+        """
         idx = self.ui.dirTree.currentIndex()
         dir_ = self.ui.dirTree.model().data(idx, Qt.UserRole)
         ext_: str = self._get_selected_ext()
         ext_item, ok_pressed = QInputDialog.getText(self.ui.extList, "Input extensions",
-                                                    'Input extensions (* - all)',
+                                                    'Input extensions (* - any)',
                                                     QLineEdit.Normal, ext_)
         if ok_pressed:
             self._load_files(dir_.path, ext_item.strip())
@@ -1241,15 +1248,22 @@ class FilesCrt():
         self.thread_pool.start(load_)
 
     def _scan_file_system(self) -> (str, str):
+        """
+        Invoke dialog to enter extensions of searching files
+        and root directory
+        @return: root, ext;  ext is the list of extensions as comma separated string
+                 if ext is empty it searches files without extension
+                    ext contains '*' selects files with any extension
+        """
         ext_: str = self._get_selected_ext()
-        ext_item, ok_pressed = QInputDialog.getText(self.ui.extList, "Input extensions",
-                                                    '', QLineEdit.Normal, ext_)
-        logger.debug(ext_item, ok_pressed)
+        ext_, ok_pressed = QInputDialog.getText(self.ui.extList, "Input extensions",
+                                                '', QLineEdit.Normal, ext_)
+        logger.debug(ext_, ok_pressed)
         if ok_pressed:
             root: str = QFileDialog().getExistingDirectory(
                 self.ui.extList, 'Select root folder')
             if root:
-                return root, ext_item
+                return root, ext_
         return '', ''  # not ok_pressed or root is empty
 
     def _get_selected_ext(self) -> str:
