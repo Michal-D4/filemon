@@ -35,12 +35,8 @@ def yield_files(root: str, ext: str):
     """
     r_path = pathlib.Path(root)
     for filename in r_path.rglob('*'):
-        logger.debug(f'{ext}, type {type(ext)}')
-        logger.debug(f'filename type {type(filename)}')
         if not filename.is_file():
             continue
-        elif (not ext) and filename.suffix == '':
-            yield filename
         elif '*' in ext:
             yield filename
         elif filename.suffix in ext:
@@ -72,15 +68,15 @@ class LoadDBData:
         :return: None
         """
         logger.debug(f'{path_} | {ext_}')
-        # breakpoint()
         files = yield_files(path_, ext_)
         for line in files:
-            logger.debug(' : '.join(('line', line)))
+            logger.debug(line)
             path = pathlib.Path(line).parent
             idx, _ = self.insert_dir(path)
             self.updated_dirs.add(str(idx))
             self.insert_file(idx, line)
         self.conn.commit()
+        logger.debug(f'end | {len(self.updated_dirs)}')
 
     def insert_file(self, dir_id: int, full_file_name: str):
         """
