@@ -151,7 +151,7 @@ class LoadDBData:
         Check the new file path:
           whether it can be parent for other directories
         :param path:
-        :return: parent Id of first found child, -1 if not children
+        :return: parent Id of first found child, -1 if no children
         """
         item = self.cursor.execute(FIND_PART_PATH, {'newPath': str(path) + '%'}).fetchone()
         if item:
