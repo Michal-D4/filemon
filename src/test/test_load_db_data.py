@@ -63,15 +63,12 @@ def init_load_obj() -> (ld.LoadDBData, sqlite3.Connection):
     return loads, conn
 
 
-root_paths = [
-    ('.dir3', '',   # TEST_ROOT_DIR, '' - empty extension
-     ('dir1', None),
-     ('.dir3/.dir.1.1', TEST_ROOT_DIR / '.dir3'),
-     ('.dir3', TEST_ROOT_DIR / '.dir3'),
-     ),
-    ('', ('pd', 'png'),
-     ('', None),
-     )
+root_paths = [ # 'insert_to_db, search_for_parent, expected'
+    ('.dir3/dir.1.1/', 'dir1', None),
+    ('.dir3/dir.1.1', '.dir3/.dir.1.2/dir.1.2.3', None),
+    ('.dir3', '.dir3/.dir.1.2/dir.1.2.3', '.dir3'),
+    ('dir1', 'dir1', 'dir1'),
+    ('', '', ''),
 ]
 
 
@@ -82,9 +79,11 @@ def db_with_loaded_data(request):
     conn.cursor().execute('PRAGMA foreign_keys = ON;')
     db.create_all_objects(conn)
     loads = ld.LoadDBData(conn)
-    rt = TEST_ROOT_DIR / request.param[0]
-    loads.load_data(rt, request.param[1])
-    return loads, conn, request.param[2:]
+    to_insert = request.param[0]
+    conn.execute('insert into Dirs (Path, ParentID, FolderType) values (?, ?, ?);',
+                 (str(TEST_ROOT_DIR / to_insert), '0', '0'))
+
+    return loads, request.param[1:]
 
 
 @pytest.mark.parametrize('root, ext, expect',
@@ -133,25 +132,29 @@ def test_insert_dir(init_load_obj, expected_files):
 
 
 def test_search_closest_parent(db_with_loaded_data):
-    load_d, conn_d, *dirs = db_with_loaded_data  # LoadDBData object, sqlite Connection
-    for dd in dirs[0]:
-        logger.debug(dd)
-        dd_path = TEST_ROOT_DIR / dd[0]
-        _, parent = load_d.search_closest_parent(dd_path)
-        assert parent == dd[1]
+    load_d, dirs = db_with_loaded_data  # LoadDBData object, sqlite Connection
+    i, parent = load_d.search_closest_parent(TEST_ROOT_DIR / dirs[0])
+    if i > 0:
+        assert TEST_ROOT_DIR / parent == TEST_ROOT_DIR / dirs[1]
+    else:
+        assert parent is dirs[1]
 
 
 def test_change_parent():
     pass
+    # assert True
 
 
 def test_parent_id_for_child():
     pass
+    # assert True
 
 
 def test_insert_file():
     pass
+    # assert True
 
 
 def test_insert_extension():
     pass
+    # assert True
