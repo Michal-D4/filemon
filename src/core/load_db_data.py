@@ -163,12 +163,11 @@ class LoadDBData:
         """
         Search parent directory in DB
         :param path:  file path
-        :rtype: tuple(parent_id: int, parent_path: str) or (0, None)
+        :return: parent_id: int, parent_path: pathlib.PurePath;  or   0, None
         """
         # WORKAROUND: the dummy path "path / '@'", that is path is a parent for it.
         # So parents includes the path itself
         for path_ in (path / '@').parents:
-            logger.debug(path_)   # the issue that there is a different separator than stored in DB
             parent_id = self.cursor.execute(FIND_EXACT_PATH, (str(path_),)).fetchone()
             if parent_id:
                 return parent_id[0], path_
