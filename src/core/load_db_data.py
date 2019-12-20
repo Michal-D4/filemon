@@ -1,4 +1,4 @@
-# load_db_data.py
+﻿# load_db_data.py
 
 from loguru import logger
 import os
@@ -74,15 +74,16 @@ class LoadDBData:
             file = pathlib.Path(line)
             path = file.parent
             idx, _ = self.insert_dir(path)
-            self.updated_dirs.add(str(idx))
-            self.insert_file(idx, file)
+            if idx > 0:
+                self.updated_dirs.add(str(idx))
+                self.insert_file(idx, file)
         self.conn.commit()
         logger.debug(f'end | {len(self.updated_dirs)}')
 
     def insert_file(self, dir_id: int, full_file_name: pathlib.Path):
         """
         Insert file into Files table
-        :param dir_id:
+        :param dir_id: int > 0
         :param full_file_name:
         :return: None
         """
@@ -148,8 +149,9 @@ class LoadDBData:
 
     def parent_id_for_child(self, path: pathlib.PurePath) -> int:
         """
-        Check the new file path:
-          whether it can be parent for other directories
+        Check whether the new dir can be parent for other directories
+        ie. the new path (not inserted yet) is shorten the some existing path
+        parents for such paths will be replaced by this new path later
         :param path:
         :return: parent Id of first found child, -1 if no children
         """
