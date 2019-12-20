@@ -9,13 +9,28 @@ import src.core.load_db_data as ld
 
 DETECT_TYPES = sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
 PATH_TO_DATA = Path('data')
-FILE_NAME_LIST = PATH_TO_DATA / 'file_list.txt'
 TEST_ROOT_DIR = Path.cwd().parent.parent / 'test_data'
 logger.remove()
 fmt = '<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | ' \
       '<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> ' \
       '- <level>{message}</level>'
 # logger.add(sys.stderr, format=fmt, level='INFO')
+FILE_LIST = [
+    'test_data/.gitignore',
+    'test_data/.dir3/.dir.1.2/dir.1.2.3/file2.py',
+    'test_data/.dir3/dir.1.1/.file2.pd',
+    'test_data/.dir3/dir.1.1/file1.sql',
+    'test_data/.dir3/dir.1.1/PyCharm_ReferenceCard.pdf',
+    'test_data/.dir3/.file1',
+    'test_data/.dir3/.file2.txt',
+    'test_data/.dir3/file2',
+    'test_data/dir1/file1.py',
+    'test_data/dir1/Structuring_and_automating_a_Python_project.pdf',
+    'test_data/dir2/fixtures2.txt',
+    'test_data/dir2/sel_opt.png',
+    'test_data/dir2/sel_opt.ui',
+    'test_data/file1.py',
+]
 
 
 @pytest.fixture(params=[
@@ -29,27 +44,24 @@ def expected_files(request):
     @param request: list of file extensions
     @return: expected_list_of_files, extensions_parameter_for_yield_files
     """
-    def check_ext(ext_, file_parts: tuple) -> bool:
+    def check_ext(ext_, file_: Path) -> bool:
         """
         @param ext_: list of extensions
-        @param file_parts: as return with Path.parts, to be used both in Windows & Linux
+        @param file_: as return with Path.parts, to be used both in Windows & Linux
         return True if file extension is in the list
                        or the list contains symbol '*' - any extension
         """
         if '*' in ext_:
             return True
-        last_part = file_parts[-1]
-        name, ext_file = last_part.rpartition('.')[0::2]
-        file_ext = ext_file if name else ''
+        file_ext = file_.suffix.strip('.')
         return file_ext in ext_
 
     ext = request.param
     files = []
-    with open(FILE_NAME_LIST) as fl:
-        for line in fl:
-            row = tuple(line.strip().split('/'))
-            if check_ext(ext, row):
-                files.append(row)
+    for line in FILE_LIST:
+        row = Path(line)
+        if check_ext(ext, row):
+            files.append(row.parts)
     return files, ext
 
 
@@ -92,11 +104,6 @@ def test_insert_dir(init_load_obj, expected_files):
     """
     test that "insert_dir" method always return correct dir_id
     """
-    def construct_dir(root_: Path, file_parts: tuple) -> Path:
-        rr = root_
-        for fp in file_parts:
-            rr = rr / fp
-        return rr.parent    # remove file name, left only path
 
     load_d, conn_d = init_load_obj    # LoadDBData object, sqlite Connection
     root = TEST_ROOT_DIR.parent
@@ -106,6 +113,13 @@ def test_insert_dir(init_load_obj, expected_files):
         cur_path = conn_d.execute('select path from dirs where dirid = ?;', str(dir_id)).fetchone()
         cur_path = Path(cur_path[0])
         assert cur_path == dir_
+
+
+def construct_dir(root_: Path, file_parts: tuple) -> Path:
+    rr = root_
+    for fp in file_parts:
+        rr = rr / fp
+    return rr.parent    # remove file name, left only path
 
 
 root_paths = [ # 'insert_to_db, search_for_parent, expected'
@@ -207,7 +221,7 @@ child_parent = [ # 'insert_to_db, search_for_parent'
         ),
         (   # search_for_parent
             ('dir1', None),             # search for 'dir1', expected parent '' - root
-            # ('dir2/dir21/dir211', 'dir2/dir21'),
+            ('dir2/dir21/dir211', 'dir2/dir21'),
             ('dir2', 'dir2/dir21'),
         ),
     ),
@@ -238,6 +252,18 @@ def test_parent_id_for_child(child_parent_fixture):
         assert res == dir_ids[dir[1]][1]
 
 
-def test_change_parent():
-    pass
-    # assert True
+def test_change_parent(child_parent_fixture):
+    o_load, conn, dir_ids, dir_parent = child_parent_fixture
+    crr = conn.execute('select * from dirs')
+    for cc in crr:
+        print('|A===>', cc)
+    for dir_ in dir_parent:
+        print('|0===>', dir_)
+        par_id, par_name = o_load.search_closest_parent(Path(dir_[0]))
+        print('|1===>', par_id, par_name)
+        o_load.change_parent(par_id, Path(dir_[0]))
+        curs = conn.execute('select path from dirs where parentId = ?', str(par_id))
+        for cc in curs:
+            print('|2===>', cc, dir_)
+            assert str(cc[0]).startswith(dir_[0]) or par_name is None
+

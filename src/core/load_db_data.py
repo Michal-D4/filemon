@@ -169,8 +169,10 @@ class LoadDBData:
         """
         # WORKAROUND: the dummy path "path / '@'", that is path is a parent for it.
         # So parents includes the path itself
+        print('|B===>', path, type(path))
         for path_ in (path / '@').parents:
             parent_id = self.cursor.execute(FIND_EXACT_PATH, (str(path_),)).fetchone()
+            print('|C===>', path_, parent_id)
             if parent_id:
                 return parent_id[0], path_
 
