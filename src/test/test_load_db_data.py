@@ -8,7 +8,6 @@ from src.core import create_db as db
 import src.core.load_db_data as ld
 
 DETECT_TYPES = sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
-PATH_TO_DATA = Path('data')
 TEST_ROOT_DIR = Path.cwd().parent.parent / 'test_data'
 logger.remove()
 fmt = '<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | ' \
@@ -44,17 +43,6 @@ def expected_files(request):
     @param request: list of file extensions
     @return: expected_list_of_files, extensions_parameter_for_yield_files
     """
-    def check_ext(ext_, file_: Path) -> bool:
-        """
-        @param ext_: list of extensions
-        @param file_: as return with Path.parts, to be used both in Windows & Linux
-        return True if file extension is in the list
-                       or the list contains symbol '*' - any extension
-        """
-        if '*' in ext_:
-            return True
-        file_ext = file_.suffix.strip('.')
-        return file_ext in ext_
 
     ext = request.param
     files = []
@@ -63,6 +51,19 @@ def expected_files(request):
         if check_ext(ext, row):
             files.append(row.parts)
     return files, ext
+
+
+def check_ext(ext_, file_: Path) -> bool:
+    """
+    @param ext_: list of extensions
+    @param file_: as return with Path.parts, to be used both in Windows & Linux
+    return True if file extension is in the list
+                   or the list contains symbol '*' - any extension
+    """
+    if '*' in ext_:
+        return True
+    file_ext = file_.suffix.strip('.')
+    return file_ext in ext_
 
 
 def test_yield_files(expected_files):
@@ -100,34 +101,35 @@ def test_load_data_file_count(init_load_obj, root, ext, expect):
     assert file_count[0] == expect
 
 
-def test_insert_dir(init_load_obj, expected_files):
+dir_list = [ # (dir_to_be_inserted, to_be_inserted, parent)
+    (('dir1', True, ''), ('dir1', False, ''), ('dir1/dir2', True, 'dir1'),),
+    (('dir1', True, ''), ('dir1/dir2', True, 'dir1'), ('dir1/dir3', True, 'dir1'), ('dir1/dir2/dir3', True, 'dir1/dir2'),),
+]
+
+
+@pytest.mark.parametrize('dirs', dir_list)
+def test_insert_dir(init_load_obj, dirs):
     """
     test that "insert_dir" method always return correct dir_id
     """
-
+    parent_dir = {'': 0}
     load_d, conn_d = init_load_obj    # LoadDBData object, sqlite Connection
-    root = TEST_ROOT_DIR.parent
-    for file in expected_files[0]:
-        dir_ = construct_dir(root,  file)
-        dir_id, inserted = load_d.insert_dir(dir_)
-        cur_path = conn_d.execute('select path from dirs where dirid = ?;', str(dir_id)).fetchone()
-        cur_path = Path(cur_path[0])
-        assert cur_path == dir_
-
-
-def construct_dir(root_: Path, file_parts: tuple) -> Path:
-    rr = root_
-    for fp in file_parts:
-        rr = rr / fp
-    return rr.parent    # remove file name, left only path
+    for dir_ in dirs:
+        dd = dir_[0]
+        dir_id, inserted = load_d.insert_dir(Path(dd))
+        assert inserted is dir_[1]
+        parent_dir[dd] = dir_id
+        cur_path = conn_d.execute('select path, parentid from dirs where dirid = ?;', str(dir_id)).fetchone()
+        assert cur_path[0] == dd
+        assert cur_path[1] == parent_dir[dir_[2]]
 
 
 root_paths = [ # 'insert_to_db, search_for_parent, expected'
     (('.dir3/dir.1.1/',), 'dir1', None),
     (('.dir3/dir.1.1',), '.dir3/.dir.1.2/dir.1.2.3', None),
     (('.dir3',), '.dir3/.dir.1.2/dir.1.2.3', '.dir3'),
-    (('dir1',), 'dir1', 'dir1'),
-    (('',), '', ''),
+    (('dir1',), 'dir1', 'dir1'),   # search_closest_parent returns the dir itself if already in DB
+    (('',), '', None),   # but '' - is a root, but its name in DB is None
 ]
 
 
@@ -144,8 +146,8 @@ def load_dirs(conn, request):
     conn.cursor().execute('PRAGMA foreign_keys = ON;')
     db.create_all_objects(conn)
     loads = ld.LoadDBData(conn)
-    to_insert = [(str(TEST_ROOT_DIR / x), '0', '0') for x in request.param[0]]
-    conn.executemany('insert into Dirs (Path, ParentID, FolderType) values (?, ?, ?);',
+    to_insert = [(x, ) for x in request.param[0]]
+    conn.executemany('insert into Dirs (Path, ParentID, FolderType) values (?, 0, 0);',
                      to_insert)
     conn.commit()
     return loads
@@ -153,11 +155,12 @@ def load_dirs(conn, request):
 
 def test_search_closest_parent(db_with_loaded_data):
     load_d, dirs = db_with_loaded_data  # LoadDBData object, sqlite Connection
-    i, parent = load_d.search_closest_parent(TEST_ROOT_DIR / dirs[0])
+    i, parent = load_d.search_closest_parent(Path(dirs[0]))
+    print('|---> 1', i, parent, dirs)
     if i > 0:
-        assert TEST_ROOT_DIR / parent == TEST_ROOT_DIR / dirs[1]
+        assert parent == Path(dirs[1]), f"parent is {parent}, expected {dirs[1]}"
     else:
-        assert parent is dirs[1]
+        assert parent is None, f"parent {parent} with ID=0 is found for {dirs[0]}"
 
 
 insert_file_data = [(
@@ -184,14 +187,16 @@ def test_insert_file(init_load_obj, dirs, files):
         load_d.insert_file(dir_ids[file[1]][0], Path(file[0]))
         cnt = curs.execute('select count(*) from files where DirID = ? and filename = ?;',
                            (str(dir_ids[file[1]][0]), file[0])).fetchone()
-        assert cnt[0] == 1
+        assert cnt[0] == 1, f"file {file[0]} must be inserted only once in one directory"
         res = curs.execute('select dirid from files where filename = ?;',
                            file[:1]).fetchall()
-        assert (dir_ids[file[1]][0],) in res
+        assert (dir_ids[file[1]][0],) in res, f"file {file[0]} must be inserted, but not"
 
 
 def insert_dirs(curs, dirs):
-    dir_ids = {'': (0, 0), None: (0, -1)}
+    dir_ids = {'': (0, 0),     # root
+               None: (0, -1),  # not found
+               }               # others will construct from data
     for dd in dirs:
         curs.execute('insert into dirs (Path, ParentID, FolderType) values (?, ?, 0);',
                      (dd[0], str(dir_ids[dd[1]][0])))
@@ -205,30 +210,28 @@ def test_insert_extension(init_load_obj, files):
     for file in files:
         p_file = Path(file)
         id = load_d.insert_extension(p_file)
-        assert id > 0
+        assert id > 0, "method must return extension ID > 0  either inserted now or before now"
         ext = conn_d.execute('select Extension from Extensions where ExtID = ?;',
                              (str(id),)).fetchall()
-        assert len(ext) == 1
-        assert ext[0][0] == p_file.suffix.strip('.')
+        assert len(ext) == 1, 'extension must be saved only once'
+        assert ext[0][0] == p_file.suffix.strip('.'), f"extension of file {p_file} is not {ext[0][0]}"
 
 
 child_parent = [ # 'insert_to_db, search_for_parent'
     (
-        (   # 'insert_to_db
-            ('.dir3/dir.1.1/', ''),         # dir, parent; '' - root
-            # ('dir2', ''),
-            ('dir2/dir21', '')
+        (   # 1) dirs to be inserted to db: dir, parent
+            ('.dir3/dir.1.1/', ''),               # dir, parent; '' - root
+            ('dir2/dir21', ''),
+            ('dir2/dir22', ''),
+            ('dir2/dir21/dir212', 'dir2/dir21'),
         ),
-        (   # search_for_parent
-            ('dir1', None),             # search for 'dir1', expected parent '' - root
-            ('dir2/dir21/dir211', 'dir2/dir21'),
-            ('dir2', 'dir2/dir21'),
+        (   # 2) (parameter of find_old_parent_id method, expected found child, if assertion should fail)
+            ('dir1', None, False),             # search for 'dir1', expected parent '' - root
+            ('dir2/dir21/dir211', None, False),
+            ('dir2', 'dir2/dir21', False),
+            ('dir2', 'dir2/dir21/dir212', True)
         ),
     ),
-    # (('.dir3/dir.1.1',), ('.dir3',)),
-    # (('.dir3',), ('.dir3/.dir.1.2/dir.1.2.3',), -1),
-    # (('dir1',), ('dir1',), -1),
-    # (('',), ('',), -1),
 ]
 
 
@@ -245,25 +248,40 @@ def child_parent_fixture(request):
     return loads, conn, dir_ids, request.param[1]
 
 
-def test_parent_id_for_child(child_parent_fixture):
+def test_find_old_parent_id(child_parent_fixture):
     o_load, conn, dir_ids, dir_parent = child_parent_fixture
-    for dir in dir_parent:
-        res = o_load.parent_id_for_child(Path(dir[0]))
-        assert res == dir_ids[dir[1]][1]
+    for dir_ in dir_parent:
+        res = o_load.find_old_parent_id(Path(dir_[0]))
+        if dir_[2]:
+            assert not res == dir_ids[dir_[1]][1], f"{dir_[0]} must not be parent for {res}"
+        else:
+            assert res == dir_ids[dir_[1]][1],  f"{dir_[0]} must be parent for {res}"
+
+
+def insert_dir_in_test(o_load: ld.LoadDBData, conn: sqlite3.Connection, path: Path):
+    idx, parent_path = o_load.search_closest_parent(path)
+    if parent_path == path:
+        return idx, False
+
+    curs = conn.cursor()
+    curs.execute(ld.INSERT_DIR, {'path': str(path), 'id': idx})
+    idx = curs.lastrowid
+    return idx, True
 
 
 def test_change_parent(child_parent_fixture):
+    """
+    Test that parent of children changed if new dir inserted according the pattern:
+    paretn -> [new_dir] -> child/children
+    @param child_parent_fixture:
+    @return:
+    """
     o_load, conn, dir_ids, dir_parent = child_parent_fixture
-    crr = conn.execute('select * from dirs')
-    for cc in crr:
-        print('|A===>', cc)
     for dir_ in dir_parent:
-        print('|0===>', dir_)
-        par_id, par_name = o_load.search_closest_parent(Path(dir_[0]))
-        print('|1===>', par_id, par_name)
-        o_load.change_parent(par_id, Path(dir_[0]))
-        curs = conn.execute('select path from dirs where parentId = ?', str(par_id))
-        for cc in curs:
-            print('|2===>', cc, dir_)
-            assert str(cc[0]).startswith(dir_[0]) or par_name is None
-
+        new_id, inserted = insert_dir_in_test(o_load, conn, Path(dir_[0]))
+        if inserted:
+            o_load.change_parent(new_id, Path(dir_[0]))
+            curs = conn.execute('select * from dirs where parentId = ?', str(new_id))
+            for cc in curs:
+                assert str(cc[1]).startswith(dir_[0]), f'child path must start with {dir_[0]}'
+                assert cc[0] != cc[3], "child can't be parent to itself"

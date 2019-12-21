@@ -12,8 +12,8 @@ FIND_PART_PATH = 'select ParentID from Dirs where Path like :newPath;'
 
 FIND_EXACT_PATH = 'select DirID from Dirs where Path = :newPath;'
 
-CHANGE_PARENT_ID = '''update Dirs set ParentID = :newId
- where ParentID = :currId and Path like :newPath and DirID != :newId;'''
+CHANGE_PARENT_ID = 'update Dirs set ParentID = :newId where ParentID = :currId' \
+                   ' and Path like :newPath and DirID != :newId;'
 
 FIND_FILE = 'select * from Files where DirID = :dir_id and FileName = :file;'
 
@@ -72,8 +72,8 @@ class LoadDBData:
         for line in files:
             logger.debug(line)
             file = pathlib.Path(line)
-            path = file.parent
-            idx, _ = self.insert_dir(path)
+            file_path = file.parent
+            idx, _ = self.insert_dir(file_path)
             if idx > 0:
                 self.updated_dirs.add(str(idx))
                 self.insert_file(idx, file)
@@ -100,11 +100,11 @@ class LoadDBData:
                                               'ext_id': ext_id})
 
     def insert_extension(self, file: pathlib.Path) -> int:
-        '''
+        """
         insert or find extension in DB
         :param file - file name
         returns (ext_id, extension_of_file)
-        '''
+        """
         ext = file.suffix.strip('.')
         item = self.cursor.execute(FIND_EXT, (ext,)).fetchone()
         if item:
@@ -115,45 +115,41 @@ class LoadDBData:
         self.conn.commit()
         return idx
 
-    def insert_dir(self, path: pathlib.PurePath) -> (int, bool):
-        '''
-        Insert directory into Dirs table
-        :param path:
-        :return: (dirID, is_created)
-        "is_created = false" means that dirID already exists; doesn't mean error
-        '''
-        idx, parent_path = self.search_closest_parent(path)
-        if parent_path == path:
+    def insert_dir(self, new_path: pathlib.PurePath) -> (int, bool):
+        """
+        Insert file path into Dirs table if not exist yet
+        :param new_path: path of picked file
+        :return: (dirID, is_created),  is_created = True if did not exist yet
+        """
+        idx, parent_path = self.search_closest_parent(new_path)
+        if parent_path == new_path:
             return idx, False
 
-        self.cursor.execute(INSERT_DIR, {'path': str(path), 'id': idx})
+        self.cursor.execute(INSERT_DIR, {'path': str(new_path), 'id': idx})
         idx = self.cursor.lastrowid
 
-        self.change_parent(idx, path)
+        self.change_parent(idx, new_path)
         self.conn.commit()
         return idx, True
 
     def change_parent(self, new_parent_id: int, path: pathlib.PurePath):
         """
-        The purpose of this method is to check whether the path
-        to the new file can be a parent for existing folders,
-        and if so, apply it as the parent for these folders.
+        Change parent id in case when new dir located between two already in DB
         :param new_parent_id: id of new dir
         :param path: path of new dir
         """
-        old_parent_id = self.parent_id_for_child(path)
+        old_parent_id = self.find_old_parent_id(path)
         if old_parent_id != -1:
             self.cursor.execute(CHANGE_PARENT_ID, {'currId': old_parent_id,
                                                    'newId': new_parent_id,
                                                    'newPath': str(path) + '%'})
 
-    def parent_id_for_child(self, path: pathlib.PurePath) -> int:
+    def find_old_parent_id(self, path: pathlib.PurePath) -> int:
         """
-        Check whether the new dir can be parent for other directories
-        ie. the new path (not inserted yet) is shorten the some existing path
-        parents for such paths will be replaced by this new path later
+        Check whether the new dir path is between two others already saved in DB
+        these two dirs form a parent-child pair
         :param path:
-        :return: parent Id of first found child, -1 if no children
+        :return: current parent Id of first found child, -1 if no children
         """
         item = self.cursor.execute(FIND_PART_PATH, {'newPath': str(path) + '%'}).fetchone()
         if item:
@@ -161,18 +157,17 @@ class LoadDBData:
 
         return -1
 
-    def search_closest_parent(self, path: pathlib.PurePath) -> (int, pathlib.PurePath):
+    def search_closest_parent(self, new_path: pathlib.PurePath) -> (int, pathlib.PurePath):
         """
         Search parent directory in DB
-        :param path:  file path
-        :return: parent_id: int, parent_path: pathlib.PurePath;  or   0, None
+        :param new_path:  new file path
+        :return: parent_id: int, parent_path: pathlib.PurePath;  
+             or  0,              None
         """
         # WORKAROUND: the dummy path "path / '@'", that is path is a parent for it.
         # So parents includes the path itself
-        print('|B===>', path, type(path))
-        for path_ in (path / '@').parents:
+        for path_ in (new_path / '@').parents:
             parent_id = self.cursor.execute(FIND_EXACT_PATH, (str(path_),)).fetchone()
-            print('|C===>', path_, parent_id)
             if parent_id:
                 return parent_id[0], path_
 
