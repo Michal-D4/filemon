@@ -34,6 +34,21 @@ FileData = namedtuple('FileData', 'file_id dir_id comment_id ext_id source')
 FOLDER, VIRTUAL, ADVANCE = (1, 2, 4)
 
 
+def insert_virt_dirs(dir_tree: list):
+    virt_dirs = ut.select_other('VIRT_DIRS', ())
+    id_list = [x[1] for x in dir_tree]
+
+    for vd in virt_dirs:
+        if vd[-1] == 1:
+            vd = (*vd[:-1], 2)
+        try:
+            idx = id_list.index(vd[2])
+            dir_tree.insert(idx, (os.path.split(vd[0])[1], *vd[1:], vd[0]))
+            id_list.insert(idx, vd[1])
+        except ValueError:
+            pass
+
+
 def persistent_row_indexes(view_: QAbstractItemView) -> list:
     """
     :param view_:
@@ -838,7 +853,7 @@ class FilesCrt():
         return res
 
     def _restore_file_list(self, curr_dir_idx):
-        logger.debug(f'file_list_source: {self.file_list_source}')
+        logger.debug(f'file_list_source: {self.file_list_source}, valid? {curr_dir_idx.isValid()}')
         # FOLDER, VIRTUAL, ADVANCE = (1, 2, 4)
         # TODO check curr_dir_idx before call _restore_file_list ???
         if not curr_dir_idx.isValid():
@@ -858,6 +873,8 @@ class FilesCrt():
         dir_idx = self.ui.dirTree.model().data(curr_dir_idx, Qt.UserRole)
         # logger.debug(f'dir_idx: {dir_idx}')
         if dir_idx is None:
+            # clear file list when creating new DB
+            self._set_file_model()
             return
         if self.file_list_source == VIRTUAL:
             self._populate_virtual(dir_idx.dir_id)
@@ -1134,7 +1151,7 @@ class FilesCrt():
     def _populate_directory_tree(self):
         # todo - do not correctly restore when reopen from toolbar button
         dirs = get_dirs()
-        self._insert_virt_dirs(dirs)
+        insert_virt_dirs(dirs)
 
         model = EditTreeModel(parent=self)
         model.set_alt_font(self.app_font)
@@ -1151,20 +1168,6 @@ class FilesCrt():
         self._restore_file_list(cur_dir_idx)
 
         self._resize_columns()
-
-    def _insert_virt_dirs(self, dir_tree: list):
-        virt_dirs = ut.select_other('VIRT_DIRS', ())
-        id_list = [x[1] for x in dir_tree]
-
-        for vd in virt_dirs:
-            if vd[-1] == 1:
-                vd = (*vd[:-1], 2)
-            try:
-                idx = id_list.index(vd[2])
-                dir_tree.insert(idx, (os.path.split(vd[0])[1], *vd[1:], vd[0]))
-                id_list.insert(idx, vd[1])
-            except ValueError:
-                pass
 
     def _cur_dir_changed(self, curr_idx):
         """
