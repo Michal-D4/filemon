@@ -1,8 +1,11 @@
 # utilities.py
+import os
 import sqlite3
 import datetime
 
-# from src.core.main_window import AppWindow
+from loguru import logger
+
+from src.core.create_db import create_all_objects
 
 EXT_ID_INCREMENT = 100000
 DETECT_TYPES = sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
@@ -282,3 +285,21 @@ def delete_other2(sql, data):
     DB_Connection['Conn'].commit()
 
 
+def open_create_db(create, file_name, same_db) -> bool:
+    logger.debug(f'|--> file_name: {file_name}, to create: {create}, same DB: {same_db}')
+    DB_Connection['SameDB'] = same_db
+    if create:
+        _connection = sqlite3.connect(file_name, check_same_thread=False,
+                                      detect_types=DETECT_TYPES)
+        create_all_objects(_connection)
+    else:
+        if os.path.isfile(file_name):
+            _connection = sqlite3.connect(file_name, check_same_thread=False,
+                                          detect_types=DETECT_TYPES)
+        else:
+            return False
+    DB_Connection['Path'] = file_name
+    DB_Connection['Conn'] = _connection
+    _connection.cursor().execute('PRAGMA foreign_keys = ON;')
+    logger.debug('|---> end')
+    return True

@@ -1,6 +1,4 @@
 # main_window.py
-import os
-import sqlite3
 
 from loguru import logger
 
@@ -8,14 +6,13 @@ from PyQt5.QtCore import (pyqtSignal, QSettings, QVariant, QSize, Qt, QUrl, QEve
 from PyQt5.QtGui import QResizeEvent, QDrag, QPixmap, QDropEvent, QDragMoveEvent
 from PyQt5.QtWidgets import QMainWindow, QMenu, QWidget
 
-from src.core.create_db import create_all_objects
+from src.core.utilities import open_create_db
 
 from src.ui.ui_main_window import Ui_MainWindow
 from src.core.helper import (REAL_FOLDER, VIRTUAL_FOLDER, REAL_FILE,
                              VIRTUAL_FILE, MimeTypes, DROP_NO_ACTION,
                              DROP_COPY_FOLDER, DROP_MOVE_FOLDER, DROP_COPY_FILE)
 from src.core.db_choice import DBChoice
-import src.core.utilities as ut
 
 
 def restore_obj_state(obj: QWidget, settings_value: QVariant):
@@ -374,24 +371,8 @@ class AppWindow(QMainWindow):
         :param same_db: bool  True if last used db is opening
         :return: None
         """
-        logger.debug(f'|--> file_name: {file_name}, to create: {create}, same DB: {same_db}')
-        ut.DB_Connection['SameDB'] = same_db
-
-        if create:
-            _connection = sqlite3.connect(file_name, check_same_thread=False,
-                                          detect_types=ut.DETECT_TYPES)
-            create_all_objects(_connection)
+        if open_create_db(create, file_name, same_db):
+            self.change_data_signal.emit('start app')
         else:
-            if os.path.isfile(file_name):
-                _connection = sqlite3.connect(file_name, check_same_thread=False,
-                                              detect_types=ut.DETECT_TYPES)
-            else:
-                self.show_message("Data base does not exist")
-                return None
+            self.show_message("Data base does not exist")
 
-        ut.DB_Connection['Path'] = file_name
-        ut.DB_Connection['Conn'] = _connection
-        _connection.cursor().execute('PRAGMA foreign_keys = ON;')
-        self.change_data_signal.emit('start app')
-        logger.debug('|---> end')
-        return None
