@@ -1,5 +1,5 @@
 # utilities.py
-import os
+from pathlib import Path
 import sqlite3
 import datetime
 
@@ -293,7 +293,7 @@ def open_create_db(create, file_name, same_db) -> bool:
                                       detect_types=DETECT_TYPES)
         create_all_objects(_connection)
     else:
-        if os.path.isfile(file_name):
+        if Path(file_name).is_file():
             _connection = sqlite3.connect(file_name, check_same_thread=False,
                                           detect_types=DETECT_TYPES)
         else:

@@ -3,7 +3,7 @@
 from collections import namedtuple
 import datetime
 from loguru import logger
-import os
+from pathlib import Path
 import re
 import sqlite3
 
@@ -85,7 +85,7 @@ class LoadFiles(QRunnable):
         Load files using LoadDBData class
         """
         files = LoadDBData(self.conn)
-        logger.debug(' | '.join((self.path_, self.ext_)))
+        logger.debug(f' {self.path_} | {self.ext_}')
         files.load_data(self.path_, self.ext_)
         self.signal.finished.emit(files.get_updated_dirs())
 
@@ -157,8 +157,9 @@ class FileInfo(QRunnable):
         :return: None
         """
         self.file_info.clear()
-        if os.path.isfile(full_file_name):
-            st = os.stat(full_file_name)
+        path_file = Path(full_file_name)
+        if path_file.is_file():
+            st = path_file.stat()
             self.file_info.append(st.st_size)
             self.file_info.append(datetime.datetime.fromtimestamp(st.st_mtime).date().isoformat())
             if get_file_extension(full_file_name) == 'pdf':
@@ -231,7 +232,7 @@ class FileInfo(QRunnable):
         file_list = self.cursor.execute(FILES_IN_LOAD.format(dir_ids)).fetchall()
         # not iterate all rows in cursor - so used fetchall(), why ???
         for file_descr in file_list:
-            file_name = os.path.join(file_descr[2], file_descr[1])
+            file_name = Path(file_descr[2]).joinpath(file_descr[1])
             file_ = db_file_info._make((file_descr[0], file_name) + file_descr[-3:])
             self._update_file(file_)
 
