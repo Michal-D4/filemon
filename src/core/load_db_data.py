@@ -1,5 +1,6 @@
 ﻿# load_db_data.py
 
+from typing import Set
 from loguru import logger
 import pathlib
 
@@ -52,9 +53,9 @@ class LoadDBData:
         """
         self.conn = conn
         self.cursor = self.conn.cursor()
-        self.updated_dirs = set()
+        self.updated_dirs: Set[str] = set()
 
-    def get_updated_dirs(self):
+    def get_updated_dirs(self) -> Set[str]:
         return self.updated_dirs
 
     def load_data(self, path_, ext_):
