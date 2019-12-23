@@ -52,10 +52,12 @@ def ext_translate(ext: str):
 
 
 class LFSignal(QObject):
+    # LF - LoadFiles
     finished = pyqtSignal(object)
 
 
 class FISignal(QObject):
+    # FI - FileInfo
     finished = pyqtSignal()
 
 
