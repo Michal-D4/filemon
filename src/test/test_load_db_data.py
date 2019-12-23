@@ -120,7 +120,7 @@ def test_insert_dir(init_load_obj, dirs):
         assert inserted is dir_[1]
         parent_dir[dd] = dir_id
         cur_path = conn_d.execute('select path, parentid from dirs where dirid = ?;', str(dir_id)).fetchone()
-        assert cur_path[0] == dd
+        assert Path(cur_path[0]) == Path(dd)
         assert cur_path[1] == parent_dir[dir_[2]]
 
 

@@ -1,12 +1,8 @@
 ﻿# load_db_data.py
 
 from loguru import logger
-import os
 import pathlib
-from typing import Optional
 
-from .helper import get_file_extension
-from .utilities import DB_Connection
 
 FIND_PART_PATH = 'select ParentID from Dirs where Path like :newPath;'
 

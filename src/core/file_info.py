@@ -10,7 +10,6 @@ import sqlite3
 from PyPDF2 import PdfFileReader, utils
 from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot, QRunnable
 
-from src.core.helper import get_file_extension
 from src.core.load_db_data import LoadDBData
 
 DETECT_TYPES = sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
