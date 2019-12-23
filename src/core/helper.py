@@ -1,10 +1,6 @@
 # helper.py
 
 from collections import namedtuple
-from pathlib import Path
-
-# Shared things
-# immutable
 
 Fields = namedtuple('Fields', 'fields headers indexes')
 # fields: str  - tuple of fields (in table Files) to be displayed in the view filesList
@@ -19,9 +15,5 @@ MimeTypes = ["application/x-folder-list",
 
 DROP_NO_ACTION, DROP_COPY_FOLDER, DROP_MOVE_FOLDER, DROP_COPY_FILE, DROP_MOVE_FILE = (0, 1, 2, 4, 8)
 
-
-def get_file_extension(file_name: Path) -> str:
-    s = Path(file_name).suffix
-    return s if not s else s[1:]
 
 

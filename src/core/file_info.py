@@ -162,7 +162,7 @@ class FileInfo(QRunnable):
             st = path_file.stat()
             self.file_info.append(st.st_size)
             self.file_info.append(datetime.datetime.fromtimestamp(st.st_mtime).date().isoformat())
-            if get_file_extension(full_file_name) == 'pdf':
+            if path_file.suffix == '.pdf':
                 self._get_pdf_info(full_file_name)
         else:
             self.file_info.append('')
