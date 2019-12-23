@@ -195,7 +195,7 @@ class FilesCrt():
                 'File Rename file': self._rename_file,
                 'File_doubleClicked': self._double_click_file,
                 'Resize columns': self._resize_columns,
-                'Select files': self._list_of_selected_files,
+                'Select files': self._list_selected_files,
                 'Selection options': self._selection_options,
                 'Set fields': self._set_fields,
                 'Tag Remove unused': self._tag_remove_unused,
@@ -215,7 +215,7 @@ class FilesCrt():
         logger.debug(f'group name: {new_name}, ok: {ok_}')
         if ok_:
             curr_idx = self.ui.dirTree.currentIndex()
-            idx_list = self._curr_selected_dirs(curr_idx)
+            idx_list = self._selected_dirs(curr_idx)
 
             d_dat = self.ui.dirTree.model().data(curr_idx, Qt.UserRole)
             new_parent = (new_name, d_dat.parent_id, 3)
@@ -223,7 +223,7 @@ class FilesCrt():
             self.ui.dirTree.model().create_new_parent(curr_idx, (new_parent_id,
                                                                  *new_parent), idx_list)
 
-    def _curr_selected_dirs(self, curr_idx):
+    def _selected_dirs(self, curr_idx):
         if not self.ui.dirTree.selectionModel().isSelected(curr_idx):
             self.ui.dirTree.selectionModel().select(
                 curr_idx, QItemSelectionModel.SelectCurrent)
@@ -623,9 +623,9 @@ class FilesCrt():
         :return:
         """
         if self._opt.exec_():
-            self._list_of_selected_files()
+            self._list_selected_files()
 
-    def _list_of_selected_files(self) -> None:
+    def _list_selected_files(self) -> None:
         res = self._opt.get_result()
         model = self._set_file_model()
 
@@ -881,7 +881,7 @@ class FilesCrt():
         elif self.file_list_source == FOLDER:
             self._populate_file_list(dir_idx)
         else:                       # ADVANCE
-            self._list_of_selected_files()
+            self._list_selected_files()
 
         if self.ui.filesList.model().rowCount() == 0:
             idx = QModelIndex()
