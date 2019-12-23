@@ -115,8 +115,3 @@ def initiate_db(connection):
 
     connection.commit()
 
-
-if __name__ == "__main__":
-    BASE_FILE = ":memory:"
-    IT_IS = sqlite3.connect(BASE_FILE)
-    create_all_objects(IT_IS)

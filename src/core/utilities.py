@@ -289,17 +289,25 @@ def open_create_db(create, file_name, same_db) -> bool:
     logger.debug(f'|--> file_name: {file_name}, to create: {create}, same DB: {same_db}')
     DB_Connection['SameDB'] = same_db
     if create:
-        _connection = sqlite3.connect(file_name, check_same_thread=False,
-                                      detect_types=DETECT_TYPES)
-        create_all_objects(_connection)
+        conn = create_connection(file_name)
+        create_all_objects(conn)
     else:
         if Path(file_name).is_file():
-            _connection = sqlite3.connect(file_name, check_same_thread=False,
-                                          detect_types=DETECT_TYPES)
+            conn = create_connection(file_name)
         else:
             return False
+
     DB_Connection['Path'] = file_name
-    DB_Connection['Conn'] = _connection
-    _connection.cursor().execute('PRAGMA foreign_keys = ON;')
+    DB_Connection['Conn'] = conn
     logger.debug('|---> end')
     return True
+
+
+def create_connection(name: str = None) -> sqlite3.Connection:
+    if name is None:
+        return DB_Connection['Conn']
+
+    conn = sqlite3.connect(name, check_same_thread=False,
+                           detect_types=DETECT_TYPES)
+    conn.cursor().execute('PRAGMA foreign_keys = ON;')
+    return conn

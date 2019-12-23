@@ -574,7 +574,7 @@ class FilesCrt():
         self._populate_directory_tree()
         self._populate_ext_list()
 
-        files_ = FileInfo(updated_dirs, ut.DB_Connection['Path'])
+        files_ = FileInfo(updated_dirs, ut.create_connection(ut.DB_Connection['Path']))
         files_.signal.finished.connect(self._dir_update_finish)
         self.thread_pool.start(files_)
 
@@ -1246,7 +1246,8 @@ class FilesCrt():
 
     def _load_files(self, path_: str, ext_):
         logger.debug(' | '.join((path_, '|', ext_, '|')))
-        load_ = LoadFiles(path_, ext_, ut.DB_Connection['Path'])
+        load_ = LoadFiles(path_, ext_,
+                          ut.create_connection(ut.DB_Connection['Path']))
         load_.signal.finished.connect(self._dir_update)
         self.thread_pool.start(load_)
 

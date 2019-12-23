@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import sqlite3
 
-from PyPDF2 import PdfFileReader, utils
+import PyPDF2
 from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot, QRunnable
 
 from src.core.load_db_data import LoadDBData
@@ -20,7 +20,7 @@ INSERT_AUTHOR = 'insert into Authors (Author) values (?);'
 
 FILE_AUTHOR_LINKED = 'select * from FileAuthor where FileID=? and AuthorID=?'
 
-INSERT_FILE_AUTHOR_LINK = 'insert into FileAuthor (FileID, AuthorID) values (?, ?);'
+CREATE_FILE_AUTHOR_LINK = 'insert into FileAuthor (FileID, AuthorID) values (?, ?);'
 
 SELECT_COMMENT = 'select BookTitle from Comments where CommentID=?;'
 
@@ -37,6 +37,17 @@ UPDATE_FILE = ('update Files set '
                'Size = :size, '
                'IssueDate = :issue_date '
                'where FileID = :file_id;')
+
+
+def pdf_creation_date(ww):
+    if ww:
+        tt = '-'.join((ww[2:6], ww[6:8], ww[8:10]))
+        try:
+            datetime.datetime.strptime(tt, '%Y-%m-%d')
+        except ValueError:
+            tt = '0001-01-01'
+        return tt
+    return '0001-01-01'
 
 
 def ext_translate(ext: str):
@@ -69,12 +80,10 @@ class LoadFiles(QRunnable):
     :param db_name: full name of DB file where to save
     """
 
-    def __init__(self, path_: str, ext_: str, db_name: str):
+    def __init__(self, path_: str, ext_: str, conn: sqlite3.Connection):
         super(LoadFiles, self).__init__()
         logger.debug(' '.join((path_, '|', ext_, '|')))
-        self.conn = sqlite3.connect(db_name, check_same_thread=False,
-                                    detect_types=DETECT_TYPES)
-        self.conn.cursor().execute('PRAGMA foreign_keys = ON;')
+        self.conn = conn
         self.path_ = path_
         self.ext_ = ext_translate(ext_)
         self.signal = LFSignal()   # send set of str(ID) of updated dirs
@@ -104,41 +113,41 @@ class FileInfo(QRunnable):
         self.update_files()
         self.signal.finished.emit()
 
-    def __init__(self, updated_dirs: set, db_name: str):
+    def __init__(self, updated_dirs: set, conn: sqlite3.Connection):
         super(FileInfo, self).__init__()
         logger.debug('--> FileInfo.__init__')
         self.upd_dirs = updated_dirs
-        self.conn = sqlite3.connect(db_name, check_same_thread=False,
-                                    detect_types=DETECT_TYPES)
-        self.conn.cursor().execute('PRAGMA foreign_keys = ON;')
+        self.conn = conn
         self.cursor = self.conn.cursor()
         self.file_info = []
         self.signal = FISignal()
 
-    def insert_authors(self, file_id: int):
+    def insert_authors(self, file_id: int, authors):
         """
         Save authors name of pdf file
         """
-        authors = re.split(r',|;|&|\band\b', self.file_info[3])
         for author in authors:
             author = author.strip()
-            self.insert_author(file_id, author)
+            author_id = self.insert_author(file_id, author)
+            self.link_file_author(file_id, author_id)
 
     def insert_author(self, file_id: int, author: str):
         """
         Save author name of pdf file
         """
         auth_id = self.cursor.execute(AUTHOR_ID, (author,)).fetchone()
-        if not auth_id:
-            self.cursor.execute(INSERT_AUTHOR, (author,))
-            self.conn.commit()
-            auth_id = self.cursor.lastrowid
-        else:
-            auth_id = auth_id[0]
-            if self.cursor.execute(FILE_AUTHOR_LINKED, (file_id, auth_id)):
-                return
-        self.cursor.execute(INSERT_FILE_AUTHOR_LINK, (file_id, auth_id))
+        if auth_id:
+            return auth_id[0]
+        self.cursor.execute(INSERT_AUTHOR, (author,))
         self.conn.commit()
+        return self.cursor.lastrowid
+
+    def link_file_author(self, file_id, author_id):
+        if self.cursor.execute(FILE_AUTHOR_LINKED, (file_id, author_id)):
+            return
+        self.cursor.execute(CREATE_FILE_AUTHOR_LINK, (file_id, author_id))
+        self.conn.commit()
+
 
     def insert_comment(self, _file):
         if len(self.file_info) > 2:
@@ -177,32 +186,22 @@ class FileInfo(QRunnable):
 
     def get_pdf_info(self, file_):
         with (open(file_, "rb")) as pdf_file:
-            try:            # with + try -- it's overkill !!!  TODO
-                fr = PdfFileReader(pdf_file, strict=False)
+            try:
+                fr = PyPDF2.PdfFileReader(pdf_file, strict=False)
                 fi = fr.documentInfo
                 self.file_info.append(fr.getNumPages())
-            except (ValueError, utils.PdfReadError, utils.PdfStreamError) as e:
+            except (ValueError, PyPDF2.utils.PdfReadError,
+                    PyPDF2.utils.PdfStreamError) as e:
                 logger.exception(e)
                 self.file_info += [0, '', '', '']
             else:
                 if fi is not None:
+                    cr_date = pdf_creation_date(fi.getText('/CreationDate'))
                     self.file_info += [fi.getText('/Author'),
-                                       FileInfo.pdf_creation_date(fi),
+                                       cr_date,
                                        fi.getText('/Title')]
                 else:
                     self.file_info += ['', '', '']
-
-    @staticmethod
-    def pdf_creation_date(fi):
-        ww = fi.getText('/CreationDate')
-        if ww:
-            tt = '-'.join((ww[2:6], ww[6:8], ww[8:10]))
-            try:
-                datetime.datetime.strptime(tt, '%Y-%m-%d')
-            except ValueError:
-                tt = '0001-01-01'
-            return tt
-        return '0001-01-01'
 
     def update_file(self, file_):
         """
@@ -226,6 +225,7 @@ class FileInfo(QRunnable):
                                           'file_id': file_.file_id})
         self.conn.commit()
         if len(self.file_info) > 3 and self.file_info[3]:
+            authors = re.split(r',|;|&|\band\b', self.file_info[3])
             self.insert_authors(file_.file_id)
 
     def update_files(self):
