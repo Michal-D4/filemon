@@ -6,8 +6,8 @@ from loguru import logger
 
 from src.core import create_db as db
 import src.core.load_db_data as ld
+from src.test.conftest import DETECT_TYPES
 
-DETECT_TYPES = sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
 TEST_ROOT_DIR = Path.cwd().parent.parent / 'test_data'
 logger.remove()
 fmt = '<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | ' \
@@ -76,16 +76,6 @@ def test_yield_files(expected_files):
         assert ff in exp
 
 
-@pytest.fixture()
-def init_load_obj() -> (ld.LoadDBData, sqlite3.Connection):
-    conn = sqlite3.connect(":memory:", check_same_thread=False,
-                           detect_types=DETECT_TYPES)
-    conn.cursor().execute('PRAGMA foreign_keys = ON;')
-    db.create_all_objects(conn)
-    loads = ld.LoadDBData(conn)
-    return loads, conn
-
-
 @pytest.mark.parametrize('root, ext, expect',
                          [(TEST_ROOT_DIR / '.dir3', ('txt', 'py'), 2),
                           (TEST_ROOT_DIR, '*', 14),
@@ -113,7 +103,7 @@ def test_insert_dir(init_load_obj, dirs):
     test that "insert_dir" method always return correct dir_id
     """
     parent_dir = {'': 0}
-    load_d, conn_d = init_load_obj    # LoadDBData object, sqlite Connection
+    load_d, conn_d = init_load_obj  # LoadDBData object, sqlite Connection
     for dir_ in dirs:
         dd = dir_[0]
         dir_id, inserted = load_d.insert_dir(Path(dd))
