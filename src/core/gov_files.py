@@ -261,8 +261,7 @@ class FilesCrt():
             parent_id = 0
         dir_id = ut.insert_other('DIR', (folder_name, parent_id, 2))
 
-        item = EditTreeItem(
-            (folder_name, ), (dir_id, parent_id, 2, folder_name))
+        item = EditTreeItem((folder_name,), (dir_id, parent_id, 2, folder_name))
 
         self.ui.dirTree.model().append_child(item, parent)
 
