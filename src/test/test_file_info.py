@@ -49,7 +49,6 @@ def insert_dir(curs, dir_, dir_id: dict):
     else:
         parent_id = 0
 
-    print('|--->2', dir_, parent_id)
     curs.execute('insert into Dirs (Path, ParentID, FolderType) values (?, ?, 0);',
                  (dir_, str(parent_id)))
     id = curs.lastrowid
@@ -66,7 +65,6 @@ def load_files(conn: sqlite3.Connection, files):
         f_name = ff.name
         f_dir = ff.parent
         d_id = insert_dir(curs, str(f_dir), dir_id)
-        print('|---> d_id', d_id, f_name)
         curs.execute("insert into Files (DirID, FileName) values (?, ?);",
                      (str(d_id), f_name))
         file_id[ff.stem] = curs.lastrowid
@@ -78,12 +76,8 @@ def load_files(conn: sqlite3.Connection, files):
 def test_insert_author(init_load_obj, files, authors_dict):
     ld, conn = init_load_obj
     fi = lf.FileInfo(set(), conn)
-    print('|--->', conn)
     curs = conn.cursor()
     curs.execute("insert into Extensions (Extension, GroupID) values ('a', '0')")
-    print('|---> ext_id', curs.lastrowid)
-    print('|--->', files)
-    print('|--->', authors_dict)
     f_ids = load_files(conn, files)
     for key, authors in authors_dict.items():
         f_id = f_ids[key]
@@ -97,3 +91,5 @@ def test_insert_author(init_load_obj, files, authors_dict):
             assert fa == (f_id, a_id)
 
 
+def test_get_file_info():
+    pass

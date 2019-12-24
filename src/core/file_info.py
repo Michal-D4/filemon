@@ -143,11 +143,10 @@ class FileInfo(QRunnable):
         return self.cursor.lastrowid
 
     def link_file_author(self, file_id, author_id):
-        if self.cursor.execute(FILE_AUTHOR_LINKED, (file_id, author_id)):
+        if self.cursor.execute(FILE_AUTHOR_LINKED, (file_id, author_id)).fetchone():
             return
         self.cursor.execute(CREATE_FILE_AUTHOR_LINK, (file_id, author_id))
         self.conn.commit()
-
 
     def insert_comment(self, _file):
         if len(self.file_info) > 2:
