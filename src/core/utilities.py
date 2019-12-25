@@ -140,7 +140,7 @@ Delete = {'EXT': 'delete from Extensions where ExtID = ?;',
           'UNUSED_EXT': ('delete from Extensions where NOT EXISTS (select * '
                          'from Files where ExtID = Extensions.ExtID);'),
           'FILE_VIRT': 'delete from VirtFiles where DirID = ? and FileID = ?;',
-          'FAVOR_ALL': 'delete from VirtFiles where FileID = ?;',
+          'VIRT_ALL': 'delete from VirtFiles where FileID = ?;',
           'COMMENT': ('delete from Comments where CommentID = {} and '
                       'not exists (select * from Files where CommentID = {});'),
           'FILE': 'delete from Files where FileID = ?;',
@@ -247,31 +247,43 @@ def dir_ids_select(dir_id, level):
 
 
 def select_other(sql, params=()):
+    logger.debug(sql)
+    logger.debug(params)
     return DB_Connection['Conn'].cursor().execute(Selects[sql], params)
 
 
 def select_other2(sql, params=()):
+    logger.debug(sql)
+    logger.debug(params)
     return DB_Connection['Conn'].cursor().execute(Selects[sql].format(*params))
 
 
 def insert_other(sql, data):
+    logger.debug(sql)
+    logger.debug(data)
     ss = DB_Connection['Conn'].cursor().execute(Insert[sql], data)
     DB_Connection['Conn'].commit()
     return ss.lastrowid
 
 
 def insert_other2(sql, data):
+    logger.debug(sql)
+    logger.debug(data)
     ss = DB_Connection['Conn'].cursor().execute(Insert[sql].format(*data))
     DB_Connection['Conn'].commit()
     return ss.lastrowid
 
 
 def update_other(sql, data):
+    logger.debug(sql)
+    logger.debug(data)
     DB_Connection['Conn'].cursor().execute(Update[sql], data)
     DB_Connection['Conn'].commit()
 
 
 def delete_other(sql, data):
+    logger.debug(sql)
+    logger.debug(data)
     try:
         DB_Connection['Conn'].cursor().execute(Delete[sql], data)
     except sqlite3.IntegrityError:
@@ -281,6 +293,8 @@ def delete_other(sql, data):
 
 
 def delete_other2(sql, data):
+    logger.debug(sql)
+    logger.debug(data)
     DB_Connection['Conn'].cursor().execute(Delete[sql].format(*data))
     DB_Connection['Conn'].commit()
 

@@ -655,7 +655,7 @@ class FilesCrt():
                 model.delete_row(f_idx)
 
     def _delete_from_db(self, file_ids):
-        ut.delete_other('FAVOR_ALL', (file_ids[0],))
+        ut.delete_other('VIRT_ALL', (file_ids[0],))
         ut.delete_other('AUTHOR_FILE_BY_FILE', (file_ids[0],))
         ut.delete_other('TAG_FILE_BY_FILE', (file_ids[0],))
         ut.delete_other('FILE', (file_ids[0],))
