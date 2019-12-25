@@ -162,7 +162,6 @@ class FilesCrt():
         self._opt = SelOpt(self)
         self._restore_font()
         self._restore_fields()
-        self._methods = self._on_data_methods()
         logger.debug('finish')
 
     def _on_data_methods(self):
@@ -334,18 +333,14 @@ class FilesCrt():
         import shutil
         try:
             shutil.copy2(file_.name_with_path, to_path)
-            file_id = ut.select_other2(
-                'FILE_IN_DIR', (dir_id, file_.name)).fetchone()
+            file_id = ut.select_other2('FILE_IN_DIR', (dir_id, file_.name)).fetchone()
             if file_id:
                 new_file_id = file_id[0]
             else:
-                new_file_id = ut.insert_other2('COPY_FILE',
-                                                      (dir_id, file_.user_data[0]))
+                new_file_id = ut.insert_other2('COPY_FILE',(dir_id, file_.user_data[0]))
 
-            ut.insert_other2(
-                'COPY_TAGS', (new_file_id, file_.user_data[0]))
-            ut.insert_other2(
-                'COPY_AUTHORS', (new_file_id, file_.user_data[0]))
+            ut.insert_other2('COPY_TAGS', (new_file_id, file_.user_data[0]))
+            ut.insert_other2('COPY_AUTHORS', (new_file_id, file_.user_data[0]))
         except IOError:
             self.app_window.show_message("Can't copy file \"{}\" into folder \"{}\"".
                                          format(file_[3], to_path), 5000)
@@ -468,9 +463,9 @@ class FilesCrt():
         try:
             act = action.split('/')
             if len(act) == 1:
-                self._methods[action]()
+                self._on_data_methods()[action]()
             else:
-                self._methods[act[0]](act[1:])
+                self._on_data_methods()[act[0]](act[1:])
         except KeyError:
             self.app_window.show_message('Action "{}" not implemented'.format(action), 5000)
 
@@ -651,8 +646,7 @@ class FilesCrt():
             if f_idx.isValid():
                 u_data = model.data(f_idx, Qt.UserRole)
                 if u_data.source > 0:              # file is from virtual folder
-                    ut.delete_other(
-                        'FILE_VIRT', (u_data.source, u_data.file_id))
+                    ut.delete_other('FILE_VIRT', (u_data.source, u_data.file_id))
                 elif u_data.source == 0:           # file is from real folder
                     self._delete_from_db(u_data)
                 else:                           # -1   - advanced file list = do nothing
@@ -1245,8 +1239,7 @@ class FilesCrt():
 
     def _load_files(self, path_: str, ext_):
         logger.debug(' | '.join((path_, '|', ext_, '|')))
-        load_ = LoadFiles(path_, ext_,
-                          ut.create_connection(ut.DB_Connection['Path']))
+        load_ = LoadFiles(path_, ext_, ut.create_connection(ut.DB_Connection['Path']))
         load_.signal.finished.connect(self._dir_update)
         self.thread_pool.start(load_)
 
@@ -1311,7 +1304,6 @@ class FilesCrt():
         if len(heads) > 1:
             for head in heads[1:]:
                 ind = SetFields.Heads.index(head)
-                width.append(font_metrics.boundingRect(
-                    SetFields.Masks[ind]).width())
+                width.append(font_metrics.boundingRect(SetFields.Masks[ind]).width())
         return width
 
