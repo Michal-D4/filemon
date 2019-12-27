@@ -18,3 +18,5 @@ __pycache__/
 ui_*.py
 *_rc.py
 /src/call_chain.py
+/src/method_tree.py
+/src/test_tree.py
