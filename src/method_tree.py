@@ -132,7 +132,7 @@ def init_link(con_, meth: dict):
 
 
 def deep_link(con_, id: int, cal_id: int):
-    cur = con_.cursor(sel2, (id,))                        # from call_link
+    cur = con_.cursor().execute(sel2, (id,))           # from call_link
     for cc in cur:
         id1 = cc[0]
         lvl = cc[2] + 1

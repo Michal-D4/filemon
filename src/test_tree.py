@@ -57,7 +57,6 @@ def test_init_methods2_2(db_init):
     cur = curs.execute('select * from methods2;')
     for cc in cur:
         tt = (*cc[1:4],)
-        print(tt, cc[0])
         assert cc[0] == di_met[tt]
 
 
@@ -65,12 +64,16 @@ def test_set_calling_id():
     pass
 
 
-@pytest.mark.parametrize('ids',
-                         [((4, 1),
-                           (4, 2),
-                           (1, 3),
-                           ),
-                          ])
+call_link = [(
+    (1, 3),
+    (2, 3),
+    (2, 1),
+    (3, 4),
+),
+]
+
+
+@pytest.mark.parametrize('ids', call_link)
 def test_init_link(db_init, ids):
     conn, in_ = db_init
     mt.fill_methods(conn, in_)
@@ -79,11 +82,31 @@ def test_init_link(db_init, ids):
     cur = conn.cursor()
     cu_ = cur.execute('select * from call_link;')
     for cc in cu_:
-        print('|--->', cc)
-        tt = cc[0:1]
-        assert tt == ids[0] or tt == ids[1] or tt == ids[2]
+        assert cc[0:2] in ids
 
 
+deep = [
+    (
+        (1, 3,),
+        (1, 4,),
+        (2, 1,),
+        (2, 3,),
+        (2, 4,),
+        (3, 4,),
+    )
+]
 
-def test_deep_link():
-    pass
+
+@pytest.mark.parametrize('ids', deep)
+def test_deep_link(db_init, ids):
+    conn, in_ = db_init
+    mt.fill_methods(conn, in_)
+    di_met = mt.init_methods2(conn)
+    mt.init_link(conn, di_met)
+    mt.deep_link(conn, 3, 4)
+    cur = conn.cursor()
+    cu_ = cur.execute('select * from call_link;')
+    for cc in cu_:
+        assert cc[0:2] in ids
+        # assert cc[0:2] not in [(1, 4,), (2, 4,),]
+
