@@ -7,6 +7,7 @@ from src.core import load_db_data as ld, create_db as db
 
 DETECT_TYPES = sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
 
+
 @pytest.fixture()
 def init_load_obj() -> (ld.LoadDBData, sqlite3.Connection):
     conn = sqlite3.connect(":memory:", check_same_thread=False,

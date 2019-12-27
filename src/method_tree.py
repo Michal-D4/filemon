@@ -71,17 +71,18 @@ def fill_methods(con_, file_):
     curs2.execute('delete from methods;')
     with open(file_) as fl:
         heads = fl.__next__()
-        print('HEADS:', heads)
         i = 0
         for line in fl:
             ll = line.strip().split(',')
-            print('|f-->', ll)
             curs.execute(ins1, ll[1:])                             # into methods
 
         con_.commit()
 
 
 def init_methods2(con_):
+    """
+    Unique ID for 'module', 'class', 'method'
+    """
     curs = con_.cursor()
     curs2 = con_.cursor()
     c_meth = curs.execute('select * from methods;')
@@ -96,7 +97,7 @@ def init_methods2(con_):
         cc = curs2.execute(ins3, (*rr, row[7]))                    # into methods2
         meth[(*rr,)] = cc.lastrowid
 
-    conn.commit()
+    con_.commit()
     return meth
 
 
