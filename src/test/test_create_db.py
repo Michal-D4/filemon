@@ -45,7 +45,7 @@ def schema_db():
                 curr = line
             else:
                 curr += line
-        lines.append(curr.strip('\n'))
+        lines.append(curr.strip())
     return lines
 
 
@@ -119,10 +119,11 @@ def test_create_all_objects(start_db, schema_db):
     db.create_all_objects(con)
 
     schema_ = schema_db
-    lines = con.execute('select count(*)  from sqlite_master;').fetchone()
+    # sql == ''  for auto created primary keys
+    lines = con.execute("select count(*)  from sqlite_master where sql != '';").fetchone()
     assert lines[0] == len(schema_)
 
-    schema = con.execute('select sql from sqlite_master;')
+    schema = con.execute("select sql from sqlite_master where sql != '';")
     i = 0
     for row in schema:
         assert row[0] == schema_[i]

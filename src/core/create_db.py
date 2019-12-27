@@ -32,7 +32,7 @@ Author TEXT
 CREATE TABLE IF NOT EXISTS FileAuthor (
 FileID INTEGER NOT NULL,
 AuthorID INTEGER NOT NULL,
-primary key(FileID, AuthorID) 
+primary key(FileID, AuthorID)
 );''',
 
     '''
@@ -44,8 +44,8 @@ Tag TEXT
     '''
 CREATE TABLE IF NOT EXISTS FileTag (
 FileID INTEGER NOT NULL,
-TagID INTEGER NOT NULL
-primary key(FileID, TagID) 
+TagID INTEGER NOT NULL,
+primary key(FileID, TagID)
 );''',
 
     '''
@@ -101,7 +101,7 @@ def create_all_objects(connection):
         try:
             cursor.execute(obj)
         except sqlite3.Error as err:
-            logger.error(' | '.join(("An error occurred:", err.args[0])))
+            logger.error(err.args[0])
 
     initiate_db(connection)
 
@@ -111,7 +111,7 @@ def initiate_db(connection):
     try:
         cursor.execute('insert into Dirs (DirID) values (0);')  # common root - without parent
     except sqlite3.Error as err:
-        print("An error occurred:", err.args[0])
+        logger.error(err.args[0])
 
     connection.commit()
 
