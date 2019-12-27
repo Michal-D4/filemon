@@ -4,7 +4,8 @@ import sqlite3
 from loguru import logger
 
 OBJ_DEFS = (
-    '''CREATE TABLE IF NOT EXISTS Files (
+    '''
+CREATE TABLE IF NOT EXISTS Files (
 FileID INTEGER NOT NULL PRIMARY KEY,
 DirID INTEGER NOT NULL,
 ExtID INTEGER,
@@ -21,7 +22,8 @@ FOREIGN KEY(CommentID) REFERENCES Comments(CommentID),
 FOREIGN KEY(ExtID) REFERENCES Extensions(ExtID)
 );''',
 
-    '''CREATE TABLE IF NOT EXISTS Authors (
+    '''
+CREATE TABLE IF NOT EXISTS Authors (
 AuthorID INTEGER NOT NULL PRIMARY KEY,
 Author TEXT
 );''',
@@ -29,24 +31,25 @@ Author TEXT
     '''
 CREATE TABLE IF NOT EXISTS FileAuthor (
 FileID INTEGER NOT NULL,
-AuthorID INTEGER NOT NULL
+AuthorID INTEGER NOT NULL,
+primary key(FileID, AuthorID) 
 );''',
-    'CREATE UNIQUE INDEX IF NOT EXISTS FileAuthorIdx1 ON FileAuthor(FileID, AuthorID);',
-    'CREATE INDEX IF NOT EXISTS FileAuthorIdx2 ON FileAuthor(AuthorID);',
 
-    '''CREATE TABLE IF NOT EXISTS Tags (
+    '''
+CREATE TABLE IF NOT EXISTS Tags (
 TagID INTEGER NOT NULL PRIMARY KEY,
 Tag TEXT
 );''',
 
-    '''CREATE TABLE IF NOT EXISTS FileTag (
+    '''
+CREATE TABLE IF NOT EXISTS FileTag (
 FileID INTEGER NOT NULL,
 TagID INTEGER NOT NULL
+primary key(FileID, TagID) 
 );''',
-    'CREATE UNIQUE INDEX IF NOT EXISTS FileTagIdx1 ON FileTag(FileID, TagID);',
-    'CREATE INDEX IF NOT EXISTS FileTagIdx2 ON FileTag(TagID);',
 
-    '''CREATE TABLE IF NOT EXISTS Dirs (
+    '''
+CREATE TABLE IF NOT EXISTS Dirs (
 DirID INTEGER NOT NULL PRIMARY KEY,
 Path TEXT,
 ParentID INTEGER,
@@ -54,44 +57,41 @@ FolderType INTEGER,
 FOREIGN KEY(ParentID) REFERENCES Dirs(DirID) ON DELETE CASCADE
 );''',
 
-    '''CREATE TABLE IF NOT EXISTS Extensions (
+    '''
+CREATE TABLE IF NOT EXISTS Extensions (
 ExtID INTEGER NOT NULL PRIMARY KEY,
 Extension TEXT,
 GroupID INTEGER
 );''',
-    'CREATE INDEX IF NOT EXISTS ExtIdx ON Extensions(GroupID);',
 
-    '''CREATE TABLE IF NOT EXISTS ExtGroups (
+    '''
+CREATE TABLE IF NOT EXISTS ExtGroups (
 GroupID INTEGER NOT NULL PRIMARY KEY,
 GroupName TEXT
 );''',
 
-    '''CREATE TABLE IF NOT EXISTS Comments (
+    '''
+CREATE TABLE IF NOT EXISTS Comments (
 CommentID INTEGER NOT NULL PRIMARY KEY,
 Comment TEXT,
 BookTitle TEXT
 );''',
 
-    '''CREATE TABLE IF NOT EXISTS Log (
-ActTime DATETIME,
-ObjID INTEGER,
-ActCode INTEGER
-);''',
-
-    '''CREATE TABLE IF NOT EXISTS VirtDirs (
+    '''
+CREATE TABLE IF NOT EXISTS VirtDirs (
 ParentID INTEGER not null,
 DirID INTEGER not null,
 FOREIGN KEY(ParentID) REFERENCES Dirs(DirID) ON DELETE CASCADE
 );''',
-    '''CREATE TABLE IF NOT EXISTS VirtFiles (
+
+    '''
+CREATE TABLE IF NOT EXISTS VirtFiles (
 DirID INTEGER not null,
 FileID INTEGER not null,
 FOREIGN KEY(DirID) REFERENCES Dirs(DirID) ON DELETE CASCADE
 );''',
 
     'CREATE INDEX IF NOT EXISTS Dirs_ParentID ON Dirs(ParentID);',
-    'CREATE INDEX IF NOT EXISTS LogIdx ON Log(ActTime desc);',
-    'CREATE INDEX IF NOT EXISTS LogIdx ON Log(ObjID, ActTime desc);',
 )
 
 
