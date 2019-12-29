@@ -1030,7 +1030,7 @@ class FilesCrt():
             self.status_label.setText('No data')
 
     def _set_file_model(self):
-        model = TableModel(parent=self.ui.filesList)
+        model = TableModel(parent=self.ui.filesList)  # may be parent = None - default TODO
         proxy_model = ProxyModel2()
         proxy_model.setSourceModel(model)
         model.setHeaderData(0, Qt.Horizontal, getattr(self.fields, 'headers'))
