@@ -303,14 +303,14 @@ class FilesCrt():
     def _selected_files(self):
         """
         used while copying, moving, deleting files
-        :return:  list of (model index, full path, user data, file name)
+        :return:  tuple of (model index, full path, user data, file name)
                   where user data = (FileID, DirID, CommentID, ExtID, Source)
                   if Source > 0 then it is dir_id of virtual folder,
                   if Source ==0 then it is real folder,
                   if Source == -1 then it is advanced selection
         """
         file_ = namedtuple('file_', 'index name_with_path user_data name')
-        # index: int, name_with_path: str, user_data: tuple?, name: str
+        # index: int, name_with_path: str, user_data: tuple, name: str
         files = []
         indexes = persistent_row_indexes(self.ui.filesList)
         model = self.ui.filesList.model().sourceModel()
@@ -318,6 +318,8 @@ class FilesCrt():
             if idx.column() == 0:
                 file_name = model.data(idx)
                 u_dat = model.data(idx, Qt.UserRole)
+                logger.debug(f'model.data(idx, Qt.UserRole) type: {type(u_dat)}')
+                logger.debug(u_dat)
                 file_path = ut.select_other(
                     'PATH', (u_dat.dir_id,)).fetchone()
                 file_data = file_._make(

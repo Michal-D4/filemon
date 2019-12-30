@@ -78,7 +78,7 @@ class ProxyModel2(ProxyModel):
             tmp = self.sourceModel().data(s_idx, role=Qt.UserRole)
             data_stream.writeInt(tmp.file_id)    # file ID
             # may need, in case of copy/move for real folder using mimeData
-            # data_stream.writeInt(tmp.dir_id)
+            data_stream.writeInt(tmp.dir_id)
             data_stream.writeInt(tmp.source)   # > 0 - virtual folder, 0 - real, -1 - adv.
 
         mime_data = QMimeData()
@@ -113,8 +113,9 @@ class TableModel(QAbstractTableModel):
 
     def data(self, index, role=Qt.DisplayRole):
         if index.isValid():
-            if role == Qt.DisplayRole:
-                if len(self.__data[index.row()]) > index.column():  # row length > current column
+            if role == Qt.DisplayRole:   # it is what shown on listview widget
+                # row length > current column ==> to return full row, not separate cells
+                if len(self.__data[index.row()]) > index.column():
                     return self.__data[index.row()][index.column()]
                 return None
             elif role == Qt.UserRole:

@@ -337,6 +337,9 @@ class EditTreeModel(QAbstractItemModel):
         :param parent: where mime_data is dragged
         :return: True if dropped
         """
+        logger.debug({0: 'DROP_NO_ACTION', 1: 'DROP_COPY_FOLDER',
+                      2: 'DROP_MOVE_FOLDER', 4: 'DROP_COPY_FILE',
+                      8: 'DROP_MOVE_FILE'}[action])
         if action & (DROP_MOVE_FOLDER | DROP_COPY_FOLDER):
             return self._drop_folders(action, mime_data, parent)
 
@@ -367,8 +370,11 @@ class EditTreeModel(QAbstractItemModel):
         """
         # TODO check how assign the folder_type and what means "folder_type != -1"
         parent_dir_id = self.data(parent, role=Qt.UserRole).dir_id
+        logger.debug(f'parent_dir_id: {parent_dir_id}')
 
         mime_format = mime_data.formats()
+        # ('REAL_FOLDER', 'VIRTUAL_FOLDER', 'REAL_FILE', 'VIRTUAL_FILE')
+        logger.debug(f"mime_format: {mime_format[0]}")
         drop_data = mime_data.data(mime_format[0])
         stream = QDataStream(drop_data, QIODevice.ReadOnly)
 
@@ -376,8 +382,9 @@ class EditTreeModel(QAbstractItemModel):
         folder_type = 0
         for _ in range(count):
             file_id = stream.readInt()
-            # dir_id = stream.readInt() # may be restored, if copy/move from real folder
+            dir_id = stream.readInt()
             folder_type = stream.readInt()
+            logger.debug(f'file_id: {file_id}, dir_id: {dir_id}, folder_type: {folder_type}')
             if action == DROP_COPY_FILE:
                 ut.insert_other('VIRTUAL_FILE', (parent_dir_id, file_id))
             else:        # DROP_MOVE_FILE
