@@ -85,7 +85,6 @@ Selects = {'TREE':  # (Dir name, DirID, ParentID, Full path of dir)
                           'Commented, FileID, DirID, coalesce(CommentID, 0), ExtID '
                           'from Files where FileID in (select FileID from VirtFiles where '
                           'DirID = ?);'),
-           'FAV_ID': 'select DirID from Dirs where FolderType = 1',
            'ISSUE_DATE': 'select IssueDate from Files where FileID = ?;',
            'EXIST_IN_VIRT_DIRS': 'select * from VirtDirs where DirID = ? and ParentID = ?;'
            }

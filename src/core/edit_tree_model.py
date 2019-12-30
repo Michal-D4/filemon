@@ -51,9 +51,6 @@ class EditTreeItem(object):
     def is_virtual(self):
         return self.userData.is_virtual > 0
 
-    def is_favorites(self):
-        return (self.userData.is_virtual == 1)
-
     def child(self, row):
         return self.children[row]
 
@@ -123,12 +120,6 @@ class EditTreeModel(QAbstractItemModel):
             return index.internalPointer().is_virtual()
         return False
 
-    @staticmethod
-    def is_favorites(index):
-        if index.isValid():
-            return index.internalPointer().is_favorites()
-        return False
-
     def columnCount(self, parent):
         return self.rootItem.columnCount()
 
@@ -193,8 +184,8 @@ class EditTreeModel(QAbstractItemModel):
     def create_new_parent(self, curr_idx, new_parent_data, idx_list):
         """
         update parent for selected items
-        :param curr_idx  - to find parent for new_parent_item,
-        :param new_parent_data  - data to create new_parent_item:
+        :param: curr_idx  - to find parent for new_parent_item,
+        :param: new_parent_data  - list of data to create new_parent_item:
            0 - dir_id of new_parent_item,
            1 - path,
            2 - parent_id for new_parent,
@@ -321,11 +312,11 @@ class EditTreeModel(QAbstractItemModel):
         item_data = QByteArray()
         data_stream = QDataStream(item_data, QIODevice.WriteOnly)
         data_stream.writeInt(len(indexes))
-        all_virtual = True
+        all_virtual = True      # if all selected dirs are virtual
 
         for idx in indexes:
             it: EditTreeItem = idx.internalPointer()
-            all_virtual &= (it.is_virtual() & (not it.is_favorites()))
+            all_virtual &= it.is_virtual()
             pack = cls._save_index(idx)
             data_stream.writeQString(','.join((str(x) for x in pack)))
 
@@ -367,6 +358,7 @@ class EditTreeModel(QAbstractItemModel):
             return True
 
     def _drop_files_to_virtual(self, action, mime_data, parent):
+        # TODO check how assign the fav_id and what means "fav_id != -1"
         parent_dir_id = self.data(parent, role=Qt.UserRole).dir_id
 
         mime_format = mime_data.formats()
@@ -388,7 +380,7 @@ class EditTreeModel(QAbstractItemModel):
         if action == DROP_MOVE_FILE:          # update file list after moving files
             self.caller.files_virtual_folder(fav_id)
 
-        return (fav_id != -1)
+        return fav_id != -1
 
     def _drop_folders(self, action, mime_data, parent):
         mime_format = mime_data.formats()[0]
@@ -418,8 +410,6 @@ class EditTreeModel(QAbstractItemModel):
     def _copy_folder(self, index, parent):
         item: EditTreeItem = index.internalPointer()
         new_item: EditTreeItem = copy.deepcopy(item)
-        if item.is_favorites():
-            new_item.userData = item.userData._replace(is_virtual=2)
         self.append_child(new_item, parent)
 
         parent_id = self.data(parent, role=Qt.UserRole).dir_id

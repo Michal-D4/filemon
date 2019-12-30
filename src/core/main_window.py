@@ -54,7 +54,6 @@ class AppWindow(QMainWindow):
         self.ui.actionOpenDB.triggered.connect(lambda: self.open_dialog.exec_())
         self.ui.actionScanFiles.triggered.connect(lambda: self.scan_files_signal.emit())
         self.ui.actionFileFilter.triggered.connect(lambda: self.change_data_signal.emit('Select files'))
-        self.ui.actionFavorites.triggered.connect(lambda: self.change_data_signal.emit('Favorites'))
 
         self.ui.commentField.anchorClicked.connect(self.ref_clicked)
         self.ui.filesList.doubleClicked.connect(lambda: self.change_data_signal.emit('File_doubleClicked'))
@@ -194,7 +193,6 @@ class AppWindow(QMainWindow):
             menu = QMenu(self)
             menu.addAction('Open')
             menu.addAction('Open folder')
-            menu.addAction('Add to favorites')
             menu.addAction('Delete row')
             menu.addSeparator()
             menu.addAction('Copy file name')
@@ -243,10 +241,9 @@ class AppWindow(QMainWindow):
         menu.addAction('Remove empty folders')
         if idx.isValid():
             if self.ui.dirTree.model().is_virtual(idx):
-                if not self.ui.dirTree.model().is_favorites(idx):
-                    menu.addSeparator()
-                    menu.addAction('Rename folder')
-                    menu.addAction('Delete folder')
+                menu.addSeparator()
+                menu.addAction('Rename folder')
+                menu.addAction('Delete folder')
             else:
                 parent = self.ui.dirTree.model().parent(idx)
                 if self.ui.dirTree.model().is_virtual(parent):

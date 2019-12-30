@@ -145,6 +145,15 @@ def collect_all_ext(ids):
     return all_id
 
 
+def _delete_from_db(file_ids):
+    ut.delete_other('VIRT_ALL', (file_ids[0],))
+    ut.delete_other('AUTHOR_FILE_BY_FILE', (file_ids[0],))
+    ut.delete_other('TAG_FILE_BY_FILE', (file_ids[0],))
+    ut.delete_other('FILE', (file_ids[0],))
+    # when file for this comment not exist in DB
+    ut.delete_other2('COMMENT', (file_ids[2], file_ids[2]))
+
+
 class FilesCrt():
 
     def __init__(self, app_window: AppWindow):
@@ -181,8 +190,6 @@ class FilesCrt():
                 'Ext Create group': self._ext_create_group,
                 'Ext Delete all files with current extension': self._ext_delete_current,
                 'Ext Remove unused': self._ext_remove_unused,
-                'Favorites': self._favorite_file_list,
-                'File Add to favorites': self._add_file_to_favorites,
                 'File Copy file name': self._copy_file_name,
                 'File Copy file(s)': self._copy_files,
                 'File Copy path': self._copy_path,
@@ -376,7 +383,7 @@ class FilesCrt():
     def _remove_file(self, file_):
         try:
             os.remove(file_[1])
-            self._delete_from_db(file_[2])
+            _delete_from_db(file_[2])
             self.ui.filesList.model().sourceModel().delete_row(file_[0])
         except FileNotFoundError:
             self.app_window.show_message('File "{}" not found'.format(file_[1]))
@@ -575,12 +582,6 @@ class FilesCrt():
     def _dir_update_finish(self):
         self.app_window.show_message("Updating of files is finished.", 5000)
 
-    def _favorite_file_list(self) -> None:
-
-        fav_id = ut.select_other('FAV_ID', ()).fetchone()
-
-        self._populate_virtual(fav_id[0])
-
     def _populate_virtual(self, dir_id) -> None:
         """
         List of files from virtual folder
@@ -592,10 +593,8 @@ class FilesCrt():
         settings.setValue('FILE_LIST_SOURCE', self.file_list_source)
         res = self.files_virtual_folder(dir_id)
 
-        if res:
-            self.status_label.setText('Favorite files')
-        else:
-            self.status_label.setText('No data')
+        if not res:
+            self.status_label.setText('No files in folder')
 
     def files_virtual_folder(self, dir_id):
         model = self._set_file_model()
@@ -632,13 +631,6 @@ class FilesCrt():
         else:
             self.app_window.show_message("Nothing found. Change your choice.", 5000)
 
-    def _add_file_to_favorites(self) -> None:
-        f_idx = self.ui.filesList.currentIndex()
-        file_id = self.ui.filesList.model().data(f_idx, Qt.UserRole).file_id
-        fav_id = ut.select_other('FAV_ID', ()).fetchone()
-
-        ut.insert_other('VIRTUAL_FILE', (fav_id[0], file_id))
-
     def _delete_files(self) -> None:
         indexes = persistent_row_indexes(self.ui.filesList)
         model = self.ui.filesList.model().sourceModel()
@@ -648,19 +640,11 @@ class FilesCrt():
                 if u_data.source > 0:              # file is from virtual folder
                     ut.delete_other('FILE_VIRT', (u_data.source, u_data.file_id))
                 elif u_data.source == 0:           # file is from real folder
-                    self._delete_from_db(u_data)
+                    _delete_from_db(u_data)
                 else:                           # -1   - advanced file list = do nothing
                     pass
 
                 model.delete_row(f_idx)
-
-    def _delete_from_db(self, file_ids):
-        ut.delete_other('VIRT_ALL', (file_ids[0],))
-        ut.delete_other('AUTHOR_FILE_BY_FILE', (file_ids[0],))
-        ut.delete_other('TAG_FILE_BY_FILE', (file_ids[0],))
-        ut.delete_other('FILE', (file_ids[0],))
-        # when file for this comment not exist in DB
-        ut.delete_other2('COMMENT', (file_ids[2], file_ids[2]))
 
     def _open_folder(self):
         path, *_ = self._file_path()
@@ -1030,7 +1014,7 @@ class FilesCrt():
             self.status_label.setText('No data')
 
     def _set_file_model(self):
-        model = TableModel(parent=self.ui.filesList)  # may be parent = None - default TODO
+        model = TableModel()                # may be parent = None - default TODO
         proxy_model = ProxyModel2()
         proxy_model.setSourceModel(model)
         model.setHeaderData(0, Qt.Horizontal, getattr(self.fields, 'headers'))
