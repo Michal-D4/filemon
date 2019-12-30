@@ -8,6 +8,7 @@ from PyQt5.QtCore import (QAbstractTableModel, QModelIndex, Qt, QMimeData, QByte
 
 from src.core.helper import MimeTypes, VIRTUAL_FILE, REAL_FILE
 
+
 class ProxyModel(QSortFilterProxyModel):
 
     def __init__(self, parent=None):
@@ -206,7 +207,7 @@ class TableModel(QAbstractTableModel):
 
     def get_row(self, row):
         if row >= 0 & row < self.rowCount():
-            return (self.__data[row], self.__user_data[row])
+            return self.__data[row], self.__user_data[row]
         return ()
 
 

@@ -715,7 +715,10 @@ class FilesCrt():
             self.app_window.show_message("Can't find file \"{}\"".format(full_file_name))
 
     def _file_path(self) -> (str, str, int, int):
-        # todo   is it exist currentRow() method ?
+        """
+        Extract current file's path saved in model's User data
+        :return:  path, file_name, file_id - DB id, file_idx - model index
+        """
         f_idx = self.ui.filesList.currentIndex()
         if f_idx.isValid():
             model = self.ui.filesList.model()
@@ -832,7 +835,7 @@ class FilesCrt():
     def _restore_file_list(self, curr_dir_idx):
         logger.debug(f'file_list_source: {self.file_list_source}, valid? {curr_dir_idx.isValid()}')
         # FOLDER, VIRTUAL, ADVANCE = (1, 2, 4)
-        # TODO check curr_dir_idx before call _restore_file_list ???
+
         if not curr_dir_idx.isValid():
             curr_dir_idx = self.ui.dirTree.model().index(0, 0)
         if ut.DB_Connection['SameDB']:
@@ -848,9 +851,8 @@ class FilesCrt():
             row = 0
 
         dir_idx = self.ui.dirTree.model().data(curr_dir_idx, Qt.UserRole)
-        # logger.debug(f'dir_idx: {dir_idx}')
-        if dir_idx is None:
-            # clear file list when creating new DB
+
+        if dir_idx is None:            # clear file list when creating new DB
             self._set_file_model()
             return
         if self.file_list_source == VIRTUAL:
@@ -1014,7 +1016,7 @@ class FilesCrt():
             self.status_label.setText('No data')
 
     def _set_file_model(self):
-        model = TableModel()                # may be parent = None - default TODO
+        model = TableModel()
         proxy_model = ProxyModel2()
         proxy_model.setSourceModel(model)
         model.setHeaderData(0, Qt.Horizontal, getattr(self.fields, 'headers'))
@@ -1126,7 +1128,11 @@ class FilesCrt():
                 self.ui.extList.selectionModel().select(idx, QItemSelectionModel.Select)
 
     def _populate_directory_tree(self):
-        # todo - do not correctly restore when reopen from toolbar button
+        """
+        restore the state of dirs and file as were on close.
+        When open another DB the current dir is the first dir
+        and current file is first file in this dir.
+        """
         dirs = get_dirs()
         insert_virt_dirs(dirs)
 

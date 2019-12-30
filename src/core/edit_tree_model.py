@@ -328,12 +328,12 @@ class EditTreeModel(QAbstractItemModel):
 
         return mime_data
 
-    def dropMimeData(self, mime_data: QMimeData, action, parent):
+    def dropMimeData(self, mime_data: QMimeData, action, parent) -> bool:
         """
-        Intensionally list of parameters differs from standard:
+        Intentionally list of parameters differs from standard dropMimeData method:
           row, column - parameters are not used.
         :param mime_data:
-        :param action:  not Qt defined actions, instead Drop* from helper.py
+        :param action:  not Qt defined actions, instead DROP_* from helper is used
         :param parent: where mime_data is dragged
         :return: True if dropped
         """
@@ -357,8 +357,15 @@ class EditTreeModel(QAbstractItemModel):
 
             return True
 
-    def _drop_files_to_virtual(self, action, mime_data, parent):
-        # TODO check how assign the fav_id and what means "fav_id != -1"
+    def _drop_files_to_virtual(self, action, mime_data, parent) -> bool:
+        """
+        Drop files into virtual folder
+        :param: action - DROP_COPY_FILE or DROP_MOVE_FILE
+        :param: mime_data - list of files to be dropped, created in ProxyModel2.mimeData
+        :param: parent - virtual folder where to drop
+        :return:
+        """
+        # TODO check how assign the folder_type and what means "folder_type != -1"
         parent_dir_id = self.data(parent, role=Qt.UserRole).dir_id
 
         mime_format = mime_data.formats()
@@ -366,21 +373,21 @@ class EditTreeModel(QAbstractItemModel):
         stream = QDataStream(drop_data, QIODevice.ReadOnly)
 
         count = stream.readInt()
-        fav_id = 0
+        folder_type = 0
         for _ in range(count):
             file_id = stream.readInt()
             # dir_id = stream.readInt() # may be restored, if copy/move from real folder
-            fav_id = stream.readInt()
+            folder_type = stream.readInt()
             if action == DROP_COPY_FILE:
                 ut.insert_other('VIRTUAL_FILE', (parent_dir_id, file_id))
-            else:
-                if fav_id > 0:
-                    ut.update_other('VIRTUAL_FILE_MOVE', (parent_dir_id, fav_id, file_id))
+            else:        # DROP_MOVE_FILE
+                if folder_type > 0:
+                    ut.update_other('VIRTUAL_FILE_MOVE', (parent_dir_id, folder_type, file_id))
 
         if action == DROP_MOVE_FILE:          # update file list after moving files
-            self.caller.files_virtual_folder(fav_id)
+            self.caller.files_virtual_folder(folder_type)
 
-        return fav_id != -1
+        return folder_type != -1
 
     def _drop_folders(self, action, mime_data, parent):
         mime_format = mime_data.formats()[0]
