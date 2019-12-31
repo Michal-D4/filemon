@@ -37,6 +37,7 @@ Selects = {'TREE':  # (Dir name, DirID, ParentID, Full path of dir)
 
            'FILE_IDS_ALL_TAG': ('select FileID from FileTag where TagID in ({}) '
                                 'group by FileID having count(*) = {};'),
+           'FILE_IDS_ANY_TAG': 'select FileID from FileTag where TagID in ({}) order by FileID;',
            'PATH': 'select Path from Dirs where DirID = ?;',
            'EXT': ('select Extension as title, ExtID+{}, GroupID '
                    'as ID from Extensions UNION select GroupName as title, '
@@ -58,7 +59,6 @@ Selects = {'TREE':  # (Dir name, DirID, ParentID, Full path of dir)
            'TAG_FILES': 'select * from FileTag where TagID=:tag_id;',
            'TAGS_BY_NAME': 'select Tag, TagID from Tags where Tag in ("{}");',
            'TAG_FILE': 'select * from FileTag where FileID = ? and TagID =?;',
-           'FILE_IDS_ANY_TAG': 'select FileID from FileTag where TagID in ({}) order by FileID;',
            'AUTHORS': 'select Author, AuthorID from Authors order by Author COLLATE NOCASE;',
            'FILE_AUTHORS': ('select Author, AuthorID from Authors where AuthorID in '
                             '(select AuthorID from FileAuthor where FileID = ?);'),

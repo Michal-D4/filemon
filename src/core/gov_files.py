@@ -740,8 +740,7 @@ class FilesCrt():
         titles = ('Enter new tags', 'Select tags from list',
                   'Apply key words / tags')
         tag_list = ut.select_other('TAGS').fetchall()
-        sel_tags = ut.select_other(
-            'FILE_TAGS', (u_data.file_id,)).fetchall()
+        sel_tags = ut.select_other('FILE_TAGS', (u_data.file_id,)).fetchall()
 
         edit_tags = ItemEdit(titles,
                              [tag[0] for tag in tag_list],
@@ -790,8 +789,7 @@ class FilesCrt():
         titles = ('Enter authors separated by commas',
                   'Select authors from list', 'Apply authors')
         authors = ut.select_other('AUTHORS').fetchall()
-        sel_authors = ut.select_other(
-            'FILE_AUTHORS', (u_data.file_id,)).fetchall()
+        sel_authors = ut.select_other('FILE_AUTHORS', (u_data.file_id,)).fetchall()
 
         edit_authors = ItemEdit(titles,
                                 [tag[0] for tag in authors],
@@ -1066,8 +1064,7 @@ class FilesCrt():
                     type(file_id))
 
             tags = ut.select_other("FILE_TAGS", (file_id,)).fetchall()
-            authors = ut.select_other(
-                "FILE_AUTHORS", (file_id,)).fetchall()
+            authors = ut.select_other("FILE_AUTHORS", (file_id,)).fetchall()
 
             if comment_id:
                 comment = ut.select_other(
@@ -1264,8 +1261,7 @@ class FilesCrt():
                 if tt[0] > ut.EXT_ID_INCREMENT:
                     res.add(model.data(i, Qt.DisplayRole))
                 else:
-                    ext_ = ut.select_other(
-                        'EXT_IN_GROUP', (tt[0],)).fetchall()
+                    ext_ = ut.select_other('EXT_IN_GROUP', (tt[0],)).fetchall()
                     res.update([ee[0] for ee in ext_])
             res = list(res)
             res.sort()
