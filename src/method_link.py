@@ -1,106 +1,79 @@
-from PyQt5.QtCore import (QDate, QDateTime, QRegExp, QSortFilterProxyModel, Qt,
-                          QTime)
+from PyQt5.QtCore import (QSortFilterProxyModel, Qt)
 from PyQt5.QtGui import QStandardItemModel
-from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateEdit,
-                             QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QTreeView,
-                             QVBoxLayout, QWidget)
+from PyQt5.QtWidgets import (QApplication, QComboBox, QGridLayout, QGroupBox, QMenu,
+                             QLabel, QTreeView, QVBoxLayout, QWidget)
+import sqlite3
+from pathlib import Path
 
 
 class MySortFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, parent=None):
         super(MySortFilterProxyModel, self).__init__(parent)
 
-        self.minDate = QDate()
-        self.maxDate = QDate()
-
-    def setFilterMinimumDate(self, date):
-        self.minDate = date
-        self.invalidateFilter()
-
-    def filterMinimumDate(self):
-        return self.minDate
-
-    def setFilterMaximumDate(self, date):
-        self.maxDate = date
-        self.invalidateFilter()
-
-    def filterMaximumDate(self):
-        return self.maxDate
+        self.module_filter = ''
+        self.module_all = True
+        self.class_filter = ''
+        self.class_all = True
+        self.note_filter = True
 
     def filterAcceptsRow(self, sourceRow, sourceParent):
         index0 = self.sourceModel().index(sourceRow, 0, sourceParent)
         index1 = self.sourceModel().index(sourceRow, 1, sourceParent)
-        index2 = self.sourceModel().index(sourceRow, 2, sourceParent)
+        index3 = self.sourceModel().index(sourceRow, 3, sourceParent)
 
-        return ((self.filterRegExp().indexIn(self.sourceModel().data(index0)) >= 0
-                 or self.filterRegExp().indexIn(self.sourceModel().data(index1)) >= 0)
-                and self.dateInRange(self.sourceModel().data(index2)))
+        return (
+            (self.module_all or self.sourceModel().data(index0) == self.module_filter) and
+            (self.class_all or self.sourceModel().data(index1) == self.class_filter) and
+            (self.note_filter or self.sourceModel().data(index3) != '')
+        )
 
     def lessThan(self, left, right):
-        leftData = self.sourceModel().data(left)
-        rightData = self.sourceModel().data(right)
+        left_data = self.sourceModel().data(left)
+        right_data = self.sourceModel().data(right)
 
-        if not isinstance(leftData, QDate):
-            emailPattern = QRegExp("([\\w\\.]*@[\\w\\.]*)")
+        return left_data < right_data
 
-            if left.column() == 1 and emailPattern.indexIn(leftData) != -1:
-                leftData = emailPattern.cap(1)
+    def filter_changed(self, item1, item2, item3):
+        self.module_all = item1 == 'All'
+        self.module_filter = item1
+        self.class_all = item2  == 'All'
+        self.class_filter = item2
+        self.note_filter = item3 == 'All'
+        self.invalidateFilter()
 
-            if right.column() == 1 and emailPattern.indexIn(rightData) != -1:
-                rightData = emailPattern.cap(1)
-
-        return leftData < rightData
-
-    def dateInRange(self, date):
-        if isinstance(date, QDateTime):
-            date = date.date()
-
-        return ((not self.minDate.isValid() or date >= self.minDate)
-                and (not self.maxDate.isValid() or date <= self.maxDate))
+    def get_data(self, index):
+        if index.isValid():
+            index1 = self.mapToSource(index)
+            return self.sourceModel().data(index1, 0)
+        return None
 
 
 class Window(QWidget):
-    def __init__(self):
+    def __init__(self, connection):
         super(Window, self).__init__()
+
+        self.conn = connection
 
         self.proxyModel = MySortFilterProxyModel(self)
         self.proxyModel.setDynamicSortFilter(True)
 
-        self.sourceView = QTreeView()
-        self.sourceView.setRootIsDecorated(False)
-        self.sourceView.setAlternatingRowColors(True)
+        self.filterModule = QComboBox()
+        self.filterModule.addItem("All", '*')
+        filterModuleLabel = QLabel("&Module Filter")
+        filterModuleLabel.setBuddy(self.filterModule)
+        self.filterClass = QComboBox()
+        self.filterClass.addItem("All", '*')
+        filterClassLabel = QLabel("&Class Filter")
+        filterClassLabel.setBuddy(self.filterClass)
+        self.filterNote = QComboBox()
+        self.filterNote.addItem("All", '*')
+        self.filterNote.addItem("Not blank", '+')
+        filterNoteLabel = QLabel("&Note Filter")
+        filterNoteLabel.setBuddy(self.filterNote)
 
-        sourceLayout = QHBoxLayout()
-        sourceLayout.addWidget(self.sourceView)
-        sourceGroupBox = QGroupBox("Original Model")
-        sourceGroupBox.setLayout(sourceLayout)
-
-        self.filterCaseSensitivityCheckBox = QCheckBox("Case sensitive filter")
-        self.filterCaseSensitivityCheckBox.setChecked(True)
-        self.filterPatternLineEdit = QLineEdit()
-        self.filterPatternLineEdit.setText("Grace|Sports")
-        filterPatternLabel = QLabel("&Filter pattern:")
-        filterPatternLabel.setBuddy(self.filterPatternLineEdit)
-        self.filterSyntaxComboBox = QComboBox()
-        self.filterSyntaxComboBox.addItem("Regular expression", QRegExp.RegExp)
-        self.filterSyntaxComboBox.addItem("Wildcard", QRegExp.Wildcard)
-        self.filterSyntaxComboBox.addItem("Fixed string", QRegExp.FixedString)
-        self.fromDateEdit = QDateEdit()
-        self.fromDateEdit.setDate(QDate(2006, 12, 22))
-        self.fromDateEdit.setCalendarPopup(True)
-        fromLabel = QLabel("F&rom:")
-        fromLabel.setBuddy(self.fromDateEdit)
-        self.toDateEdit = QDateEdit()
-        self.toDateEdit.setDate(QDate(2007, 1, 5))
-        self.toDateEdit.setCalendarPopup(True)
-        toLabel = QLabel("&To:")
-        toLabel.setBuddy(self.toDateEdit)
-
-        self.filterPatternLineEdit.textChanged.connect(self.textFilterChanged)
-        self.filterSyntaxComboBox.currentIndexChanged.connect(self.textFilterChanged)
-        self.filterCaseSensitivityCheckBox.toggled.connect(self.textFilterChanged)
-        self.fromDateEdit.dateChanged.connect(self.dateFilterChanged)
-        self.toDateEdit.dateChanged.connect(self.dateFilterChanged)
+        self.filterModule.currentIndexChanged.connect(self.textFilterChanged)
+        self.filterClass.currentIndexChanged.connect(self.textFilterChanged)
+        self.filterNote.currentIndexChanged.connect(self.textFilterChanged)
 
         self.proxyView = QTreeView()
         self.proxyView.setRootIsDecorated(False)
@@ -108,84 +81,112 @@ class Window(QWidget):
         self.proxyView.setModel(self.proxyModel)
         self.proxyView.setSortingEnabled(True)
         self.proxyView.sortByColumn(1, Qt.AscendingOrder)
+        self.proxyView.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.proxyView.customContextMenuRequested.connect(self.pop_menu)
 
         self.textFilterChanged()
-        self.dateFilterChanged()
+        self.set_filters_combo()
 
         proxyLayout = QGridLayout()
         proxyLayout.addWidget(self.proxyView, 0, 0, 1, 3)
-        proxyLayout.addWidget(filterPatternLabel, 1, 0)
-        proxyLayout.addWidget(self.filterPatternLineEdit, 1, 1)
-        proxyLayout.addWidget(self.filterSyntaxComboBox, 1, 2)
-        proxyLayout.addWidget(self.filterCaseSensitivityCheckBox, 2, 0, 1, 3)
-        proxyLayout.addWidget(fromLabel, 3, 0)
-        proxyLayout.addWidget(self.fromDateEdit, 3, 1, 1, 2)
-        proxyLayout.addWidget(toLabel, 4, 0)
-        proxyLayout.addWidget(self.toDateEdit, 4, 1, 1, 2)
+        proxyLayout.addWidget(filterModuleLabel, 1, 0)
+        proxyLayout.addWidget(filterClassLabel, 1, 1)
+        proxyLayout.addWidget(filterNoteLabel, 1, 2)
+        proxyLayout.addWidget(self.filterModule, 2, 0)
+        proxyLayout.addWidget(self.filterClass, 2, 1)
+        proxyLayout.addWidget(self.filterNote, 2, 2)
         proxyGroupBox = QGroupBox("Sorted/Filtered Model")
         proxyGroupBox.setLayout(proxyLayout)
 
         mainLayout = QVBoxLayout()
-        mainLayout.addWidget(sourceGroupBox)
         mainLayout.addWidget(proxyGroupBox)
         self.setLayout(mainLayout)
 
         self.setWindowTitle("Custom Sort/Filter Model")
-        self.resize(500, 450)
+        self.resize(800, 450)
+
+    def set_filters_combo(self):
+        curs = self.conn.cursor()
+        curs.execute('select distinct module from methods2;')
+        for cc in curs:
+            self.filterModule.addItem(cc[0])
+
+        curs.execute('select distinct class from methods2;')
+        for cc in curs:
+            self.filterClass.addItem(cc[0])
+
+    def pop_menu(self, pos):
+        print(pos)
+        idx = self.proxyView.indexAt(pos)
+        if idx.isValid():
+            menu = QMenu(self)
+            menu.addAction('All link')
+            menu.addAction('Called from ...')
+            menu.addAction('Call what ...')
+            menu.addSeparator()
+            menu.addAction('Cancel')
+            action = menu.exec_(self.proxyView.mapToGlobal(pos))
+            if action:
+                self.execute_sql(action.text(), idx)
 
     def setSourceModel(self, model):
         self.proxyModel.setSourceModel(model)
-        self.sourceView.setModel(model)
 
     def textFilterChanged(self):
-        syntax = QRegExp.PatternSyntax(
-            self.filterSyntaxComboBox.itemData(
-                self.filterSyntaxComboBox.currentIndex()))
-        caseSensitivity = (
-                self.filterCaseSensitivityCheckBox.isChecked()
-                and Qt.CaseSensitive or Qt.CaseInsensitive)
-        regExp = QRegExp(self.filterPatternLineEdit.text(), caseSensitivity, syntax)
-        self.proxyModel.setFilterRegExp(regExp)
+        self.proxyModel.filter_changed(self.filterModule.currentText(),
+                                       self.filterClass.currentText(),
+                                       self.filterNote.currentText())
 
-    def dateFilterChanged(self):
-        self.proxyModel.setFilterMinimumDate(self.fromDateEdit.date())
-        self.proxyModel.setFilterMaximumDate(self.toDateEdit.date())
+    def execute_sql(self, act: str, idx):
+        if act == 'Cancel':
+            return
+
+        meth_id = idx.data(Qt.UserRole)
+        curs = self.conn.cursor()
+        cc = curs.execute('select * from methods2 where id = ?;', (meth_id,)).fetchone()
+        print(cc)
+        print('<---------------- what call ------------------------->')
+        curs.execute(what_call, (meth_id,))
+        for cc in curs:
+            print(cc)
+        print('<---------------- called from ------------------------->')
+        curs.execute(called_from, (meth_id,))
+        for cc in curs:
+            print(cc)
 
 
-def addMail(model, subject, sender, date):
+
+what_call = ('select a.module, a.class, a.method, b.level from simple_link b ' 
+             'join methods2 a on a.id = b.id ' 
+             'where b.call_id = ? order by b.level, a.module, a.class, a.method;')
+called_from = ('select a.module, a.class, a.method, b.level from simple_link b ' 
+               'join methods2 a on a.id = b.call_id '
+               'where b.id = ? order by b.level, a.module, a.class, a.method;')
+
+
+def addItem(model, id, module, class_, method, note):
     model.insertRow(0)
-    model.setData(model.index(0, 0), subject)
-    model.setData(model.index(0, 1), sender)
-    model.setData(model.index(0, 2), date)
+    model.setData(model.index(0, 0), module)
+    model.setData(model.index(0, 1), class_)
+    model.setData(model.index(0, 2), method)
+    model.setData(model.index(0, 3), note if note else '')
+    for i in range(4):
+        model.setData(model.index(0, i), id, Qt.UserRole)
 
 
-def createMailModel(parent):
-    model = QStandardItemModel(0, 3, parent)
+def createModel(parent):
+    model = QStandardItemModel(0, 4, parent)
 
-    model.setHeaderData(0, Qt.Horizontal, "Subject")
-    model.setHeaderData(1, Qt.Horizontal, "Sender")
-    model.setHeaderData(2, Qt.Horizontal, "Date")
+    model.setHeaderData(0, Qt.Horizontal, "module")
+    model.setHeaderData(1, Qt.Horizontal, "Class")
+    model.setHeaderData(2, Qt.Horizontal, "method")
+    model.setHeaderData(3, Qt.Horizontal, "Note")
 
-    addMail(model, "Happy New Year!", "Grace K. <grace@software-inc.com>",
-            QDateTime(QDate(2006, 12, 31), QTime(17, 3)))
-    addMail(model, "Radically new concept", "Grace K. <grace@software-inc.com>",
-            QDateTime(QDate(2006, 12, 22), QTime(9, 44)))
-    addMail(model, "Accounts", "pascale@nospam.com",
-            QDateTime(QDate(2006, 12, 31), QTime(12, 50)))
-    addMail(model, "Expenses", "Joe Bloggs <joe@bloggs.com>",
-            QDateTime(QDate(2006, 12, 25), QTime(11, 39)))
-    addMail(model, "Re: Expenses", "Andy <andy@nospam.com>",
-            QDateTime(QDate(2007, 1, 2), QTime(16, 5)))
-    addMail(model, "Re: Accounts", "Joe Bloggs <joe@bloggs.com>",
-            QDateTime(QDate(2007, 1, 3), QTime(14, 18)))
-    addMail(model, "Re: Accounts", "Andy <andy@nospam.com>",
-            QDateTime(QDate(2007, 1, 3), QTime(14, 26)))
-    addMail(model, "Sports", "Linda Smith <linda.smith@nospam.com>",
-            QDateTime(QDate(2007, 1, 5), QTime(11, 33)))
-    addMail(model, "AW: Sports", "Rolf Newschweinstein <rolfn@nospam.com>",
-            QDateTime(QDate(2007, 1, 5), QTime(12, 0)))
-    addMail(model, "RE: Sports", "Petra Schmidt <petras@nospam.com>",
-            QDateTime(QDate(2007, 1, 5), QTime(12, 1)))
+    curs = parent.conn.cursor()
+    curs.execute('select * from methods2;')
+
+    for cc in curs:
+        addItem(model, *cc)
 
     return model
 
@@ -194,9 +195,11 @@ if __name__ == "__main__":
     import sys
 
     app = QApplication(sys.argv)
+    DB = Path.cwd() / "prj.db"
+    conn = sqlite3.connect(DB)
 
-    window = Window()
-    window.setSourceModel(createMailModel(window))
+    window = Window(conn)
+    window.setSourceModel(createModel(window))
     window.show()
 
     sys.exit(app.exec_())
