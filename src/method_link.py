@@ -42,17 +42,26 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
         self.invalidateFilter()
 
     def get_data(self, index):
+        """
+        Get data from three first columns of current row
+        @param index: index of current row
+        @return: module, class, method from current row
+        Is it possible to get the same result with the following code: ???
+        parent = self.parent(index)
+        row = index.row()
+        idx_n = self.mapToSource(self.index(row, n, parent)
+        """
         if index.isValid():
-            row = index.row()
-            print(row)
-            parent = self.sourceModel().index(0, 0, QModelIndex())
+            parent = self.sourceModel().parent(index)
+            row = self.mapToSource(index).row()
+
             idx0 = self.sourceModel().index(row, 0, parent)
-            # idx1 = self.sourceModel().index(row, 1, 0)
-            # idx2 = self.sourceModel().index(row, 2, 0)
-            print(self.sourceModel().data(idx0))
-            index1 = self.mapToSource(index)
-            print(self.sourceModel().data(index1, 2))  # only from selected cell, can't chose column, 2 is ignored
-            # return self.sourceModel().data(index1, 0)
+            idx1 = self.sourceModel().index(row, 1, parent)
+            idx2 = self.sourceModel().index(row, 2, parent)
+
+            return (self.sourceModel().data(idx0),
+                    self.sourceModel().data(idx1),
+                    self.sourceModel().data(idx2))
         return None
 
 
@@ -127,9 +136,8 @@ class Window(QWidget):
         idx = self.proxyView.indexAt(pos)
         if idx.isValid():
             menu = QMenu(self)
-            menu.addAction('All link')
-            menu.addAction('Called from ...')
-            menu.addAction('Call what ...')
+            menu.addAction('order by level')
+            menu.addAction('order by module')
             menu.addSeparator()
             menu.addAction('Cancel')
             action = menu.exec_(self.proxyView.mapToGlobal(pos))
@@ -146,30 +154,39 @@ class Window(QWidget):
 
     def execute_sql(self, act: str, idx):
         if act == 'Cancel':
-            self.proxyModel.get_data(idx)
             return
 
-        meth_id = idx.data(Qt.UserRole)
+        sqls = {'order by level': (what_call_lvl_ord, called_from_lvl_ord),
+                'order by module': (what_call_mod_ord, called_from_mod_ord),
+                }
+        sql_par = self.proxyModel.get_data(idx)
         curs = self.conn.cursor()
-        cc = curs.execute('select * from methods2 where id = ?;', (meth_id,)).fetchone()
-        print(cc)
+        meth_id = curs.execute(curr_id, sql_par).fetchone()
+        print(meth_id + sql_par)
         print('<---------------- what call ------------------------->')
-        curs.execute(what_call, (meth_id,))
+        curs.execute(sqls[act][0], meth_id)
         for cc in curs:
             print(cc)
         print('<---------------- called from ------------------------->')
-        curs.execute(called_from, (meth_id,))
+        curs.execute(sqls[act][1], meth_id)
         for cc in curs:
             print(cc)
 
 
+curr_id = 'select id from methods2 where module = ? and class = ? and method = ?;'
 
-what_call = ('select a.module, a.class, a.method, b.level from simple_link b ' 
-             'join methods2 a on a.id = b.id ' 
-             'where b.call_id = ? order by b.level, a.module, a.class, a.method;')
-called_from = ('select a.module, a.class, a.method, b.level from simple_link b ' 
-               'join methods2 a on a.id = b.call_id '
-               'where b.id = ? order by b.level, a.module, a.class, a.method;')
+what_call_lvl_ord = ('select a.module, a.class, a.method, b.level '
+                     'from simple_link b join methods2 a on a.id = b.id '
+                     'where b.call_id = ? order by b.level, a.module, a.class, a.method;')
+called_from_lvl_ord = ('select a.module, a.class, a.method, b.level '
+                       'from simple_link b join methods2 a on a.id = b.call_id '
+                       'where b.id = ? order by b.level, a.module, a.class, a.method;')
+what_call_mod_ord = ('select a.module, a.class, a.method, b.level '
+                     'from simple_link b join methods2 a on a.id = b.id '
+                     'where b.call_id = ? order by a.module, b.level, a.method;')
+called_from_mod_ord = ('select a.module, a.class, a.method, b.level '
+                       'from simple_link b join methods2 a on a.id = b.call_id '
+                       'where b.id = ? order by a.module, b.level, a.method;')
 
 
 def addItem(model, id, module, class_, method, note):
