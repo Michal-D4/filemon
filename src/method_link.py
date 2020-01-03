@@ -1,4 +1,4 @@
-from PyQt5.QtCore import (QSortFilterProxyModel, Qt)
+from PyQt5.QtCore import (QSortFilterProxyModel, Qt, QModelIndex)
 from PyQt5.QtGui import QStandardItemModel
 from PyQt5.QtWidgets import (QApplication, QComboBox, QGridLayout, QGroupBox, QMenu,
                              QLabel, QTreeView, QVBoxLayout, QWidget)
@@ -16,7 +16,7 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
         self.class_all = True
         self.note_filter = True
 
-    def filterAcceptsRow(self, sourceRow, sourceParent):
+    def filterAcceptsRow(self, sourceRow, sourceParent: QModelIndex):
         index0 = self.sourceModel().index(sourceRow, 0, sourceParent)
         index1 = self.sourceModel().index(sourceRow, 1, sourceParent)
         index3 = self.sourceModel().index(sourceRow, 3, sourceParent)
@@ -43,8 +43,16 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
 
     def get_data(self, index):
         if index.isValid():
+            row = index.row()
+            print(row)
+            parent = self.sourceModel().index(0, 0, QModelIndex())
+            idx0 = self.sourceModel().index(row, 0, parent)
+            # idx1 = self.sourceModel().index(row, 1, 0)
+            # idx2 = self.sourceModel().index(row, 2, 0)
+            print(self.sourceModel().data(idx0))
             index1 = self.mapToSource(index)
-            return self.sourceModel().data(index1, 0)
+            print(self.sourceModel().data(index1, 2))  # only from selected cell, can't chose column, 2 is ignored
+            # return self.sourceModel().data(index1, 0)
         return None
 
 
@@ -116,7 +124,6 @@ class Window(QWidget):
             self.filterClass.addItem(cc[0])
 
     def pop_menu(self, pos):
-        print(pos)
         idx = self.proxyView.indexAt(pos)
         if idx.isValid():
             menu = QMenu(self)
@@ -139,6 +146,7 @@ class Window(QWidget):
 
     def execute_sql(self, act: str, idx):
         if act == 'Cancel':
+            self.proxyModel.get_data(idx)
             return
 
         meth_id = idx.data(Qt.UserRole)
