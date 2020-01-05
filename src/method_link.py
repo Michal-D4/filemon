@@ -1,9 +1,10 @@
 from PyQt5.QtCore import (QSortFilterProxyModel, Qt, QModelIndex)
 from PyQt5.QtGui import QStandardItemModel
-from PyQt5.QtWidgets import (QApplication, QComboBox, QGridLayout, QGroupBox, QMenu,
-                             QLabel, QTreeView, QVBoxLayout, QWidget)
+from PyQt5.QtWidgets import (QApplication, QComboBox, QGridLayout, QGroupBox, QMenu, QTextEdit,
+                             QLabel, QTreeView, QVBoxLayout, QWidget, QAbstractItemView)
 import sqlite3
 from pathlib import Path
+from loguru import logger
 
 
 class MySortFilterProxyModel(QSortFilterProxyModel):
@@ -83,8 +84,8 @@ class Window(QWidget):
         filterClassLabel = QLabel("&Class Filter")
         filterClassLabel.setBuddy(self.filterClass)
         self.filterNote = QComboBox()
-        self.filterNote.addItem("All", '*')
-        self.filterNote.addItem("Not blank", '+')
+        self.filterNote.addItem("All")
+        self.filterNote.addItem("Not blank")
         filterNoteLabel = QLabel("&Note Filter")
         filterNoteLabel.setBuddy(self.filterNote)
 
@@ -100,6 +101,10 @@ class Window(QWidget):
         self.proxyView.sortByColumn(1, Qt.AscendingOrder)
         self.proxyView.setContextMenuPolicy(Qt.CustomContextMenu)
         self.proxyView.customContextMenuRequested.connect(self.pop_menu)
+        self.proxyView.setSelectionMode(QAbstractItemView.ExtendedSelection)
+
+        self.resView = QTextEdit()
+        self.resView.setReadOnly(True)
 
         self.textFilterChanged()
         self.set_filters_combo()
@@ -112,7 +117,8 @@ class Window(QWidget):
         proxyLayout.addWidget(self.filterModule, 2, 0)
         proxyLayout.addWidget(self.filterClass, 2, 1)
         proxyLayout.addWidget(self.filterNote, 2, 2)
-        proxyGroupBox = QGroupBox("Sorted/Filtered Model")
+        proxyLayout.addWidget(self.resView, 3, 0, 1, 3)
+        proxyGroupBox = QGroupBox("Module/Class/Method list")
         proxyGroupBox.setLayout(proxyLayout)
 
         mainLayout = QVBoxLayout()
@@ -136,13 +142,15 @@ class Window(QWidget):
         idx = self.proxyView.indexAt(pos)
         if idx.isValid():
             menu = QMenu(self)
-            menu.addAction('order by level')
-            menu.addAction('order by module')
+            menu.addAction('First level only')
+            menu.addSeparator()
+            menu.addAction('sort by level')
+            menu.addAction('sort by module')
             menu.addSeparator()
             menu.addAction('Cancel')
             action = menu.exec_(self.proxyView.mapToGlobal(pos))
             if action:
-                self.execute_sql(action.text(), idx)
+                self.menu_action(action.text())
 
     def setSourceModel(self, model):
         self.proxyModel.setSourceModel(model)
@@ -152,28 +160,168 @@ class Window(QWidget):
                                        self.filterClass.currentText(),
                                        self.filterNote.currentText())
 
-    def execute_sql(self, act: str, idx):
+    def menu_action(self, act: str):
+        logger.debug(act)
         if act == 'Cancel':
             return
 
-        sqls = {'order by level': (what_call_lvl_ord, called_from_lvl_ord),
-                'order by module': (what_call_mod_ord, called_from_mod_ord),
-                }
-        sql_par = self.proxyModel.get_data(idx)
-        curs = self.conn.cursor()
-        meth_id = curs.execute(curr_id, sql_par).fetchone()
-        print(meth_id + sql_par)
-        print('<---------------- what call ------------------------->')
-        curs.execute(sqls[act][0], meth_id)
-        for cc in curs:
-            print(cc)
-        print('<---------------- called from ------------------------->')
-        curs.execute(sqls[act][1], meth_id)
-        for cc in curs:
-            print(cc)
+        method_ids, method_names = self.get_selected_methods()
+
+        {'First level only': self.first_only,
+         'sort by level': self.sort_by_level,
+         'sort by module': self.sort_by_module,
+         }[act](method_ids)
+
+    def get_selected_methods(self):
+        """
+        Returns two lists:
+        1) ids of selected methods
+        2) full names of selected methods
+        @return: ids, methods
+        """
+        self.resView.clear()
+        self.resView.append(ttl_sel)
+        indexes = self.proxyView.selectionModel().selectedRows()
+        methods = []
+        for idx in indexes:
+            sql_par = self.proxyModel.get_data(idx)
+            methods.append(sql_par)
+        ids = exec_sql0(self.conn, meth.format(
+            "','".join(tab_list(methods, ''))
+        ))
+        report_append(self.resView, tab_list(methods))
+        return [x[0] for x in ids], methods
+
+    def first_only(self, ids):
+        """
+        Show lists of methods that is immediate child / parent
+        ie. only from first level
+        @param ids: indexes of selected methods
+        @return:
+        """
+        opt = len(ids) if len(ids) < 3 else 'more than 2'
+        logger.debug(opt)
+        {1: self.first_1,
+         2: self.first_2,
+         'more than 2': self.first_more_than_2,
+         }[opt](ids)
+
+    def first_1(self, ids):
+        """
+        Only one method selected
+        @param ids: - index of method
+        @return: None
+        """
+        self.resView.append(ttl_what)
+        lst = self.first_1_part(ids, what_call_1st_lvl)
+        report_append(self.resView, lst)
+
+        self.resView.append(ttl_from)
+        lst = self.first_1_part(ids, called_from_1st_lvl)
+        report_append(self.resView, lst)
+
+    def first_1_part(self, ids, sql):
+        lst = exec_sql(self.conn, ids, sql)
+        return tab_str_list(lst)
+
+    def first_2(self, ids):
+        """
+        Two methods selected.
+        Show 8 lists - see eight_lists variable
+        @param ids: indexes of two methods
+        @return: None
+        """
+        eight_lists = ('1) called from any of both methods',
+                       '2) called from first method but not from second',
+                       '3) called from second method but not from first',
+                       '4) called from first and from second methods',
+                       '5) call any of first and second method',
+                       '6) call only first method but not second',
+                       '7) call only second method but not first',
+                       '8) call both first and second methods',
+                       )
+
+        self.resView.append(ttl_what)
+        lst_a = self.first_1_part((ids[0],), what_call_1st_lvl)
+        lst_b = self.first_1_part((ids[1],), what_call_1st_lvl)
+
+        self.report_four(lst_a, lst_b, eight_lists)
+
+        self.resView.append(ttl_from)
+        lst_a = self.first_1_part((ids[0],), called_from_1st_lvl)
+        lst_b = self.first_1_part((ids[1],), called_from_1st_lvl)
+
+        self.report_four(lst_a, lst_b, eight_lists[4:])
+
+    def report_four(self, lst_a, lst_b, ttls):
+        self.resView.append(ttls[0])
+        report_append(self.resView, list(set(lst_a) | set(lst_b)))
+        self.resView.append(ttls[1])
+        report_append(self.resView, list(set(lst_a) - set(lst_b)))
+        self.resView.append(ttls[2])
+        report_append(self.resView, list(set(lst_b) - set(lst_a)))
+        self.resView.append(ttls[3])
+        report_append(self.resView, list(set(lst_a) & set(lst_b)))
+
+    def first_more_than_2(self, ids):
+        pass
+
+    def sort_by_level(self, ids):
+        """
+        Show lists of methods sorted by level
+        @param ids: indexes of selected methods
+        @return: None
+        """
+        pass
+
+    def sort_by_module(self, idx):
+        """
+        Show lists of methods sorted by module name
+        @param ids: indexes of selected methods
+        @return: None
+        """
+        pass
 
 
+def exec_sql(conn, sql_par: tuple, sql: str):
+    curs = conn.cursor()
+    logger.debug(sql)
+    logger.debug(sql_par)
+    cc = curs.execute(sql, sql_par).fetchall()
+    return cc
+
+
+def exec_sql0(conn, sql: str):
+    curs = conn.cursor()
+    logger.debug(sql)
+    cc = curs.execute(sql).fetchall()
+    return cc
+
+
+def tab_list(lst: list, delim: str = '\t') -> list:
+    res = []
+    for ll in lst:
+        res.append(delim.join(ll))
+    return res
+
+
+def tab_str_list(lst: list, delim: str = '\t') -> list:
+    res = []
+    for ll in lst:
+        res.append(delim.join([x for x in map(str, ll)]))
+    return res
+
+
+def report_append(report: list, lst: list):
+    for ll in lst:
+        report.append(ll)
+
+
+ttl_sel = '<============== Selected Methods ======================>'
+ttl_what = '<---------------- what   call ------------------------->'
+ttl_from = '<---------------- called from ------------------------->'
 curr_id = 'select id from methods2 where module = ? and class = ? and method = ?;'
+meth = "select id from methods2 where module || class || method in ('{}');"
 
 what_call_lvl_ord = ('select a.module, a.class, a.method, b.level '
                      'from simple_link b join methods2 a on a.id = b.id '
@@ -187,6 +335,19 @@ what_call_mod_ord = ('select a.module, a.class, a.method, b.level '
 called_from_mod_ord = ('select a.module, a.class, a.method, b.level '
                        'from simple_link b join methods2 a on a.id = b.call_id '
                        'where b.id = ? order by a.module, b.level, a.method;')
+what_call_1st_lvl = ('select a.module, a.class, a.method, b.level '
+                     'from simple_link b join methods2 a on a.id = b.id '
+                     'where b.call_id = ? and b.level = 1 '
+                     'order by a.module, a.class, a.method;')
+called_from_1st_lvl = ('select a.module, a.class, a.method, b.level '
+                       'from simple_link b join methods2 a on a.id = b.call_id '
+                       'where b.id = ? and b.level = 1 '
+                       'order by a.module, a.class, a.method;')
+sqls = {
+    'First level only': (what_call_1st_lvl, called_from_1st_lvl),
+    'order by level': (what_call_lvl_ord, called_from_lvl_ord),
+    'order by module': (what_call_mod_ord, called_from_mod_ord),
+}
 
 
 def addItem(model, id, module, class_, method, note):
@@ -218,6 +379,13 @@ def createModel(parent):
 
 if __name__ == "__main__":
     import sys
+
+    logger.remove()
+    fmt = '<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | ' \
+          '<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> '   \
+          '- <level>{message}</level>'
+    logger.add(sys.stderr, level="DEBUG", format=fmt, enqueue = True)
+    logger.debug("logger DEBUG add")
 
     app = QApplication(sys.argv)
     DB = Path.cwd() / "prj.db"
