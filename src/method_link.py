@@ -5,7 +5,9 @@ from PyQt5.QtWidgets import (QApplication, QComboBox, QGridLayout, QGroupBox, QM
 import sqlite3
 from pathlib import Path
 from loguru import logger
+from datetime import datetime
 
+BY_MODULE, BY_LEVEL = range(2)
 
 class MySortFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, parent=None):
@@ -75,24 +77,6 @@ class Window(QWidget):
         self.proxyModel = MySortFilterProxyModel(self)
         self.proxyModel.setDynamicSortFilter(True)
 
-        self.filterModule = QComboBox()
-        self.filterModule.addItem("All", '*')
-        filterModuleLabel = QLabel("&Module Filter")
-        filterModuleLabel.setBuddy(self.filterModule)
-        self.filterClass = QComboBox()
-        self.filterClass.addItem("All", '*')
-        filterClassLabel = QLabel("&Class Filter")
-        filterClassLabel.setBuddy(self.filterClass)
-        self.filterNote = QComboBox()
-        self.filterNote.addItem("All")
-        self.filterNote.addItem("Not blank")
-        filterNoteLabel = QLabel("&Note Filter")
-        filterNoteLabel.setBuddy(self.filterNote)
-
-        self.filterModule.currentIndexChanged.connect(self.textFilterChanged)
-        self.filterClass.currentIndexChanged.connect(self.textFilterChanged)
-        self.filterNote.currentIndexChanged.connect(self.textFilterChanged)
-
         self.proxyView = QTreeView()
         self.proxyView.setRootIsDecorated(False)
         self.proxyView.setAlternatingRowColors(True)
@@ -106,14 +90,13 @@ class Window(QWidget):
         self.resView = QTextEdit()
         self.resView.setReadOnly(True)
 
-        self.textFilterChanged()
-        self.set_filters_combo()
+        self.set_filters()
 
         proxyLayout = QGridLayout()
         proxyLayout.addWidget(self.proxyView, 0, 0, 1, 3)
-        proxyLayout.addWidget(filterModuleLabel, 1, 0)
-        proxyLayout.addWidget(filterClassLabel, 1, 1)
-        proxyLayout.addWidget(filterNoteLabel, 1, 2)
+        proxyLayout.addWidget(self.filterModuleLabel, 1, 0)
+        proxyLayout.addWidget(self.filterClassLabel, 1, 1)
+        proxyLayout.addWidget(self.filterNoteLabel, 1, 2)
         proxyLayout.addWidget(self.filterModule, 2, 0)
         proxyLayout.addWidget(self.filterClass, 2, 1)
         proxyLayout.addWidget(self.filterNote, 2, 2)
@@ -125,8 +108,35 @@ class Window(QWidget):
         mainLayout.addWidget(proxyGroupBox)
         self.setLayout(mainLayout)
 
+        self.sort_mode = BY_MODULE
+        self.query_time = None
+
         self.setWindowTitle("Custom Sort/Filter Model")
         self.resize(800, 450)
+
+    def set_filters(self):
+        self.filterModule = QComboBox()
+        self.filterModule.addItem("All")
+        self.filterModuleLabel = QLabel("&Module Filter")
+        self.filterModuleLabel.setBuddy(self.filterModule)
+
+        self.filterClass = QComboBox()
+        self.filterClass.addItem("All")
+        self.filterClassLabel = QLabel("&Class Filter")
+        self.filterClassLabel.setBuddy(self.filterClass)
+
+        self.filterNote = QComboBox()
+        self.filterNote.addItem("All")
+        self.filterNote.addItem("Not blank")
+        self.filterNoteLabel = QLabel("&Note Filter")
+        self.filterNoteLabel.setBuddy(self.filterNote)
+
+        self.filterModule.currentIndexChanged.connect(self.textFilterChanged)
+        self.filterClass.currentIndexChanged.connect(self.textFilterChanged)
+        self.filterNote.currentIndexChanged.connect(self.textFilterChanged)
+
+        self.textFilterChanged()
+        self.set_filters_combo()
 
     def set_filters_combo(self):
         curs = self.conn.cursor()
@@ -170,7 +180,7 @@ class Window(QWidget):
         {'First level only': self.first_only,
          'sort by level': self.sort_by_level,
          'sort by module': self.sort_by_module,
-         }[act](method_ids)
+         }[act](method_ids, method_names)
 
     def get_selected_methods(self):
         """
@@ -180,19 +190,20 @@ class Window(QWidget):
         @return: ids, methods
         """
         self.resView.clear()
-        self.resView.append(ttl_sel)
         indexes = self.proxyView.selectionModel().selectedRows()
         methods = []
         for idx in indexes:
             sql_par = self.proxyModel.get_data(idx)
             methods.append(sql_par)
         ids = exec_sql0(self.conn, meth.format(
-            "','".join(tab_list(methods, ''))
+            "','".join(tab_list(methods, delim=''))
         ))
-        report_append(self.resView, tab_list(methods))
+        tt = datetime.now()
+        self.query_time = (tt.strftime("%b%d"), tt.strftime("%H:%M:%S"))
+        self.resView.append(rep_head.format(self.query_time[0]))
         return [x[0] for x in ids], methods
 
-    def first_only(self, ids):
+    def first_only(self, ids, names):
         """
         Show lists of methods that is immediate child / parent
         ie. only from first level
@@ -204,82 +215,113 @@ class Window(QWidget):
         {1: self.first_1,
          2: self.first_2,
          'more than 2': self.first_more_than_2,
-         }[opt](ids)
+         }[opt](ids, names)
 
-    def first_1(self, ids):
+    def first_1(self, ids, names):
         """
         Only one method selected
-        @param ids: - index of method
+        @param ids: - index of method - tuple of length 1
         @return: None
         """
-        self.resView.append(ttl_what)
+        pre = (self.query_time[1], 'Sel',' {:04d}'.format(ids[0]))
+        report_append(self.resView, names, pre=pre)
         lst = self.first_1_part(ids, what_call_1st_lvl)
-        report_append(self.resView, lst)
+        pre = (self.query_time[1], 'What', '')
+        report_append(self.resView, lst, pre=pre)
 
-        self.resView.append(ttl_from)
         lst = self.first_1_part(ids, called_from_1st_lvl)
-        report_append(self.resView, lst)
+        pre = (self.query_time[1], 'From', '')
+        report_append(self.resView, lst, pre=pre)
 
     def first_1_part(self, ids, sql):
         lst = exec_sql(self.conn, ids, sql)
         return tab_str_list(lst)
 
-    def first_2(self, ids):
+    def first_2(self, ids, names):
         """
         Two methods selected.
-        Show 8 lists - see eight_lists variable
+        Show 8 lists -
+        1) called from any of both methods
+        2) called from first method but not from second
+        3) called from second method but not from first
+        4) called from first and from second methods
+        5) call any of first and second method
+        6) call only first method but not second
+        7) call only second method but not first
+        8) call both first and second methods
+        (time, {what|from}, {A | B, A - B, B - A, A & B}, module, class, method
         @param ids: indexes of two methods
         @return: None
         """
-        eight_lists = ('1) called from any of both methods',
-                       '2) called from first method but not from second',
-                       '3) called from second method but not from first',
-                       '4) called from first and from second methods',
-                       '5) call any of first and second method',
-                       '6) call only first method but not second',
-                       '7) call only second method but not first',
-                       '8) call both first and second methods',
-                       )
+        pre = (self.query_time[1], 'Sel')
+        n_names = [('A', *names[0]), ('B', *names[1])]
+        report_append(self.resView, tab_list(n_names), pre=pre)
 
-        self.resView.append(ttl_what)
+        # self.resView.append(ttl_what)
         lst_a = self.first_1_part((ids[0],), what_call_1st_lvl)
         lst_b = self.first_1_part((ids[1],), what_call_1st_lvl)
 
-        self.report_four(lst_a, lst_b, eight_lists)
+        self.report_four(lst_a, lst_b, "What")
 
-        self.resView.append(ttl_from)
+        # self.resView.append(ttl_from)
         lst_a = self.first_1_part((ids[0],), called_from_1st_lvl)
         lst_b = self.first_1_part((ids[1],), called_from_1st_lvl)
 
-        self.report_four(lst_a, lst_b, eight_lists[4:])
+        self.report_four(lst_a, lst_b, "From")
 
-    def report_four(self, lst_a, lst_b, ttls):
-        self.resView.append(ttls[0])
-        report_append(self.resView, list(set(lst_a) | set(lst_b)))
-        self.resView.append(ttls[1])
-        report_append(self.resView, list(set(lst_a) - set(lst_b)))
-        self.resView.append(ttls[2])
-        report_append(self.resView, list(set(lst_b) - set(lst_a)))
-        self.resView.append(ttls[3])
-        report_append(self.resView, list(set(lst_a) & set(lst_b)))
+    def report_four(self, lst_a, lst_b, what):
+        report_append(self.resView, list(set(lst_a) | set(lst_b)),
+                      pre=(self.query_time[1], what, 'A | B'))
+        report_append(self.resView, list(set(lst_a) - set(lst_b)),
+                      pre=(self.query_time[1], what, 'A - B'))
+        report_append(self.resView, list(set(lst_b) - set(lst_a)),
+                      pre=(self.query_time[1], what, 'B - A'))
+        report_append(self.resView, list(set(lst_a) & set(lst_b)),
+                      pre=(self.query_time[1], what, 'A & B'))
 
     def first_more_than_2(self, ids):
         pass
 
-    def sort_by_level(self, ids):
+    def sort_by_level(self, ids, names):
         """
         Show lists of methods sorted by level
         @param ids: indexes of selected methods
+        @param names: selected methods as (module, class, method) list
         @return: None
         """
-        pass
+        self.sort_mode = BY_LEVEL
+        self.sel_count_handle(names)
 
-    def sort_by_module(self, idx):
+    def sort_by_module(self, ids, names):
         """
         Show lists of methods sorted by module name
         @param ids: indexes of selected methods
+        @param names: selected methods as (module, class, method) list
         @return: None
         """
+        self.sort_mode = BY_MODULE
+        self.sel_count_handle(ids, names)
+
+    def sel_count_handle(self, ids, names):
+        """
+        This method does the same as the "first_only" method
+        @param names: selected methods as (module, class, method) list
+        @return:
+        """
+        opt = len(ids) if len(ids) < 3 else 'more than 2'
+        logger.debug(opt)
+        {1: self.do_1,
+         2: self.do_2,
+         'more than 2': self.do_more_than_2,
+         }[opt](ids, names)
+
+    def do_1(self, ids, names):
+        pass
+
+    def do_2(self, ids, names):
+        pass
+
+    def do_more_than_2(self, ids, names):
         pass
 
 
@@ -300,7 +342,9 @@ def exec_sql0(conn, sql: str):
 
 def tab_list(lst: list, delim: str = '\t') -> list:
     res = []
+    logger.debug(delim)
     for ll in lst:
+        logger.debug(ll)
         res.append(delim.join(ll))
     return res
 
@@ -312,29 +356,16 @@ def tab_str_list(lst: list, delim: str = '\t') -> list:
     return res
 
 
-def report_append(report: list, lst: list):
+def report_append(report: list, lst: list, pre: str = '', post: str = ''):
     for ll in lst:
-        report.append(ll)
+        logger.debug((*pre, ll, *post))
+        report.append('\t'.join((*pre, ll, *post)))
 
 
-ttl_sel = '<============== Selected Methods ======================>'
-ttl_what = '<---------------- what   call ------------------------->'
-ttl_from = '<---------------- called from ------------------------->'
+rep_head = '<============== {} ==============>'
 curr_id = 'select id from methods2 where module = ? and class = ? and method = ?;'
 meth = "select id from methods2 where module || class || method in ('{}');"
-
-what_call_lvl_ord = ('select a.module, a.class, a.method, b.level '
-                     'from simple_link b join methods2 a on a.id = b.id '
-                     'where b.call_id = ? order by b.level, a.module, a.class, a.method;')
-called_from_lvl_ord = ('select a.module, a.class, a.method, b.level '
-                       'from simple_link b join methods2 a on a.id = b.call_id '
-                       'where b.id = ? order by b.level, a.module, a.class, a.method;')
-what_call_mod_ord = ('select a.module, a.class, a.method, b.level '
-                     'from simple_link b join methods2 a on a.id = b.id '
-                     'where b.call_id = ? order by a.module, b.level, a.method;')
-called_from_mod_ord = ('select a.module, a.class, a.method, b.level '
-                       'from simple_link b join methods2 a on a.id = b.call_id '
-                       'where b.id = ? order by a.module, b.level, a.method;')
+# first level links only
 what_call_1st_lvl = ('select a.module, a.class, a.method, b.level '
                      'from simple_link b join methods2 a on a.id = b.id '
                      'where b.call_id = ? and b.level = 1 '
@@ -343,11 +374,32 @@ called_from_1st_lvl = ('select a.module, a.class, a.method, b.level '
                        'from simple_link b join methods2 a on a.id = b.call_id '
                        'where b.id = ? and b.level = 1 '
                        'order by a.module, a.class, a.method;')
-sqls = {
-    'First level only': (what_call_1st_lvl, called_from_1st_lvl),
-    'order by level': (what_call_lvl_ord, called_from_lvl_ord),
-    'order by module': (what_call_mod_ord, called_from_mod_ord),
-}
+# all links
+what_call_1 = ('select a.module, a.class, a.method, b.level '
+               'from simple_link b join methods2 a on a.id = b.id '
+               'where b.call_id = ?;')
+what_call_3 = ('select a.module, a.class, a.method, b.level '
+               'from simple_link b join methods2 a on a.id = b.id '
+               "where b.call_id in ('{}');")
+called_from_1 = ('select a.module, a.class, a.method, b.level '
+                 'from simple_link b join methods2 a on a.id = b.call_id '
+                 'where b.id = ?;')
+called_from_3 = ('select a.module, a.class, a.method, b.level '
+                 'from simple_link b join methods2 a on a.id = b.call_id '
+                 "where b.id in ('{}');")
+# links inside the selected module only
+what_call_1_m = ('select a.module, a.class, a.method, b.level '
+                 'from simple_link b join methods2 a on a.id = b.id '
+                 'where b.call_id = ?;')
+what_call_3_m = ('select a.module, a.class, a.method, b.level '
+                 'from simple_link b join methods2 a on a.id = b.id '
+                 "where b.call_id in ('{}');")
+called_from_1_m = ('select a.module, a.class, a.method, b.level '
+                   'from simple_link b join methods2 a on a.id = b.call_id '
+                   'where b.id = ?;')
+called_from_3_m = ('select a.module, a.class, a.method, b.level '
+                   'from simple_link b join methods2 a on a.id = b.call_id '
+                   "where b.id in ('{}');")
 
 
 def addItem(model, id, module, class_, method, note):
