@@ -6,6 +6,7 @@ import sqlite3
 from pathlib import Path
 from loguru import logger
 from datetime import datetime
+from collections.abc import Iterable
 
 BY_MODULE, BY_LEVEL = range(2)
 
@@ -171,7 +172,6 @@ class Window(QWidget):
                                        self.filterNote.currentText())
 
     def menu_action(self, act: str):
-        logger.debug(act)
         if act == 'Cancel':
             return
 
@@ -184,9 +184,9 @@ class Window(QWidget):
 
     def get_selected_methods(self):
         """
-        Returns two lists:
-        1) ids of selected methods
-        2) full names of selected methods
+        Returns two lists for rows selected in the proxyView:
+        1) ids - id-s of selected methods
+        2) methods - full names of selected methods, ie. (module, class, method)
         @return: ids, methods
         """
         self.resView.clear()
@@ -195,12 +195,15 @@ class Window(QWidget):
         for idx in indexes:
             sql_par = self.proxyModel.get_data(idx)
             methods.append(sql_par)
-        ids = exec_sql0(self.conn, meth.format(
-            "','".join(tab_list(methods, delim=''))
-        ))
+
+        ids = self.exec_sql_f(meth,
+                              ("','".join(tab_list(methods, delim='')),)
+                              )
+
         tt = datetime.now()
-        self.query_time = (tt.strftime("%b%d"), tt.strftime("%H:%M:%S"))
+        self.query_time = (tt.strftime("%b %d"), tt.strftime("%H:%M:%S"))
         self.resView.append(rep_head.format(self.query_time[0]))
+
         return [x[0] for x in ids], methods
 
     def first_only(self, ids, names):
@@ -211,7 +214,6 @@ class Window(QWidget):
         @return:
         """
         opt = len(ids) if len(ids) < 3 else 'more than 2'
-        logger.debug(opt)
         {1: self.first_1,
          2: self.first_2,
          'more than 2': self.first_more_than_2,
@@ -221,10 +223,12 @@ class Window(QWidget):
         """
         Only one method selected
         @param ids: - index of method - tuple of length 1
+        @param names: - list of (module, class, method)
         @return: None
         """
-        pre = (self.query_time[1], 'Sel',' {:04d}'.format(ids[0]))
-        report_append(self.resView, names, pre=pre)
+        pre = (self.query_time[1], 'Sel', '')
+        report_append(self.resView, names, pre=pre,
+                      post=('', '{:04d}'.format(ids[0]),))
         lst = self.first_1_part(ids, what_call_1st_lvl)
         pre = (self.query_time[1], 'What', '')
         report_append(self.resView, lst, pre=pre)
@@ -234,8 +238,8 @@ class Window(QWidget):
         report_append(self.resView, lst, pre=pre)
 
     def first_1_part(self, ids, sql):
-        lst = exec_sql(self.conn, ids, sql)
-        return tab_str_list(lst)
+        lst = self.exec_sql_b(sql, ids)
+        return [(*map(str, x),) for x in lst]
 
     def first_2(self, ids, names):
         """
@@ -255,7 +259,8 @@ class Window(QWidget):
         """
         pre = (self.query_time[1], 'Sel')
         n_names = [('A', *names[0]), ('B', *names[1])]
-        report_append(self.resView, tab_list(n_names), pre=pre)
+        logger.debug('A + B')
+        report_append(self.resView, n_names, pre=pre)
 
         # self.resView.append(ttl_what)
         lst_a = self.first_1_part((ids[0],), what_call_1st_lvl)
@@ -265,22 +270,62 @@ class Window(QWidget):
 
         # self.resView.append(ttl_from)
         lst_a = self.first_1_part((ids[0],), called_from_1st_lvl)
+        logger.debug(lst_a)
         lst_b = self.first_1_part((ids[1],), called_from_1st_lvl)
+        logger.debug(lst_b)
 
         self.report_four(lst_a, lst_b, "From")
 
     def report_four(self, lst_a, lst_b, what):
+        logger.debug('A | B')
         report_append(self.resView, list(set(lst_a) | set(lst_b)),
                       pre=(self.query_time[1], what, 'A | B'))
+        logger.debug('A - B')
         report_append(self.resView, list(set(lst_a) - set(lst_b)),
                       pre=(self.query_time[1], what, 'A - B'))
+        logger.debug('B - A')
         report_append(self.resView, list(set(lst_b) - set(lst_a)),
                       pre=(self.query_time[1], what, 'B - A'))
+        logger.debug('A & B')
         report_append(self.resView, list(set(lst_a) & set(lst_b)),
                       pre=(self.query_time[1], what, 'A & B'))
 
-    def first_more_than_2(self, ids):
-        pass
+    def first_more_than_2(self, ids, names):
+        logger.debug(ids)
+        pre = (self.query_time[1], 'Sel')
+        n_names = [('', *x[0], x[1].rjust(4)) for x in zip(names, ids)]
+        report_append(self.resView, n_names, pre=pre)
+
+        param=(what_id, what_call_3, 'What', 'ALL', 'ANY')
+        self.report_23(ids, param)
+
+        param=(from_id, called_from_3, 'From', 'ALL', 'ANY')
+        self.report_23(ids, param)
+
+    def report_23(self, ids, param):
+        links = self.exec_sql_2(ids, param[0])
+        rep_prep = pre_report(links)
+
+        if rep_prep[0]:
+            logger.debug(len(rep_prep[0]))
+            cc = self.exec_sql_f(param[1], (','.join((rep_prep[0])),))
+            logger.debug(cc)
+            pre = (self.query_time[1], param[2], param[3])
+            report_append(self.resView, cc, pre=pre)
+
+        if rep_prep[1]:
+            cc = self.exec_sql_f(param[1], (','.join((rep_prep[1])),))
+            logger.debug(cc)
+            pre = (self.query_time[1], param[2], param[4])
+            report_append(self.resView, cc, pre=pre)
+
+    def exec_sql_2(self, ids, sql):
+        res = []
+        curs = self.conn.cursor()
+        for id_ in ids:
+            w_id = curs.execute(sql, (id_,))
+            res.append([str(x[0]) for x in w_id])
+        return res
 
     def sort_by_level(self, ids, names):
         """
@@ -324,20 +369,46 @@ class Window(QWidget):
     def do_more_than_2(self, ids, names):
         pass
 
+    def exec_sql_b(self, sql: str, sql_par: tuple):
+        """
+        exesute SQL - bind parameters with '?'
+        @param sql:
+        @param sql_par:
+        @return: cursor
+        """
+        curs = self.conn.cursor()
+        logger.debug(sql)
+        logger.debug(sql_par)
+        cc = curs.execute(sql, sql_par)
+        return [(*map(str, x),) for x in cc]
 
-def exec_sql(conn, sql_par: tuple, sql: str):
-    curs = conn.cursor()
-    logger.debug(sql)
-    logger.debug(sql_par)
-    cc = curs.execute(sql, sql_par).fetchall()
-    return cc
+    def exec_sql_f(self, sql: str, sql_par: tuple):
+        """
+        exesute SQL - insert parameters into SQL with str.format method
+        @param sql:
+        @param sql_par:
+        @return: cursor
+        """
+        curs = self.conn.cursor()
+        logger.debug(sql_par)
+        logger.debug(sql.format(*sql_par))
+        cc = curs.execute(sql.format(*sql_par))
+        return [(*map(str, x),) for x in cc]
 
 
-def exec_sql0(conn, sql: str):
-    curs = conn.cursor()
-    logger.debug(sql)
-    cc = curs.execute(sql).fetchall()
-    return cc
+def pre_report(list_of_tuples):
+    logger.debug(list_of_tuples)
+    if not list_of_tuples:
+        return (), ()
+    all_ = any_ = set(list_of_tuples[0])
+    for tpl in list_of_tuples:
+        tt = set(tpl)
+        all_ = all_ & tt
+        any_ = any_ | tt
+
+    logger.debug(all_)
+    logger.debug(any_)
+    return all_, any_
 
 
 def tab_list(lst: list, delim: str = '\t') -> list:
@@ -349,22 +420,23 @@ def tab_list(lst: list, delim: str = '\t') -> list:
     return res
 
 
-def tab_str_list(lst: list, delim: str = '\t') -> list:
-    res = []
-    for ll in lst:
-        res.append(delim.join([x for x in map(str, ll)]))
-    return res
+# def tab_str_list(lst: list, delim: str = '\t') -> list:
+#     res = []
+#     for ll in lst:
+#         res.append(delim.join([x for x in map(str, ll)]))
+#     return res
 
 
-def report_append(report: list, lst: list, pre: str = '', post: str = ''):
+def report_append(report: list, lst: Iterable, pre: Iterable = '', post: Iterable = ''):
     for ll in lst:
-        logger.debug((*pre, ll, *post))
-        report.append('\t'.join((*pre, ll, *post)))
+        report.append('\t'.join((*pre, *ll, *post)))
 
 
 rep_head = '<============== {} ==============>'
 curr_id = 'select id from methods2 where module = ? and class = ? and method = ?;'
 meth = "select id from methods2 where module || class || method in ('{}');"
+what_id = 'select id from simple_link where call_id = ?;'
+from_id = 'select call_id from simple_link where id = ?;'
 # first level links only
 what_call_1st_lvl = ('select a.module, a.class, a.method, b.level '
                      'from simple_link b join methods2 a on a.id = b.id '
@@ -380,26 +452,26 @@ what_call_1 = ('select a.module, a.class, a.method, b.level '
                'where b.call_id = ?;')
 what_call_3 = ('select a.module, a.class, a.method, b.level '
                'from simple_link b join methods2 a on a.id = b.id '
-               "where b.call_id in ('{}');")
+               'where b.call_id in ({});')
 called_from_1 = ('select a.module, a.class, a.method, b.level '
                  'from simple_link b join methods2 a on a.id = b.call_id '
                  'where b.id = ?;')
 called_from_3 = ('select a.module, a.class, a.method, b.level '
                  'from simple_link b join methods2 a on a.id = b.call_id '
-                 "where b.id in ('{}');")
+                 'where b.id in ({});')
 # links inside the selected module only
 what_call_1_m = ('select a.module, a.class, a.method, b.level '
                  'from simple_link b join methods2 a on a.id = b.id '
                  'where b.call_id = ?;')
 what_call_3_m = ('select a.module, a.class, a.method, b.level '
                  'from simple_link b join methods2 a on a.id = b.id '
-                 "where b.call_id in ('{}');")
+                 'where b.call_id in ({});')
 called_from_1_m = ('select a.module, a.class, a.method, b.level '
                    'from simple_link b join methods2 a on a.id = b.call_id '
                    'where b.id = ?;')
 called_from_3_m = ('select a.module, a.class, a.method, b.level '
                    'from simple_link b join methods2 a on a.id = b.call_id '
-                   "where b.id in ('{}');")
+                   'where b.id in ({});')
 
 
 def addItem(model, id, module, class_, method, note):
