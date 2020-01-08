@@ -127,7 +127,7 @@ def fill_methods(con_, file_):
         for line in fl:
             if line.strip():
                 ll = line.strip().split(',')
-                curs.execute(ins1, ll[1:])                   # into methods
+                curs.execute(ins1, ll[1:8])                   # into methods
 
         con_.commit()
 
@@ -207,15 +207,17 @@ def deep_link(con_, id: int, cal_id: int, lvl: int):
 
 
 if __name__ == "__main__":
+    print('|--> input:', in_file)
+    print('|-->    db:', DB)
+
     conn = sqlite3.connect(DB)
+    # either
     conn.execute('delete from methods2;')
     conn.execute('delete from link_path;')
     conn.execute('delete from simple_link;')
-
+    # or
     # drop_tables(conn)
     # create_tables(conn)
-    print('|--> input:', in_file)
-    print('|-->    db:', DB)
 
     fill_methods(conn, in_file)
 
