@@ -8,6 +8,25 @@ from loguru import logger
 from datetime import datetime
 from collections.abc import Iterable
 
+# ---------------------------------------------------------
+# doesn't catch exception without this code in Windows ! ! !
+import sys
+_excepthook = sys.excepthook
+
+
+def my_exception_hook(exc_, value, traceback):
+    # Print the error and traceback
+    # logger.debug(f'{exc_}, {value}, {traceback}')
+    print(traceback)
+    # Call the normal Exception hook after
+    _excepthook(exc_, value, traceback)
+    sys.exit(1)
+
+
+sys.excepthook = my_exception_hook
+# ---------------------------------------------------------
+
+
 BY_MODULE, BY_LEVEL = range(2)
 
 class MySortFilterProxyModel(QSortFilterProxyModel):
@@ -47,21 +66,17 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
 
     def get_data(self, index):
         """
-        Get data from three first columns of current row
+        Get module, class, method from current row
         @param index: index of current row
         @return: module, class, method from current row
-        Is it possible to get the same result with the following code: ???
-        parent = self.parent(index)
-        row = index.row()
-        idx_n = self.mapToSource(self.index(row, n, parent)
         """
         if index.isValid():
-            parent = self.sourceModel().parent(index)
-            row = self.mapToSource(index).row()
+            parent = self.parent(index)
+            row = index.row()
 
-            idx0 = self.sourceModel().index(row, 0, parent)
-            idx1 = self.sourceModel().index(row, 1, parent)
-            idx2 = self.sourceModel().index(row, 2, parent)
+            idx0 = self.mapToSource(self.index(row, 0, parent))
+            idx1 = self.mapToSource(self.index(row, 1, parent))
+            idx2 = self.mapToSource(self.index(row, 2, parent))
 
             return (self.sourceModel().data(idx0),
                     self.sourceModel().data(idx1),
@@ -228,7 +243,7 @@ class Window(QWidget):
         """
         pre = (self.query_time[1], 'Sel', '')
         report_append(self.resView, names, pre=pre,
-                      post=('', '{:04d}'.format(ids[0]),))
+                      post=('', ids[0].rjust(4),))
         lst = self.first_1_part(ids, what_call_1st_lvl)
         pre = (self.query_time[1], 'What', '')
         report_append(self.resView, lst, pre=pre)
