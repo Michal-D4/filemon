@@ -448,10 +448,15 @@ def report_append(report: list, lst: Iterable, pre: Iterable = '', post: Iterabl
 
 
 rep_head = '<============== {} ==============>'
+# id from methods2 by method's name
 curr_id = 'select id from methods2 where module = ? and class = ? and method = ?;'
+# method id-s from methods2 by their names
 meth = "select id from methods2 where module || class || method in ('{}');"
+# id-s of methods called from given method id
 what_id = 'select id from simple_link where call_id = ?;'
+# id-s of methods that call given method id
 from_id = 'select call_id from simple_link where id = ?;'
+# The following SQL-s - to display methods in the list
 # first level links only
 what_call_1st_lvl = ('select a.module, a.class, a.method, b.level '
                      'from simple_link b join methods2 a on a.id = b.id '
