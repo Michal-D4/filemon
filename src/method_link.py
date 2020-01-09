@@ -242,8 +242,8 @@ class Window(QWidget):
         @return: None
         """
         pre = (self.query_time[1], 'Sel', '')
-        report_append(self.resView, names, pre=pre,
-                      post=('', ids[0].rjust(4),))
+        report_append(self.resView, names, pre=pre)
+
         lst = self.first_1_part(ids, what_call_1st_lvl)
         pre = (self.query_time[1], 'What', '')
         report_append(self.resView, lst, pre=pre)
@@ -274,7 +274,6 @@ class Window(QWidget):
         """
         pre = (self.query_time[1], 'Sel')
         n_names = [('A', *names[0]), ('B', *names[1])]
-        logger.debug('A + B')
         report_append(self.resView, n_names, pre=pre)
 
         # self.resView.append(ttl_what)
@@ -285,9 +284,7 @@ class Window(QWidget):
 
         # self.resView.append(ttl_from)
         lst_a = self.first_1_part((ids[0],), called_from_1st_lvl)
-        logger.debug(lst_a)
         lst_b = self.first_1_part((ids[1],), called_from_1st_lvl)
-        logger.debug(lst_b)
 
         self.report_four(lst_a, lst_b, "From")
 
@@ -307,9 +304,8 @@ class Window(QWidget):
 
     def first_more_than_2(self, ids, names):
         logger.debug(ids)
-        pre = (self.query_time[1], 'Sel')
-        n_names = [('', *x[0], x[1].rjust(4)) for x in zip(names, ids)]
-        report_append(self.resView, n_names, pre=pre)
+        pre = (self.query_time[1], 'Sel', '')
+        report_append(self.resView, names, pre=pre)
 
         param=(what_id, what_call_3, 'What', 'ALL', 'ANY')
         self.report_23(ids, param)
@@ -350,7 +346,7 @@ class Window(QWidget):
         @return: None
         """
         self.sort_mode = BY_LEVEL
-        self.sel_count_handle(names)
+        self.sel_count_handle(ids, names)
 
     def sort_by_module(self, ids, names):
         """
@@ -365,6 +361,7 @@ class Window(QWidget):
     def sel_count_handle(self, ids, names):
         """
         This method does the same as the "first_only" method
+        @param ids: db id-s of selected methods
         @param names: selected methods as (module, class, method) list
         @return:
         """
@@ -376,13 +373,44 @@ class Window(QWidget):
          }[opt](ids, names)
 
     def do_1(self, ids, names):
-        pass
+        """
+        Only one method selected
+        @param ids: - index of method - tuple of length 1
+        @param names: - list of (module, class, method)
+        @return: None
+        """
+        pre = (self.query_time[1], 'Sel', '')
+        report_append(self.resView, names, pre=pre)
+
+        what_sql = prep_sql(what_call_1,
+                            self.filterModule.currentText(),
+                            self.filterClass.currentText())
+        from_sql = prep_sql(called_from_1,
+                            self.filterModule.currentText(),
+                            self.filterClass.currentText())
+        lst = self.first_1_part(ids, what_sql)
+        pre = (self.query_time[1], 'What', '')
+        report_append(self.resView, lst, pre=pre)
+
+        lst = self.first_1_part(ids, from_sql)
+        pre = (self.query_time[1], 'From', '')
+        report_append(self.resView, lst, pre=pre)
 
     def do_2(self, ids, names):
-        pass
+        what_sql = prep_sql(what_call_1,
+                            self.filterModule.currentText(),
+                            self.filterClass.currentText())
+        from_sql = prep_sql(called_from_1,
+                            self.filterModule.currentText(),
+                            self.filterClass.currentText())
 
     def do_more_than_2(self, ids, names):
-        pass
+        what_sql = prep_sql(what_call_3,
+                            self.filterModule.currentText(),
+                            self.filterClass.currentText())
+        from_sql = prep_sql(called_from_3,
+                            self.filterModule.currentText(),
+                            self.filterClass.currentText())
 
     def exec_sql_b(self, sql: str, sql_par: tuple):
         """
@@ -421,9 +449,16 @@ def pre_report(list_of_tuples):
         all_ = all_ & tt
         any_ = any_ | tt
 
-    logger.debug(all_)
-    logger.debug(any_)
     return all_, any_
+
+
+def prep_sql(sql: str, mod: str, cls:str) -> str:
+    logger.debug(mod + '|' + cls)
+    rr = '' if mod == 'All' else where_mod.format(mod)
+    return (sql +
+            ('' if mod == 'All' else where_mod.format(mod)) +
+            ('' if cls == 'All' else where_cls.format(cls))
+            )
 
 
 def tab_list(lst: list, delim: str = '\t') -> list:
@@ -435,21 +470,12 @@ def tab_list(lst: list, delim: str = '\t') -> list:
     return res
 
 
-# def tab_str_list(lst: list, delim: str = '\t') -> list:
-#     res = []
-#     for ll in lst:
-#         res.append(delim.join([x for x in map(str, ll)]))
-#     return res
-
-
 def report_append(report: list, lst: Iterable, pre: Iterable = '', post: Iterable = ''):
     for ll in lst:
         report.append('\t'.join((*pre, *ll, *post)))
 
 
 rep_head = '<============== {} ==============>'
-# id from methods2 by method's name
-curr_id = 'select id from methods2 where module = ? and class = ? and method = ?;'
 # method id-s from methods2 by their names
 meth = "select id from methods2 where module || class || method in ('{}');"
 # id-s of methods called from given method id
@@ -466,32 +492,21 @@ called_from_1st_lvl = ('select a.module, a.class, a.method, b.level '
                        'from simple_link b join methods2 a on a.id = b.call_id '
                        'where b.id = ? and b.level = 1 '
                        'order by a.module, a.class, a.method;')
-# all links
+# all levels
 what_call_1 = ('select a.module, a.class, a.method, b.level '
                'from simple_link b join methods2 a on a.id = b.id '
-               'where b.call_id = ?;')
-what_call_3 = ('select a.module, a.class, a.method, b.level '
-               'from simple_link b join methods2 a on a.id = b.id '
-               'where b.call_id in ({});')
+               'where b.call_id = ? ')
 called_from_1 = ('select a.module, a.class, a.method, b.level '
                  'from simple_link b join methods2 a on a.id = b.call_id '
-                 'where b.id = ?;')
+                 'where b.id = ? ')
+what_call_3 = ('select a.module, a.class, a.method, b.level '
+               'from simple_link b join methods2 a on a.id = b.id '
+               'where b.call_id in ({}) ')
 called_from_3 = ('select a.module, a.class, a.method, b.level '
                  'from simple_link b join methods2 a on a.id = b.call_id '
-                 'where b.id in ({});')
-# links inside the selected module only
-what_call_1_m = ('select a.module, a.class, a.method, b.level '
-                 'from simple_link b join methods2 a on a.id = b.id '
-                 'where b.call_id = ?;')
-what_call_3_m = ('select a.module, a.class, a.method, b.level '
-                 'from simple_link b join methods2 a on a.id = b.id '
-                 'where b.call_id in ({});')
-called_from_1_m = ('select a.module, a.class, a.method, b.level '
-                   'from simple_link b join methods2 a on a.id = b.call_id '
-                   'where b.id = ?;')
-called_from_3_m = ('select a.module, a.class, a.method, b.level '
-                   'from simple_link b join methods2 a on a.id = b.call_id '
-                   'where b.id in ({});')
+                 'where b.id in ({}) ')
+where_mod = "and a.module = '{}' "
+where_cls = "and a.class = '{}' "
 
 
 def addItem(model, id, module, class_, method, note):
