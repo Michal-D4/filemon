@@ -192,7 +192,7 @@ class Window(QWidget):
 
         method_ids, method_names = self.get_selected_methods()
 
-        {'First level only': self.first_only,
+        {'First level only': self.first_level_only,
          'sort by level': self.sort_by_level,
          'sort by module': self.sort_by_module,
          }[act](method_ids, method_names)
@@ -221,13 +221,14 @@ class Window(QWidget):
 
         return [x[0] for x in ids], methods
 
-    def first_only(self, ids, names):
+    def first_level_only(self, ids, names):
         """
         Show lists of methods that is immediate child / parent
         ie. only from first level
         @param ids: indexes of selected methods
         @return:
         """
+        self.sort_mode = BY_MODULE
         opt = len(ids) if len(ids) < 3 else 'more than 2'
         {1: self.first_1,
          2: self.first_2,
@@ -241,14 +242,21 @@ class Window(QWidget):
         @param names: - list of (module, class, method)
         @return: None
         """
+        self.selected_only_one(ids, names, 1)
+
+    def selected_only_one(self, ids, names, lvl):
         pre = (self.query_time[1], 'Sel', '')
         report_append(self.resView, names, pre=pre)
-
-        lst = self.first_1_part(ids, what_call_1st_lvl)
+        what_sql = prep_sql(what_call_1,
+                            self.filterModule.currentText(),
+                            self.filterClass.currentText(), lvl)
+        lst = self.first_1_part(ids, what_sql)
         pre = (self.query_time[1], 'What', '')
         report_append(self.resView, lst, pre=pre)
-
-        lst = self.first_1_part(ids, called_from_1st_lvl)
+        from_sql = prep_sql(called_from_1,
+                            self.filterModule.currentText(),
+                            self.filterClass.currentText(), lvl)
+        lst = self.first_1_part(ids, from_sql)
         pre = (self.query_time[1], 'From', '')
         report_append(self.resView, lst, pre=pre)
 
@@ -272,20 +280,23 @@ class Window(QWidget):
         @param ids: indexes of two methods
         @return: None
         """
+        self.selected_exactly_two(ids, names, 1)
+
+    def selected_exactly_two(self, ids, names, lvl):
         pre = (self.query_time[1], 'Sel')
         n_names = [('A', *names[0]), ('B', *names[1])]
         report_append(self.resView, n_names, pre=pre)
-
-        # self.resView.append(ttl_what)
-        lst_a = self.first_1_part((ids[0],), what_call_1st_lvl)
-        lst_b = self.first_1_part((ids[1],), what_call_1st_lvl)
-
+        what_sql = prep_sql(what_call_1,
+                            self.filterModule.currentText(),
+                            self.filterClass.currentText(), lvl)
+        lst_a = self.first_1_part((ids[0],), what_sql)
+        lst_b = self.first_1_part((ids[1],), what_sql)
         self.report_four(lst_a, lst_b, "What")
-
-        # self.resView.append(ttl_from)
-        lst_a = self.first_1_part((ids[0],), called_from_1st_lvl)
-        lst_b = self.first_1_part((ids[1],), called_from_1st_lvl)
-
+        from_sql = prep_sql(called_from_1,
+                            self.filterModule.currentText(),
+                            self.filterClass.currentText(), lvl)
+        lst_a = self.first_1_part((ids[0],), from_sql)
+        lst_b = self.first_1_part((ids[1],), from_sql)
         self.report_four(lst_a, lst_b, "From")
 
     def report_four(self, lst_a, lst_b, what):
@@ -303,14 +314,20 @@ class Window(QWidget):
                       pre=(self.query_time[1], what, 'A & B'))
 
     def first_more_than_2(self, ids, names):
-        logger.debug(ids)
+        self.selected_more_than_two(ids, names, 1)
+
+    def selected_more_than_two(self, ids, names, lvl):
         pre = (self.query_time[1], 'Sel', '')
         report_append(self.resView, names, pre=pre)
-
-        param=(what_id, what_call_3, 'What', 'ALL', 'ANY')
+        what_sql = prep_sql(what_call_3,
+                            self.filterModule.currentText(),
+                            self.filterClass.currentText(), lvl)
+        param = (what_id, what_sql, 'What', 'ALL', 'ANY')
         self.report_23(ids, param)
-
-        param=(from_id, called_from_3, 'From', 'ALL', 'ANY')
+        from_sql = prep_sql(called_from_3,
+                            self.filterModule.currentText(),
+                            self.filterClass.currentText(), lvl)
+        param = (from_id, from_sql, 'From', 'ALL', 'ANY')
         self.report_23(ids, param)
 
     def report_23(self, ids, param):
@@ -366,7 +383,6 @@ class Window(QWidget):
         @return:
         """
         opt = len(ids) if len(ids) < 3 else 'more than 2'
-        logger.debug(opt)
         {1: self.do_1,
          2: self.do_2,
          'more than 2': self.do_more_than_2,
@@ -379,38 +395,13 @@ class Window(QWidget):
         @param names: - list of (module, class, method)
         @return: None
         """
-        pre = (self.query_time[1], 'Sel', '')
-        report_append(self.resView, names, pre=pre)
-
-        what_sql = prep_sql(what_call_1,
-                            self.filterModule.currentText(),
-                            self.filterClass.currentText())
-        from_sql = prep_sql(called_from_1,
-                            self.filterModule.currentText(),
-                            self.filterClass.currentText())
-        lst = self.first_1_part(ids, what_sql)
-        pre = (self.query_time[1], 'What', '')
-        report_append(self.resView, lst, pre=pre)
-
-        lst = self.first_1_part(ids, from_sql)
-        pre = (self.query_time[1], 'From', '')
-        report_append(self.resView, lst, pre=pre)
+        self.selected_only_one(ids, names, 0)
 
     def do_2(self, ids, names):
-        what_sql = prep_sql(what_call_1,
-                            self.filterModule.currentText(),
-                            self.filterClass.currentText())
-        from_sql = prep_sql(called_from_1,
-                            self.filterModule.currentText(),
-                            self.filterClass.currentText())
+        self.selected_exactly_two(ids, names, 0)
 
     def do_more_than_2(self, ids, names):
-        what_sql = prep_sql(what_call_3,
-                            self.filterModule.currentText(),
-                            self.filterClass.currentText())
-        from_sql = prep_sql(called_from_3,
-                            self.filterModule.currentText(),
-                            self.filterClass.currentText())
+        self.selected_more_than_two(ids, names, 0)
 
     def exec_sql_b(self, sql: str, sql_par: tuple):
         """
@@ -452,12 +443,13 @@ def pre_report(list_of_tuples):
     return all_, any_
 
 
-def prep_sql(sql: str, mod: str, cls:str) -> str:
+def prep_sql(sql: str, mod: str, cls:str, lvl: int = 0) -> str:
     logger.debug(mod + '|' + cls)
     rr = '' if mod == 'All' else where_mod.format(mod)
     return (sql +
             ('' if mod == 'All' else where_mod.format(mod)) +
-            ('' if cls == 'All' else where_cls.format(cls))
+            ('' if cls == 'All' else where_cls.format(cls)) +
+            (and_level if lvl else '')
             )
 
 
@@ -482,17 +474,7 @@ meth = "select id from methods2 where module || class || method in ('{}');"
 what_id = 'select id from simple_link where call_id = ?;'
 # id-s of methods that call given method id
 from_id = 'select call_id from simple_link where id = ?;'
-# The following SQL-s - to display methods in the list
-# first level links only
-what_call_1st_lvl = ('select a.module, a.class, a.method, b.level '
-                     'from simple_link b join methods2 a on a.id = b.id '
-                     'where b.call_id = ? and b.level = 1 '
-                     'order by a.module, a.class, a.method;')
-called_from_1st_lvl = ('select a.module, a.class, a.method, b.level '
-                       'from simple_link b join methods2 a on a.id = b.call_id '
-                       'where b.id = ? and b.level = 1 '
-                       'order by a.module, a.class, a.method;')
-# all levels
+
 what_call_1 = ('select a.module, a.class, a.method, b.level '
                'from simple_link b join methods2 a on a.id = b.id '
                'where b.call_id = ? ')
@@ -507,6 +489,7 @@ called_from_3 = ('select a.module, a.class, a.method, b.level '
                  'where b.id in ({}) ')
 where_mod = "and a.module = '{}' "
 where_cls = "and a.class = '{}' "
+and_level = 'and b.level = 1 '
 
 
 def addItem(model, id, module, class_, method, note):
@@ -540,10 +523,10 @@ if __name__ == "__main__":
     import sys
 
     logger.remove()
-    fmt = '<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | ' \
-          '<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> '   \
-          '- <level>{message}</level>'
-    logger.add(sys.stderr, level="DEBUG", format=fmt, enqueue = True)
+    # fmt = '<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | ' \
+    #       '<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> '   \
+    #       '- <level>{message}</level>'
+    # logger.add(sys.stderr, level="DEBUG", format=fmt, enqueue = True)
     logger.debug("logger DEBUG add")
 
     app = QApplication(sys.argv)
