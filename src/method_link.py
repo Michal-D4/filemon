@@ -7,6 +7,7 @@ from pathlib import Path
 from loguru import logger
 from datetime import datetime
 from collections.abc import Iterable
+import operator as op
 
 # ---------------------------------------------------------
 # doesn't catch exception without this code in Windows ! ! !
@@ -74,9 +75,9 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
             parent = self.parent(index)
             row = index.row()
 
-            idx0 = self.mapToSource(self.index(row, 0, parent))
-            idx1 = self.mapToSource(self.index(row, 1, parent))
-            idx2 = self.mapToSource(self.index(row, 2, parent))
+            idx0 = self.mapToSource(self.index(row, 1, parent))
+            idx1 = self.mapToSource(self.index(row, 2, parent))
+            idx2 = self.mapToSource(self.index(row, 3, parent))
 
             return (self.sourceModel().data(idx0),
                     self.sourceModel().data(idx1),
@@ -124,7 +125,7 @@ class Window(QWidget):
         mainLayout.addWidget(proxyGroupBox)
         self.setLayout(mainLayout)
 
-        self.sort_mode = BY_MODULE
+        self.rep_append = None
         self.query_time = None
 
         self.setWindowTitle("Custom Sort/Filter Model")
@@ -228,7 +229,7 @@ class Window(QWidget):
         @param ids: indexes of selected methods
         @return:
         """
-        self.sort_mode = BY_MODULE
+        self.rep_append = concrete_report(lambda row: ''.join(row[:3]))
         opt = len(ids) if len(ids) < 3 else 'more than 2'
         {1: self.first_1,
          2: self.first_2,
@@ -246,19 +247,19 @@ class Window(QWidget):
 
     def selected_only_one(self, ids, names, lvl):
         pre = (self.query_time[1], 'Sel', '')
-        report_append(self.resView, names, pre=pre)
+        self.rep_append(self.resView, names, pre=pre)
         what_sql = prep_sql(what_call_1,
                             self.filterModule.currentText(),
                             self.filterClass.currentText(), lvl)
         lst = self.first_1_part(ids, what_sql)
         pre = (self.query_time[1], 'What', '')
-        report_append(self.resView, lst, pre=pre)
+        self.rep_append(self.resView, lst, pre=pre)
         from_sql = prep_sql(called_from_1,
                             self.filterModule.currentText(),
                             self.filterClass.currentText(), lvl)
         lst = self.first_1_part(ids, from_sql)
         pre = (self.query_time[1], 'From', '')
-        report_append(self.resView, lst, pre=pre)
+        self.rep_append(self.resView, lst, pre=pre)
 
     def first_1_part(self, ids, sql):
         lst = self.exec_sql_b(sql, ids)
@@ -285,7 +286,7 @@ class Window(QWidget):
     def selected_exactly_two(self, ids, names, lvl):
         pre = (self.query_time[1], 'Sel')
         n_names = [('A', *names[0]), ('B', *names[1])]
-        report_append(self.resView, n_names, pre=pre)
+        self.rep_append(self.resView, n_names, pre=pre)
         what_sql = prep_sql(what_call_1,
                             self.filterModule.currentText(),
                             self.filterClass.currentText(), lvl)
@@ -301,24 +302,24 @@ class Window(QWidget):
 
     def report_four(self, lst_a, lst_b, what):
         logger.debug('A | B')
-        report_append(self.resView, list(set(lst_a) | set(lst_b)),
-                      pre=(self.query_time[1], what, 'A | B'))
+        self.rep_append(self.resView, list(set(lst_a) | set(lst_b)),
+                        pre=(self.query_time[1], what, 'A | B'))
         logger.debug('A - B')
-        report_append(self.resView, list(set(lst_a) - set(lst_b)),
-                      pre=(self.query_time[1], what, 'A - B'))
+        self.rep_append(self.resView, list(set(lst_a) - set(lst_b)),
+                        pre=(self.query_time[1], what, 'A - B'))
         logger.debug('B - A')
-        report_append(self.resView, list(set(lst_b) - set(lst_a)),
-                      pre=(self.query_time[1], what, 'B - A'))
+        self.rep_append(self.resView, list(set(lst_b) - set(lst_a)),
+                        pre=(self.query_time[1], what, 'B - A'))
         logger.debug('A & B')
-        report_append(self.resView, list(set(lst_a) & set(lst_b)),
-                      pre=(self.query_time[1], what, 'A & B'))
+        self.rep_append(self.resView, list(set(lst_a) & set(lst_b)),
+                        pre=(self.query_time[1], what, 'A & B'))
 
     def first_more_than_2(self, ids, names):
         self.selected_more_than_two(ids, names, 1)
 
     def selected_more_than_two(self, ids, names, lvl):
         pre = (self.query_time[1], 'Sel', '')
-        report_append(self.resView, names, pre=pre)
+        self.rep_append(self.resView, names, pre=pre)
         what_sql = prep_sql(what_call_3,
                             self.filterModule.currentText(),
                             self.filterClass.currentText(), lvl)
@@ -339,13 +340,13 @@ class Window(QWidget):
             cc = self.exec_sql_f(param[1], (','.join((rep_prep[0])),))
             logger.debug(cc)
             pre = (self.query_time[1], param[2], param[3])
-            report_append(self.resView, cc, pre=pre)
+            self.rep_append(self.resView, cc, pre=pre)
 
         if rep_prep[1]:
             cc = self.exec_sql_f(param[1], (','.join((rep_prep[1])),))
             logger.debug(cc)
             pre = (self.query_time[1], param[2], param[4])
-            report_append(self.resView, cc, pre=pre)
+            self.rep_append(self.resView, cc, pre=pre)
 
     def exec_sql_2(self, ids, sql):
         res = []
@@ -362,7 +363,7 @@ class Window(QWidget):
         @param names: selected methods as (module, class, method) list
         @return: None
         """
-        self.sort_mode = BY_LEVEL
+        self.rep_append = concrete_report(lambda row: ''.join((row[3].rjust(2), *row[:3])))
         self.sel_count_handle(ids, names)
 
     def sort_by_module(self, ids, names):
@@ -372,7 +373,7 @@ class Window(QWidget):
         @param names: selected methods as (module, class, method) list
         @return: None
         """
-        self.sort_mode = BY_MODULE
+        self.rep_append = concrete_report(lambda row: ''.join(row[:3]))
         self.sel_count_handle(ids, names)
 
     def sel_count_handle(self, ids, names):
@@ -382,6 +383,7 @@ class Window(QWidget):
         @param names: selected methods as (module, class, method) list
         @return:
         """
+        logger.debug(ids)
         opt = len(ids) if len(ids) < 3 else 'more than 2'
         {1: self.do_1,
          2: self.do_2,
@@ -462,12 +464,29 @@ def tab_list(lst: list, delim: str = '\t') -> list:
     return res
 
 
-def report_append(report: list, lst: Iterable, pre: Iterable = '', post: Iterable = ''):
-    for ll in lst:
-        report.append('\t'.join((*pre, *ll, *post)))
+def concrete_report(sort_key):
+    """
+    sort report list
+    @param sort_key: BY_MODULE = 0 or BY_LEVEL = 1
+    @return: function that appends report lines in the order of sort_key
+    """
+    def sorted_report(report: list, lst: list, pre: Iterable = '', post: Iterable = ''):
+        logger.debug(lst[-1])
+        if sort_key:
+            lst.sort(key=sort_key)
+        for ll in lst:
+            report.append('\t'.join((*pre, *ll, *post)))
+    return sorted_report
 
 
 rep_head = '<============== {} ==============>'
+memb_type = {
+    'm': 'method',
+    'sql': 'sql',
+    's': 'signal',
+    'c': 'constant',
+    'f': 'field',
+}
 # method id-s from methods2 by their names
 meth = "select id from methods2 where module || class || method in ('{}');"
 # id-s of methods called from given method id
@@ -475,16 +494,16 @@ what_id = 'select id from simple_link where call_id = ?;'
 # id-s of methods that call given method id
 from_id = 'select call_id from simple_link where id = ?;'
 
-what_call_1 = ('select a.module, a.class, a.method, b.level '
+what_call_1 = ('select a.type, a.module, a.class, a.method, b.level '
                'from simple_link b join methods2 a on a.id = b.id '
                'where b.call_id = ? ')
-called_from_1 = ('select a.module, a.class, a.method, b.level '
+called_from_1 = ('select a.type, a.module, a.class, a.method, b.level '
                  'from simple_link b join methods2 a on a.id = b.call_id '
                  'where b.id = ? ')
-what_call_3 = ('select a.module, a.class, a.method, b.level '
+what_call_3 = ('select a.type, a.module, a.class, a.method, b.level '
                'from simple_link b join methods2 a on a.id = b.id '
                'where b.call_id in ({}) ')
-called_from_3 = ('select a.module, a.class, a.method, b.level '
+called_from_3 = ('select a.type, a.module, a.class, a.method, b.level '
                  'from simple_link b join methods2 a on a.id = b.call_id '
                  'where b.id in ({}) ')
 where_mod = "and a.module = '{}' "
@@ -492,23 +511,23 @@ where_cls = "and a.class = '{}' "
 and_level = 'and b.level = 1 '
 
 
-def addItem(model, id, module, class_, method, note):
+def addItem(model, id, type, module, class_, method, note):
     model.insertRow(0)
-    model.setData(model.index(0, 0), module)
-    model.setData(model.index(0, 1), class_)
-    model.setData(model.index(0, 2), method)
-    model.setData(model.index(0, 3), note if note else '')
-    for i in range(4):
-        model.setData(model.index(0, i), id, Qt.UserRole)
+    model.setData(model.index(0, 0), type)
+    model.setData(model.index(0, 1), module)
+    model.setData(model.index(0, 2), class_)
+    model.setData(model.index(0, 3), method)
+    model.setData(model.index(0, 4), note if note else '')
 
 
 def createModel(parent):
-    model = QStandardItemModel(0, 4, parent)
+    model = QStandardItemModel(0, 5, parent)
 
-    model.setHeaderData(0, Qt.Horizontal, "module")
-    model.setHeaderData(1, Qt.Horizontal, "Class")
-    model.setHeaderData(2, Qt.Horizontal, "method")
-    model.setHeaderData(3, Qt.Horizontal, "Note")
+    model.setHeaderData(0, Qt.Horizontal, "type")
+    model.setHeaderData(1, Qt.Horizontal, "module")
+    model.setHeaderData(2, Qt.Horizontal, "Class")
+    model.setHeaderData(3, Qt.Horizontal, "method")
+    model.setHeaderData(4, Qt.Horizontal, "Note")
 
     curs = parent.conn.cursor()
     curs.execute('select * from methods2;')
@@ -523,10 +542,10 @@ if __name__ == "__main__":
     import sys
 
     logger.remove()
-    # fmt = '<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | ' \
-    #       '<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> '   \
-    #       '- <level>{message}</level>'
-    # logger.add(sys.stderr, level="DEBUG", format=fmt, enqueue = True)
+    fmt = '<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | ' \
+          '<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> '   \
+          '- <level>{message}</level>'
+    logger.add(sys.stderr, level="DEBUG", format=fmt, enqueue = True)
     logger.debug("logger DEBUG add")
 
     app = QApplication(sys.argv)

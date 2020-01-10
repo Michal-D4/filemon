@@ -9,6 +9,7 @@ DB = Path.cwd() / "prj.db"
 
 methods = ('create table IF NOT EXISTS methods ('
            'ID INTEGER NOT NULL PRIMARY KEY, '
+           'type text, '      # type - {m – method/function; sql; c – const; f – field; …}
            'module text, '
            'class text, '
            'method text, '
@@ -36,6 +37,7 @@ simple_link = ('create table IF NOT EXISTS simple_link ('
                )
 methods2 = ('create table IF NOT EXISTS methods2 ('
             'ID INTEGER NOT NULL PRIMARY KEY, '
+            'type text, '      # type - {m – method/function; sql; c – const; f – field; …}
             'module text, '
             'class text, '
             'method text, '
@@ -45,28 +47,28 @@ sel2 = 'select * from link_path where call_id = ?;'
 
 
 ins1 = ('insert into methods ('
-        "'module', 'class', 'method', 'c_method', 'c_module', 'c_class', 'Start') "
-        'values (?, ?, ?, ?, ?, ?, ?);'
+        "'type', 'module', 'class', 'method', 'c_method', 'c_module', 'c_class', 'Start') "
+        'values (?, ?, ?, ?, ?, ?, ?, ?);'
         )
 ins2 = ('insert into link_path ('
         "'ID', 'call_ID', 'level') values(?, ?, ?);"
         )
 ins3 = ('insert into methods2 ('
-        "'module', 'class', 'method', 'Start') "
+        "'type', 'module', 'class', 'method', 'Start') "
         'values (?, ?, ?, ?);'
         )
 
 others = (
-    ('insert into methods2 (module, class, method) '
-     'select distinct module, class, method '
+    ('insert into methods2 (type, module, class, method) '
+     'select distinct type, module, class, method '
      'from methods;'
      ),
-    ('with c_meth (module, class, method) as ('
-     'select distinct c_module, c_class, c_method '
+    ('with c_meth (type, module, class, method) as ('
+     "select distinct 'm', c_module, c_class, c_method "
      'from methods a where not exists (select * from methods2 b '
      'where a.c_module = b.module  and a.c_class = b.class '
      'and a.c_method = b.method)) '
-     'insert into methods2 (module, class, method) '
+     'insert into methods2 (type, module, class, method) '
      'select * from c_meth;'
      ),
     ('update methods2 set start = ('
@@ -104,10 +106,10 @@ sel1 = ('select id from methods2 '
 
 
 def drop_tables(con_):
-    con_.execute('drop table call_link;')
-    con_.execute('drop table methods;')
+    con_.execute('drop table simple_link;')
     con_.execute('drop table link_path;')
     con_.execute('drop table methods2;')
+    con_.execute('drop table methods;')
 
 
 def create_tables(con_):
@@ -127,7 +129,7 @@ def fill_methods(con_, file_):
         for line in fl:
             if line.strip():
                 ll = line.strip().split(',')
-                curs.execute(ins1, ll[1:8])                   # into methods
+                curs.execute(ins1, ll[:8])                   # into methods
 
         con_.commit()
 
