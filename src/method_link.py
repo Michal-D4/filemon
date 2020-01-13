@@ -41,9 +41,9 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
         self.note_filter = True
 
     def filterAcceptsRow(self, sourceRow, sourceParent: QModelIndex):
-        index0 = self.sourceModel().index(sourceRow, 0, sourceParent)
-        index1 = self.sourceModel().index(sourceRow, 1, sourceParent)
-        index3 = self.sourceModel().index(sourceRow, 3, sourceParent)
+        index0 = self.sourceModel().index(sourceRow, 1, sourceParent)
+        index1 = self.sourceModel().index(sourceRow, 2, sourceParent)
+        index3 = self.sourceModel().index(sourceRow, 4, sourceParent)
 
         return (
             (self.module_all or self.sourceModel().data(index0) == self.module_filter) and
@@ -107,17 +107,19 @@ class Window(QWidget):
         self.resView = QTextEdit()
         self.resView.setReadOnly(True)
 
+        self.infLabel = QLabel()
         self.set_filters()
 
         proxyLayout = QGridLayout()
-        proxyLayout.addWidget(self.proxyView, 0, 0, 1, 3)
+        proxyLayout.addWidget(self.proxyView, 0, 0, 1, 4)
         proxyLayout.addWidget(self.filterModuleLabel, 1, 0)
         proxyLayout.addWidget(self.filterClassLabel, 1, 1)
         proxyLayout.addWidget(self.filterNoteLabel, 1, 2)
+        proxyLayout.addWidget(self.infLabel, 1, 3)
         proxyLayout.addWidget(self.filterModule, 2, 0)
         proxyLayout.addWidget(self.filterClass, 2, 1)
         proxyLayout.addWidget(self.filterNote, 2, 2)
-        proxyLayout.addWidget(self.resView, 3, 0, 1, 3)
+        proxyLayout.addWidget(self.resView, 3, 0, 1, 4)
         proxyGroupBox = QGroupBox("Module/Class/Method list")
         proxyGroupBox.setLayout(proxyLayout)
 
@@ -129,7 +131,7 @@ class Window(QWidget):
         self.query_time = None
 
         self.setWindowTitle("Custom Sort/Filter Model")
-        self.resize(800, 450)
+        self.resize(900, 750)
 
     def set_filters(self):
         self.filterModule = QComboBox()
@@ -220,7 +222,7 @@ class Window(QWidget):
         self.query_time = (tt.strftime("%b %d"), tt.strftime("%H:%M:%S"))
         self.resView.append(rep_head.format(self.query_time[0]))
 
-        return [x[0] for x in ids], methods
+        return [x[0] for x in ids], [('', *x, '1') for x in methods]
 
     def first_level_only(self, ids, names):
         """
@@ -229,7 +231,7 @@ class Window(QWidget):
         @param ids: indexes of selected methods
         @return:
         """
-        self.rep_append = concrete_report(lambda row: ''.join(row[:3]))
+        self.rep_append = concrete_report(lambda row: ''.join(row[1:4]))
         opt = len(ids) if len(ids) < 3 else 'more than 2'
         {1: self.first_1,
          2: self.first_2,
@@ -363,7 +365,7 @@ class Window(QWidget):
         @param names: selected methods as (module, class, method) list
         @return: None
         """
-        self.rep_append = concrete_report(lambda row: ''.join((row[3].rjust(2), *row[:3])))
+        self.rep_append = concrete_report(lambda row: ''.join((row[4].rjust(2), *row[1:4])))
         self.sel_count_handle(ids, names)
 
     def sort_by_module(self, ids, names):
@@ -373,7 +375,7 @@ class Window(QWidget):
         @param names: selected methods as (module, class, method) list
         @return: None
         """
-        self.rep_append = concrete_report(lambda row: ''.join(row[:3]))
+        self.rep_append = concrete_report(lambda row: ''.join(row[1:4]))
         self.sel_count_handle(ids, names)
 
     def sel_count_handle(self, ids, names):
@@ -471,9 +473,7 @@ def concrete_report(sort_key):
     @return: function that appends report lines in the order of sort_key
     """
     def sorted_report(report: list, lst: list, pre: Iterable = '', post: Iterable = ''):
-        logger.debug(lst[-1])
-        if sort_key:
-            lst.sort(key=sort_key)
+        lst.sort(key=sort_key)
         for ll in lst:
             report.append('\t'.join((*pre, *ll, *post)))
     return sorted_report
@@ -513,7 +513,7 @@ and_level = 'and b.level = 1 '
 
 def addItem(model, id, type, module, class_, method, note):
     model.insertRow(0)
-    model.setData(model.index(0, 0), type)
+    model.setData(model.index(0, 0), memb_type[type])
     model.setData(model.index(0, 1), module)
     model.setData(model.index(0, 2), class_)
     model.setData(model.index(0, 3), method)
@@ -542,10 +542,10 @@ if __name__ == "__main__":
     import sys
 
     logger.remove()
-    fmt = '<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | ' \
-          '<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> '   \
-          '- <level>{message}</level>'
-    logger.add(sys.stderr, level="DEBUG", format=fmt, enqueue = True)
+    # fmt = '<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | ' \
+    #       '<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> '   \
+    #       '- <level>{message}</level>'
+    # logger.add(sys.stderr, level="DEBUG", format=fmt, enqueue = True)
     logger.debug("logger DEBUG add")
 
     app = QApplication(sys.argv)
