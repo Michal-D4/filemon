@@ -28,8 +28,6 @@ sys.excepthook = my_exception_hook
 # ---------------------------------------------------------
 
 
-BY_MODULE, BY_LEVEL = range(2)
-
 class MySortFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, parent=None):
         super(MySortFilterProxyModel, self).__init__(parent)
@@ -150,7 +148,7 @@ class Window(QWidget):
         self.filterNoteLabel = QLabel("&Note Filter")
         self.filterNoteLabel.setBuddy(self.filterNote)
 
-        self.filterModule.currentIndexChanged.connect(self.textFilterChanged)
+        self.filterModule.currentIndexChanged.connect(self.textFilterModuleChanged)
         self.filterClass.currentIndexChanged.connect(self.textFilterChanged)
         self.filterNote.currentIndexChanged.connect(self.textFilterChanged)
 
@@ -166,6 +164,21 @@ class Window(QWidget):
         curs.execute('select distinct class from methods2;')
         for cc in curs:
             self.filterClass.addItem(cc[0])
+
+    def textFilterModuleChanged(self):
+        curs = self.conn.cursor()
+        self.filterClass.clear()
+        self.filterClass.addItem('All')
+        if self.filterModule.currentText() == 'All':
+            curs.execute('select distinct class from methods2;')
+            for cc in curs:
+                self.filterClass.addItem(cc[0])
+        else:
+            curs.execute(('select distinct class from methods2 '
+                          'where module = ?;'),
+                         (self.filterModule.currentText(),))
+            for cc in curs:
+                self.filterClass.addItem(cc[0])
 
     def pop_menu(self, pos):
         idx = self.proxyView.indexAt(pos)
@@ -486,6 +499,7 @@ memb_type = {
     's': 'signal',
     'c': 'constant',
     'f': 'field',
+    'i': 'instance',
 }
 # method id-s from methods2 by their names
 meth = "select id from methods2 where module || class || method in ('{}');"
