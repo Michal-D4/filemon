@@ -325,13 +325,10 @@ class AppWindow(QMainWindow):
         super().moveEvent(event)
 
     def showEvent(self, ev):
-        logger.debug(f'event type {type(ev)}')
         if not ev.spontaneous():
             self.open_dialog = DBChoice()
             self.open_dialog.DB_connect_signal.connect(self.on_db_connection)
             self.open_dialog.emit_open_dialog()
-        logger.debug('|---> end')
-
         return QMainWindow.showEvent(self, ev)
 
     def restore_setting(self):

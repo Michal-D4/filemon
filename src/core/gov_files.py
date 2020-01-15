@@ -159,7 +159,6 @@ class FilesCrt():
     def __init__(self, app_window: AppWindow):
         self.app_window = app_window
         self.ui = self.app_window.ui
-        logger.debug(f'app_window type: {type(app_window)}')
         self.app_font = None
 
         self.status_label = QLabel(app_window)
@@ -171,7 +170,6 @@ class FilesCrt():
         self._opt = SelOpt(self)
         self._restore_font()
         self._restore_fields()
-        logger.debug('finish')
 
     def _on_data_methods(self):
         return {'Author Remove unused': self._author_remove_unused,
@@ -432,12 +430,14 @@ class FilesCrt():
         self._resize_columns()
 
     def _set_fields(self):
+        curr_dir_idx = self.ui.dirTree.currentIndex()
         set_fields_dialog = SetFields(self.fields)
         if set_fields_dialog.exec_():
             self.fields = set_fields_dialog.get_result()
             settings = QSettings()
             settings.setValue('FIELDS', self.fields)
-            self._restore_file_list(self.ui.dirTree.currentIndex())
+            # TODO move to another method to not use dirTree here
+            self._restore_file_list(curr_dir_idx)
             self._resize_columns()
 
     def _tag_rename(self):
