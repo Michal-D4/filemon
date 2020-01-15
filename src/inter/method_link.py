@@ -460,16 +460,6 @@ def pre_report(list_of_tuples):
     return all_, any_
 
 
-def prep_sql(sql: str, mod: str, cls:str, lvl: int = 0) -> str:
-    logger.debug(mod + '|' + cls)
-    rr = '' if mod == 'All' else where_mod.format(mod)
-    return (sql +
-            ('' if mod == 'All' else where_mod.format(mod)) +
-            ('' if cls == 'All' else where_cls.format(cls)) +
-            (and_level if lvl else '')
-            )
-
-
 def tab_list(lst: list, delim: str = '\t') -> list:
     res = []
     logger.debug(delim)
@@ -508,21 +498,68 @@ what_id = 'select id from simple_link where call_id = ?;'
 # id-s of methods that call given method id
 from_id = 'select call_id from simple_link where id = ?;'
 
-what_call_1 = ('select a.type, a.module, a.class, a.method, b.level '
+what_call_1 = ('select a.type, a.module, a.class, a.method, min(b.level) '
                'from simple_link b join methods2 a on a.id = b.id '
-               'where b.call_id = ? ')
-called_from_1 = ('select a.type, a.module, a.class, a.method, b.level '
+               'where b.call_id = ? '
+               )
+called_from_1 = ('select a.type, a.module, a.class, a.method, min(b.level) '
                  'from simple_link b join methods2 a on a.id = b.call_id '
-                 'where b.id = ? ')
-what_call_3 = ('select a.type, a.module, a.class, a.method, b.level '
+                 'where b.id = ? '
+                 )
+what_call_3 = ('select a.type, a.module, a.class, a.method, min(b.level) '
                'from simple_link b join methods2 a on a.id = b.id '
-               'where b.call_id in ({}) ')
-called_from_3 = ('select a.type, a.module, a.class, a.method, b.level '
+               'where b.call_id in ({}) '
+               )
+called_from_3 = ('select a.type, a.module, a.class, a.method, min(b.level) '
                  'from simple_link b join methods2 a on a.id = b.call_id '
-                 'where b.id in ({}) ')
+                 'where b.id in ({}) '
+                 )
 where_mod = "and a.module = '{}' "
 where_cls = "and a.class = '{}' "
 and_level = 'and b.level = 1 '
+group_by = 'group by a.type, a.module, a.class, a.method;'
+_what_call_1 = ('select distinct a.type, a.module, a.class, a.method, b.level '
+                'from simple_link b join methods2 a on a.id = b.id '
+                'where b.call_id = ? '
+                )
+_called_from_1 = ('select distinct a.type, a.module, a.class, a.method, b.level '
+                  'from simple_link b join methods2 a on a.id = b.call_id '
+                  'where b.id = ? '
+                  )
+_what_call_3 = ('select distinct a.type, a.module, a.class, a.method, b.level '
+                'from simple_link b join methods2 a on a.id = b.id '
+                'where b.call_id in ({}) '
+                )
+_called_from_3 = ('select distinct a.type, a.module, a.class, a.method, b.level '
+                  'from simple_link b join methods2 a on a.id = b.call_id '
+                  'where b.id in ({}) '
+                  )
+
+
+# def prep_sql(sql: str, mod: str, cls:str, lvl: int = 0) -> str:
+#     logger.debug(mod + '|' + cls)
+#     return (sql +
+#             ('' if mod == 'All' else where_mod.format(mod)) +
+#             ('' if cls == 'All' else where_cls.format(cls)) +
+#             (and_level if lvl else '') +
+#             group_by
+#             )
+# for distinct
+def prep_sql(sql: str, mod: str, cls:str, lvl: int = 0) -> str:
+    logger.debug(mod + '|' + cls)
+    if sql is what_call_1:
+        sql = _what_call_1
+    if sql is what_call_3:
+        sql = _what_call_3
+    if sql is called_from_1:
+        sql = _called_from_1
+    if sql is called_from_3:
+        sql = _called_from_3
+    return (sql +
+            ('' if mod == 'All' else where_mod.format(mod)) +
+            ('' if cls == 'All' else where_cls.format(cls)) +
+            (and_level if lvl else '')
+            )
 
 
 def addItem(model, id, type, module, class_, method, note):
