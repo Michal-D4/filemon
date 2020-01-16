@@ -601,6 +601,7 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     DB = Path.cwd() / "prj.db"
+    logger.debug(DB)
     conn = sqlite3.connect(DB)
 
     window = Window(conn)

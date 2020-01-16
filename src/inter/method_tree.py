@@ -3,7 +3,7 @@
 import sqlite3
 from pathlib import Path
 
-in_file = Path.cwd().parent / 'tmp/xls/prj.txt'
+in_file = Path.cwd() / 'tmp/xls/prj.txt'
 DB = Path.cwd() / "prj.db"
 
 
