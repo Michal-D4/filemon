@@ -194,8 +194,14 @@ class Window(QWidget):
             if action:
                 self.menu_action(action.text())
 
-    def setSourceModel(self, model):
+    def setSourceModel(self, model: QStandardItemModel):
         self.proxyModel.setSourceModel(model)
+        prop = (3, 6, 8, 9, 5)
+        ss = sum(prop)
+        n = model.columnCount()
+        w = self.proxyView.width()
+        for k in range(n):
+            self.proxyView.setColumnWidth(k, w / ss * prop[k])
 
     def textFilterChanged(self):
         self.proxyModel.filter_changed(self.filterModule.currentText(),
@@ -602,6 +608,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     DB = Path.cwd() / "prj.db"
     logger.debug(DB)
+    print('|-->', DB)
     conn = sqlite3.connect(DB)
 
     window = Window(conn)
