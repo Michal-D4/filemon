@@ -51,8 +51,8 @@ def insert_virt_dirs(dir_tree: list):
 
 def persistent_row_indexes(view_: QAbstractItemView) -> list:
     """
-    :param view_:
-    :return:
+    :@param view_:
+    :@return: list of row indexes (selected)
     """
     indexes = view_.selectionModel().selectedRows()
     model_ = view_.model()
@@ -66,8 +66,8 @@ def selected_db_indexes(view: QAbstractItemView) -> list:
     """
     The DB indexes are stored in the model_ data under Qt.UserRole
     Method retrives these indexes for selected items
-    :param view: QAbstractItemView, Qt.UserRole should be implemented as need
-    :return: list of indexes. Type - int
+    :@param view: QAbstractItemView, Qt.UserRole should be implemented as need
+    :@return: list of indexes. Type - int
     """
     sel_model_idx = view.selectedIndexes()
     model = view.model()
@@ -82,9 +82,9 @@ def del_add_items(new_list: list, old_list: list) -> (list, list):
     Creates two list
     1) items from old_list but not in new_list
     2) items from new_list but not in old_list
-    :param new_list: type of items?
-    :param old_list: type of items?
-    :return: to_del_ids: list, to_add: set
+    :@param new_list: type of items?
+    :@param old_list: type of items?
+    :@return: to_del_ids: list, to_add: set
     """
     old_words_set = set([item[0] for item in old_list])
     new_words_set = set(new_list)
@@ -355,8 +355,8 @@ class FilesCrt():
     def _get_dir_id(self, to_path: str) -> (int, bool):
         '''
         copy files to to_path directory
-        :param to_path:  target directory
-        returns (DirId: int, isNewDirID: bool) ID of target directory
+        :@param to_path:  target directory
+        :@return: (DirId: int, isNewDirID: bool) ID of target directory
         '''
         ld = LoadDBData(ut.DB_Connection['Conn'])
         return ld.insert_dir(to_path)
@@ -465,8 +465,8 @@ class FilesCrt():
     def on_change_data(self, action: str) -> None:
         '''
         run methods for change_data_signal
-        :param action:
-        :return:
+        :@param action: string to select handle method
+        :@return: None
         '''
         logger.debug(f'{action}')
         try:
@@ -587,8 +587,8 @@ class FilesCrt():
     def _populate_virtual(self, dir_id) -> None:
         """
         List of files from virtual folder
-        :param dir_id:
-        :return: None
+        :@param dir_id:
+        :@return: None
         """
         self.file_list_source = VIRTUAL
         settings = QSettings()
@@ -599,11 +599,10 @@ class FilesCrt():
             self.status_label.setText('No files in folder')
 
     def files_virtual_folder(self, dir_id):
-        model = self._set_file_model()
         files = ut.select_other('FILES_VIRT', (dir_id,)).fetchall()
 
         if files:
-            self.show_files(files, model, dir_id)
+            self.show_files(files, dir_id)
             return True
         return False
 
@@ -622,11 +621,9 @@ class FilesCrt():
 
     def _list_selected_files(self) -> None:
         res = self._opt.get_result()
-        model = self._set_file_model()
-
         curs = ut.advanced_selection(res)
         if curs:
-            self.show_files(curs, model, -1)
+            self.show_files(curs, -1)
             self.file_list_source = ADVANCE
             settings = QSettings()
             settings.setValue('FILE_LIST_SOURCE', self.file_list_source)
@@ -902,9 +899,9 @@ class FilesCrt():
     def _ext_sel_changed(self, selected: QItemSelection, deselected: QItemSelection):
         """
         Selection changed for view.extList, save new selection
-        :param selected: QItemSelection
-        :param deselected: QItemSelection
-        :return: None
+        :@param selected: QItemSelection
+        :@param deselected: QItemSelection
+        :@return: None
         """
         model = self.ui.extList.model()
         for id_ in selected.indexes():
@@ -987,8 +984,8 @@ class FilesCrt():
 
     def _populate_file_list(self, dir_idx):
         """
-        :param dir_idx:
-        :return:
+        :@param dir_idx:
+        :@return:
         """
         logger.debug(f'dir idx: {dir_idx}')
         if dir_idx is None:            # no any dir in Dirs table
@@ -1005,13 +1002,13 @@ class FilesCrt():
         self.file_list_source = FOLDER
         settings = QSettings()
         settings.setValue('FILE_LIST_SOURCE', self.file_list_source)
-        model = self._set_file_model()
         if dir_idx:
             files = ut.select_other('FILES_CURR_DIR', (dir_idx[0],))
-            self.show_files(files, model, 0)
+            self.show_files(files, 0)
 
-            self.status_label.setText('{} ({})'.format(dir_idx[-1],
-                                                       model.rowCount(QModelIndex())))
+            self.status_label.setText(
+                '{} ({})'.format(dir_idx[-1],
+                self.ui.filesList.model().rowCount(QModelIndex())))
         else:
             self.status_label.setText('No data')
 
@@ -1023,16 +1020,16 @@ class FilesCrt():
         self.ui.filesList.setModel(proxy_model)
         return proxy_model
 
-    def show_files(self, files, model, source):
+    def show_files(self, files, source):
         """
         populate file's model
-        :param files
-        :param model
-        :param source -  0 - if file from real folder,
-                        -1 - if custom list of files
-                        >0 - it is dir_id of virtual folder
+        :@param files 
+        :@param source -  0 - if file from real folder,
+                         -1 - if custom list of files
+                         >0 - it is dir_id of virtual folder
         """
         idx = getattr(self.fields, 'indexes')
+        model = self._set_file_model()
         s_model = model.sourceModel()
         for ff in files:
             ff1 = [ff[i] for i in idx]
@@ -1046,8 +1043,8 @@ class FilesCrt():
     def _cur_file_changed(self, curr_idx):
         """
         currentRowChanged in filesList
-        :param curr_idx:
-        :return:
+        :@param curr_idx:
+        :@return:
         """
         settings = QSettings()
         settings.setValue('FILE_IDX', curr_idx.row())
@@ -1154,8 +1151,8 @@ class FilesCrt():
     def _cur_dir_changed(self, curr_idx):
         """
         currentRowChanged in dirTree
-        :param curr_idx:
-        :return: None
+        :@param curr_idx:
+        :@return: None
         """
         if curr_idx.isValid():
             save_path(curr_idx)
