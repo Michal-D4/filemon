@@ -196,8 +196,12 @@ class Window(QWidget):
 
     def setSourceModel(self, model: QStandardItemModel):
         self.proxyModel.setSourceModel(model)
+        self.set_columns_width()
+
+    def set_columns_width(self):
         prop = (3, 6, 8, 9, 5)
         ss = sum(prop)
+        model = self.proxyView.model()
         n = model.columnCount()
         w = self.proxyView.width()
         for k in range(n):
@@ -496,6 +500,7 @@ memb_type = {
     'c': 'constant',
     'f': 'field',
     'i': 'instance',
+    'w': 'widget',
 }
 # method id-s from methods2 by their names
 meth = "select id from methods2 where module || class || method in ('{}');"
