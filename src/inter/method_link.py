@@ -1,3 +1,5 @@
+# src/inter/method_link.py
+
 from PyQt5.QtCore import (QSortFilterProxyModel, Qt, QModelIndex)
 from PyQt5.QtGui import QStandardItemModel
 from PyQt5.QtWidgets import (QApplication, QComboBox, QGridLayout, QGroupBox, QMenu, QTextEdit,
@@ -7,7 +9,6 @@ from pathlib import Path
 from loguru import logger
 from datetime import datetime
 from collections.abc import Iterable
-import operator as op
 
 # ---------------------------------------------------------
 # doesn't catch exception without this code in Windows ! ! !
@@ -63,7 +64,7 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
         self.note_filter = item3 == 'All'
         self.invalidateFilter()
 
-    def get_data(self, index):
+    def get_data(self, index, role=Qt.DisplayRole):
         """
         Get module, class, method from current row
         @param index: index of current row
@@ -72,15 +73,36 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
         if index.isValid():
             parent = self.parent(index)
             row = index.row()
+            if role == Qt.DisplayRole:
+                idx0 = self.mapToSource(self.index(row, 1, parent))
+                idx1 = self.mapToSource(self.index(row, 2, parent))
+                idx2 = self.mapToSource(self.index(row, 3, parent))
 
-            idx0 = self.mapToSource(self.index(row, 1, parent))
-            idx1 = self.mapToSource(self.index(row, 2, parent))
-            idx2 = self.mapToSource(self.index(row, 3, parent))
-
-            return (self.sourceModel().data(idx0),
-                    self.sourceModel().data(idx1),
-                    self.sourceModel().data(idx2))
+                return (self.sourceModel().data(idx0),
+                        self.sourceModel().data(idx1),
+                        self.sourceModel().data(idx2))
+            elif role == Qt.UserRole:
+                idx0 = self.mapToSource(self.index(row, 0, parent))
+                return self.sourceModel().data(idx0, Qt.UserRole)
         return None
+
+    def setData(self, index, data, role=Qt.DisplayRole):
+        ok = super(MySortFilterProxyModel, self).setData(index, data, role)
+        if index.isValid():
+            if role == Qt.EditRole:
+                parent = self.parent(index)
+                idn0 = self.mapToSource(self.index(index.row(), 0, 
+                                        self.parent(index)))
+                idx = self.sourceModel().data(idn0, Qt.UserRole) 
+                logger.debug((data, idx))
+                logger.debug(upd0.format(headers[index.column()]))
+                conn.execute(upd0.format(headers[index.column()]), (data, idx))
+                conn.commit()
+            else:
+                return False
+        else:
+            return False
+        return ok
 
 
 class Window(QWidget):
@@ -229,8 +251,10 @@ class Window(QWidget):
         self.resView.clear()
         indexes = self.proxyView.selectionModel().selectedRows()
         methods = []
+        ids = []
         for idx in indexes:
             sql_par = self.proxyModel.get_data(idx)
+            ids.append(self.proxyModel.get_data(idx, Qt.UserRole))
             methods.append(sql_par)
 
         ids = self.exec_sql_f(meth,
@@ -488,6 +512,7 @@ def concrete_report(sort_key):
     return sorted_report
 
 
+upd0 = "update methods2 set {}=? where id=?;"
 rep_head = '<============== {} ==============>'
 memb_type = {
     'm': 'method',
@@ -496,6 +521,7 @@ memb_type = {
     'c': 'constant',
     'f': 'field',
     'i': 'instance',
+    'w': 'widget',
 }
 # method id-s from methods2 by their names
 meth = "select id from methods2 where module || class || method in ('{}');"
@@ -524,47 +550,22 @@ where_mod = "and a.module = '{}' "
 where_cls = "and a.class = '{}' "
 and_level = 'and b.level = 1 '
 group_by = 'group by a.type, a.module, a.class, a.method;'
-_what_call_1 = ('select distinct a.type, a.module, a.class, a.method, b.level '
-                'from simple_link b join methods2 a on a.id = b.id '
-                'where b.call_id = ? '
-                )
-_called_from_1 = ('select distinct a.type, a.module, a.class, a.method, b.level '
-                  'from simple_link b join methods2 a on a.id = b.call_id '
-                  'where b.id = ? '
-                  )
-_what_call_3 = ('select distinct a.type, a.module, a.class, a.method, b.level '
-                'from simple_link b join methods2 a on a.id = b.id '
-                'where b.call_id in ({}) '
-                )
-_called_from_3 = ('select distinct a.type, a.module, a.class, a.method, b.level '
-                  'from simple_link b join methods2 a on a.id = b.call_id '
-                  'where b.id in ({}) '
-                  )
+headers = (
+    "type",
+    "module",
+    "Class",
+    "method",
+    "Note",
+)
 
 
-# def prep_sql(sql: str, mod: str, cls:str, lvl: int = 0) -> str:
-#     logger.debug(mod + '|' + cls)
-#     return (sql +
-#             ('' if mod == 'All' else where_mod.format(mod)) +
-#             ('' if cls == 'All' else where_cls.format(cls)) +
-#             (and_level if lvl else '') +
-#             group_by
-#             )
-# for distinct
 def prep_sql(sql: str, mod: str, cls:str, lvl: int = 0) -> str:
     logger.debug(mod + '|' + cls)
-    if sql is what_call_1:
-        sql = _what_call_1
-    if sql is what_call_3:
-        sql = _what_call_3
-    if sql is called_from_1:
-        sql = _called_from_1
-    if sql is called_from_3:
-        sql = _called_from_3
     return (sql +
             ('' if mod == 'All' else where_mod.format(mod)) +
             ('' if cls == 'All' else where_cls.format(cls)) +
-            (and_level if lvl else '')
+            (and_level if lvl else '') +
+            group_by
             )
 
 
@@ -575,16 +576,17 @@ def addItem(model, id, type, module, class_, method, note):
     model.setData(model.index(0, 2), class_)
     model.setData(model.index(0, 3), method)
     model.setData(model.index(0, 4), note if note else '')
+    model.setData(model.index(0, 0), id, Qt.UserRole)
 
 
 def createModel(parent):
     model = QStandardItemModel(0, 5, parent)
 
-    model.setHeaderData(0, Qt.Horizontal, "type")
-    model.setHeaderData(1, Qt.Horizontal, "module")
-    model.setHeaderData(2, Qt.Horizontal, "Class")
-    model.setHeaderData(3, Qt.Horizontal, "method")
-    model.setHeaderData(4, Qt.Horizontal, "Note")
+    model.setHeaderData(0, Qt.Horizontal, headers[0])
+    model.setHeaderData(1, Qt.Horizontal, headers[1])
+    model.setHeaderData(2, Qt.Horizontal, headers[2])
+    model.setHeaderData(3, Qt.Horizontal, headers[3])
+    model.setHeaderData(4, Qt.Horizontal, headers[4])
 
     curs = parent.conn.cursor()
     curs.execute('select * from methods2;')
@@ -599,16 +601,15 @@ if __name__ == "__main__":
     import sys
 
     logger.remove()
-    # fmt = '<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | ' \
-    #       '<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> '   \
-    #       '- <level>{message}</level>'
-    # logger.add(sys.stderr, level="DEBUG", format=fmt, enqueue = True)
+    fmt = '<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | ' \
+          '<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> '   \
+          '- <level>{message}</level>'
+    logger.add(sys.stderr, level="DEBUG", format=fmt, enqueue = True)
     logger.debug("logger DEBUG add")
 
     app = QApplication(sys.argv)
     DB = Path.cwd() / "prj.db"
     logger.debug(DB)
-    print('|-->', DB)
     conn = sqlite3.connect(DB)
 
     window = Window(conn)
