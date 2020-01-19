@@ -69,12 +69,12 @@ others = (
         'from methods;'
      ),
     ( # append methods, that is in calling but not in called, into methods2
-        'with c_meth (type, module, class, method) as ('
-        "select 'm', c_module, c_class, c_method from methods "
+        'with c_meth (module, class, method) as ('
+        "select c_module, c_class, c_method from methods "
         "where c_method != '' except "
-        'select type, module, class, method from methods) '
+        'select module, class, method from methods) '
         'insert into methods2 (type, module, class, method) '
-        'select * from c_meth;'
+        "select 'm', module, class, method from c_meth;"
      ),
     ( # simple insert into field "remark" data from methods.remark
         'update methods2 set remark = ('
@@ -160,7 +160,7 @@ if __name__ == "__main__":
     # either
     clear_tables(con_)
     # or
-    # recreate_tables(conn)
+    # recreate_tables(con_)
 
     fill_methods(con_, in_file)
 
