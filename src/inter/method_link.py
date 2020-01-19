@@ -206,12 +206,16 @@ class Window(QWidget):
         idx = self.proxyView.indexAt(pos)
         if idx.isValid():
             menu = QMenu(self)
-            menu.addAction('First level only')
+            menu.addAction(menu_items[0])
             menu.addSeparator()
-            menu.addAction('sort by level')
-            menu.addAction('sort by module')
+            menu.addAction(menu_items[1])
+            menu.addAction(menu_items[2])
             menu.addSeparator()
-            menu.addAction('Cancel')
+            menu.addAction(menu_items[3])
+            menu.addAction(menu_items[4])
+            menu.addAction(menu_items[5])
+            menu.addSeparator()
+            menu.addAction(menu_items[-1])
             action = menu.exec_(self.proxyView.mapToGlobal(pos))
             if action:
                 self.menu_action(action.text())
@@ -234,12 +238,33 @@ class Window(QWidget):
         if act == 'Cancel':
             return
 
-        method_ids, method_names = self.get_selected_methods()
+        if act in menu_items[:3]:
+            method_ids, method_names = self.get_selected_methods()
 
-        {'First level only': self.first_level_only,
-         'sort by level': self.sort_by_level,
-         'sort by module': self.sort_by_module,
-         }[act](method_ids, method_names)
+            {menu_items[0]: self.first_level_only,
+             menu_items[1]: self.sort_by_level,
+             menu_items[2]: self.sort_by_module,
+             }[act](method_ids, method_names)
+        else:
+            curr_idx = self.proxyView.currentIndex()
+
+            {menu_items[3]: self.append_row,
+             menu_items[4]: self.delete_current,
+             menu_items[5]: self.edit_links,
+             }[act](curr_idx)
+
+    def append_row(self, index: QModelIndex):
+        idx = self.proxyModel.get_data(index, Qt.UserRole)
+        logger.debug(idx)
+        pass
+
+    def delete_current(self, index: QModelIndex):
+        logger.debug(self.proxyModel.get_data(index, Qt.UserRole))
+        pass
+
+    def edit_links(self, index: QModelIndex):
+        logger.debug(self.proxyModel.get_data(index, Qt.UserRole))
+        pass
 
     def get_selected_methods(self):
         """
@@ -512,6 +537,16 @@ def concrete_report(sort_key):
     return sorted_report
 
 
+
+menu_items = (
+    'First level only',
+    'sort by level',
+    'sort by module',
+    'append row',
+    'delete',
+    'edit links',
+    'Cancel',    
+)
 upd0 = "update methods2 set {}=? where id=?;"
 rep_head = '<============== {} ==============>'
 memb_type = {
@@ -571,7 +606,7 @@ def prep_sql(sql: str, mod: str, cls:str, lvl: int = 0) -> str:
 
 def addItem(model, id, type, module, class_, method, note):
     model.insertRow(0)
-    model.setData(model.index(0, 0), memb_type[type])
+    model.setData(model.index(0, 0), memb_type[type.lower()])
     model.setData(model.index(0, 1), module)
     model.setData(model.index(0, 2), class_)
     model.setData(model.index(0, 3), method)
