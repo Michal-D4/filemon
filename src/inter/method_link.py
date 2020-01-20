@@ -54,8 +54,7 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
         left_data = self.sourceModel().data(left)
         right_data = self.sourceModel().data(right)
 
-        # return (left_data is not None) and (right_data is not None) and left_data < right_data
-        return left_data < right_data
+        return (left_data is not None) and (right_data is not None) and left_data < right_data
 
     def filter_changed(self, item1, item2, item3):
         self.module_all = item1 == 'All'
@@ -87,7 +86,7 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
 
     def setData(self, index, data, role=Qt.DisplayRole):
         ok = super(MySortFilterProxyModel, self).setData(index, data, role)
-        if index.isValid():
+        if ok:
             if role == Qt.EditRole:
                 idn0 = self.mapToSource(self.index(index.row(), 0, 
                                         self.parent(index)))
@@ -96,23 +95,6 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
                 logger.debug(upd0.format(headers[index.column()]))
                 conn.execute(upd0.format(headers[index.column()]), (data, idx))
                 conn.commit()
-        else:
-            return False
-        return ok
-
-    def insertRows(self, row: int, count: int, parent: QModelIndex = QModelIndex()):
-        logger.debug((row, count))
-        ok = super(MySortFilterProxyModel, self).insertRows(row, count, parent)
-        index = self.index(row, 0, parent)
-        logger.debug(ins0)
-        ok = self.setData(index, ('i', 'b', 'c', 'd', 'e'))
-        logger.debug(ok)
-        crs = conn.cursor()
-        crs.execute(ins0, (('i', 'b', 'c', 'd', 'e')))
-        idn = crs.lastrowid
-        logger.debug(idn)
-        conn.commit()
-        self.setData(index, idn, Qt.UserRole)
         return ok
 
 
@@ -271,13 +253,16 @@ class Window(QWidget):
              }[act](curr_idx)
 
     def append_row(self, index: QModelIndex):
-        ind = self.proxyModel.rowCount()
-        logger.debug(ind)
-        ok = self.proxyModel.insertRows(ind, 1, index.parent())
-        logger.debug(ok)
-        if ok:
-            self.proxyView.setCurrentIndex(
-                self.proxyModel.index(ind, 0, index.parent()))
+        crs = conn.cursor()
+        crs.execute(ins0, (('', 'b', 'c', 'd', 'e')))
+        idn = crs.lastrowid
+        logger.debug(idn)
+        conn.commit()
+        model = self.proxyModel.sourceModel()
+        self.proxyModel.beginInsertRows()
+        idx = addItem(model, idn, '', 'b-', 'c-', 'd-', 'e-')
+        self.proxyModel.endInsertRows()
+        self.proxyView.setCurrentIndex(self.proxyModel.mapFromSource(idx))
 
     def delete_current(self, index: QModelIndex):
         logger.debug(self.proxyModel.get_data(index, Qt.UserRole))
@@ -565,6 +550,7 @@ memb_type = {
     'f': 'field',
     'i': 'instance',
     'w': 'widget',
+    '': '',
 }
 # method id-s from methods2 by their names
 meth = "select id from methods2 where module || class || method in ('{}');"
@@ -614,12 +600,14 @@ def prep_sql(sql: str, mod: str, cls:str, lvl: int = 0) -> str:
 
 def addItem(model, id, type, module, class_, method, note):
     model.insertRow(0)
-    model.setData(model.index(0, 0), memb_type[type.lower()])
+    idx0 = model.index(0, 0)
+    model.setData(idx0, memb_type[type.lower()])
     model.setData(model.index(0, 1), module)
     model.setData(model.index(0, 2), class_)
     model.setData(model.index(0, 3), method)
     model.setData(model.index(0, 4), note if note else '')
-    model.setData(model.index(0, 0), id, Qt.UserRole)
+    model.setData(idx0, id, Qt.UserRole)
+    return idx0
 
 
 def createModel(parent):
