@@ -216,6 +216,7 @@ class Window(QWidget):
     def setSourceModel(self, model: QStandardItemModel):
         self.proxyModel.setSourceModel(model)
         self.set_columns_width()
+        set_headers(self.proxyModel)
 
     def set_columns_width(self):
         prop = (3, 6, 8, 9, 5)
@@ -254,14 +255,16 @@ class Window(QWidget):
 
     def append_row(self, index: QModelIndex):
         crs = conn.cursor()
-        crs.execute(ins0, (('', 'b', 'c', 'd', 'e')))
+        crs.execute(ins0, ('',) * 5)
         idn = crs.lastrowid
         logger.debug(idn)
         conn.commit()
+
         model = self.proxyModel.sourceModel()
-        self.proxyModel.beginInsertRows()
-        idx = addItem(model, idn, '', 'b-', 'c-', 'd-', 'e-')
-        self.proxyModel.endInsertRows()
+        parent = self.proxyModel.mapToSource(index.parent())
+        model.beginInsertRows(parent, 0, 0)
+        idx = addItem(model, idn, *('',) * 5)
+        model.endInsertRows()
         self.proxyView.setCurrentIndex(self.proxyModel.mapFromSource(idx))
 
     def delete_current(self, index: QModelIndex):
@@ -610,22 +613,20 @@ def addItem(model, id, type, module, class_, method, note):
     return idx0
 
 
-def createModel(parent):
-    model = QStandardItemModel(0, 5, parent)
-
-    model.setHeaderData(0, Qt.Horizontal, headers[0])
-    model.setHeaderData(1, Qt.Horizontal, headers[1])
-    model.setHeaderData(2, Qt.Horizontal, headers[2])
-    model.setHeaderData(3, Qt.Horizontal, headers[3])
-    model.setHeaderData(4, Qt.Horizontal, headers[4])
-
-    curs = parent.conn.cursor()
+def setupModel(model):
+    curs = conn.cursor()
     curs.execute('select * from methods2;')
 
     for cc in curs:
         addItem(model, *cc)
 
-    return model
+
+def set_headers(model):
+    model.setHeaderData(0, Qt.Horizontal, headers[0])
+    model.setHeaderData(1, Qt.Horizontal, headers[1])
+    model.setHeaderData(2, Qt.Horizontal, headers[2])
+    model.setHeaderData(3, Qt.Horizontal, headers[3])
+    model.setHeaderData(4, Qt.Horizontal, headers[4])
 
 
 if __name__ == "__main__":
@@ -644,7 +645,9 @@ if __name__ == "__main__":
     conn = sqlite3.connect(DB)
 
     window = Window(conn)
-    window.setSourceModel(createModel(window))
+    model = QStandardItemModel(0, len(headers), window)
+    setupModel(model)
+    window.setSourceModel(model)
     window.show()
 
     sys.exit(app.exec_())
