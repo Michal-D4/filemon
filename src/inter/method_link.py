@@ -1,7 +1,7 @@
 # src/inter/method_link.py
 
 from PyQt5.QtCore import (QSortFilterProxyModel, Qt, QModelIndex)
-from PyQt5.QtGui import QStandardItemModel
+from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtWidgets import (QApplication, QComboBox, QGridLayout, QGroupBox, QMenu, QTextEdit,
                              QLabel, QTreeView, QVBoxLayout, QWidget, QAbstractItemView)
 import sqlite3
@@ -259,8 +259,12 @@ class Window(QWidget):
              }[act](curr_idx)
 
     def append_row(self, index: QModelIndex):
-        idx = self.proxyModel.get_data(index, Qt.UserRole)
-        logger.debug(idx)
+        # idx = self.proxyModel.get_data(index, Qt.UserRole)
+        # logger.debug(idx)
+        # TODO - reimplement proxyModel.insertRow
+        ind = self.proxyModel.rowCount()
+        self.proxyModel.sourceModel().insertRow(ind, QStandardItem('---'))
+        # self.proxyModel.insertRow(ind, index.parent())
         pass
 
     def delete_current(self, index: QModelIndex):
