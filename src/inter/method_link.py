@@ -54,6 +54,7 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
         left_data = self.sourceModel().data(left)
         right_data = self.sourceModel().data(right)
 
+        # return (left_data is not None) and (right_data is not None) and left_data < right_data
         return left_data < right_data
 
     def filter_changed(self, item1, item2, item3):
@@ -78,7 +79,6 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
                 for i in range(5):
                     idx = self.mapToSource(self.index(row, i, parent))
                     res.append(self.sourceModel().data(idx))
-
                 return res
             elif role == Qt.UserRole:
                 idx = self.mapToSource(self.index(row, 0, parent))
@@ -89,7 +89,6 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
         ok = super(MySortFilterProxyModel, self).setData(index, data, role)
         if index.isValid():
             if role == Qt.EditRole:
-                parent = self.parent(index)
                 idn0 = self.mapToSource(self.index(index.row(), 0, 
                                         self.parent(index)))
                 idx = self.sourceModel().data(idn0, Qt.UserRole) 
@@ -97,10 +96,23 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
                 logger.debug(upd0.format(headers[index.column()]))
                 conn.execute(upd0.format(headers[index.column()]), (data, idx))
                 conn.commit()
-            else:
-                return False
         else:
             return False
+        return ok
+
+    def insertRows(self, row: int, count: int, parent: QModelIndex = QModelIndex()):
+        logger.debug((row, count))
+        ok = super(MySortFilterProxyModel, self).insertRows(row, count, parent)
+        index = self.index(row, 0, parent)
+        logger.debug(ins0)
+        ok = self.setData(index, ('i', 'b', 'c', 'd', 'e'))
+        logger.debug(ok)
+        crs = conn.cursor()
+        crs.execute(ins0, (('i', 'b', 'c', 'd', 'e')))
+        idn = crs.lastrowid
+        logger.debug(idn)
+        conn.commit()
+        self.setData(index, idn, Qt.UserRole)
         return ok
 
 
@@ -259,13 +271,13 @@ class Window(QWidget):
              }[act](curr_idx)
 
     def append_row(self, index: QModelIndex):
-        # idx = self.proxyModel.get_data(index, Qt.UserRole)
-        # logger.debug(idx)
-        # TODO - reimplement proxyModel.insertRow
         ind = self.proxyModel.rowCount()
-        self.proxyModel.sourceModel().insertRow(ind, QStandardItem('---'))
-        # self.proxyModel.insertRow(ind, index.parent())
-        pass
+        logger.debug(ind)
+        ok = self.proxyModel.insertRows(ind, 1, index.parent())
+        logger.debug(ok)
+        if ok:
+            self.proxyView.setCurrentIndex(
+                self.proxyModel.index(ind, 0, index.parent()))
 
     def delete_current(self, index: QModelIndex):
         logger.debug(self.proxyModel.get_data(index, Qt.UserRole))
@@ -539,6 +551,11 @@ menu_items = (
     'Cancel',    
 )
 upd0 = "update methods2 set {}=? where id=?;"
+ins0 = (
+    'insert into methods2 ('
+    'type, module, class, method, remark) '
+    'values (?, ?, ?, ?, ?);'
+)
 rep_head = '<============== {} ==============>'
 memb_type = {
     'm': 'method',
