@@ -73,17 +73,16 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
         if index.isValid():
             parent = self.parent(index)
             row = index.row()
+            res = []
             if role == Qt.DisplayRole:
-                idx0 = self.mapToSource(self.index(row, 1, parent))
-                idx1 = self.mapToSource(self.index(row, 2, parent))
-                idx2 = self.mapToSource(self.index(row, 3, parent))
+                for i in range(5):
+                    idx = self.mapToSource(self.index(row, i, parent))
+                    res.append(self.sourceModel().data(idx))
 
-                return (self.sourceModel().data(idx0),
-                        self.sourceModel().data(idx1),
-                        self.sourceModel().data(idx2))
+                return res
             elif role == Qt.UserRole:
-                idx0 = self.mapToSource(self.index(row, 0, parent))
-                return self.sourceModel().data(idx0, Qt.UserRole)
+                idx = self.mapToSource(self.index(row, 0, parent))
+                return self.sourceModel().data(idx, Qt.UserRole)
         return None
 
     def setData(self, index, data, role=Qt.DisplayRole):
@@ -242,7 +241,9 @@ class Window(QWidget):
         if act == 'Cancel':
             return
 
+        self.resView.clear()
         if act in menu_items[:3]:
+            self.time_run()
             method_ids, method_names = self.get_selected_methods()
 
             {menu_items[0]: self.first_level_only,
@@ -270,6 +271,11 @@ class Window(QWidget):
         logger.debug(self.proxyModel.get_data(index, Qt.UserRole))
         pass
 
+    def time_run(self):
+        tt = datetime.now()
+        self.query_time = (tt.strftime("%b %d"), tt.strftime("%H:%M:%S"))
+        self.resView.append(rep_head.format(self.query_time[0]))
+
     def get_selected_methods(self):
         """
         Returns two lists for rows selected in the proxyView:
@@ -277,24 +283,14 @@ class Window(QWidget):
         2) methods - full names of selected methods, ie. (module, class, method)
         @return: ids, methods
         """
-        self.resView.clear()
         indexes = self.proxyView.selectionModel().selectedRows()
         methods = []
         ids = []
         for idx in indexes:
-            sql_par = self.proxyModel.get_data(idx)
             ids.append(self.proxyModel.get_data(idx, Qt.UserRole))
-            methods.append(sql_par)
+            methods.append(self.proxyModel.get_data(idx))
 
-        ids = self.exec_sql_f(meth,
-                              ("','".join(tab_list(methods, delim='')),)
-                              )
-
-        tt = datetime.now()
-        self.query_time = (tt.strftime("%b %d"), tt.strftime("%H:%M:%S"))
-        self.resView.append(rep_head.format(self.query_time[0]))
-
-        return [x[0] for x in ids], [('', *x, '1') for x in methods]
+        return ids, methods
 
     def first_level_only(self, ids, names):
         """
@@ -418,7 +414,6 @@ class Window(QWidget):
 
         if rep_prep[1]:
             cc = self.exec_sql_f(param[1], (','.join((rep_prep[1])),))
-            logger.debug(cc)
             pre = (self.query_time[1], param[2], param[4])
             self.rep_append(self.resView, cc, pre=pre)
 
@@ -500,14 +495,11 @@ class Window(QWidget):
         @return: cursor
         """
         curs = self.conn.cursor()
-        logger.debug(sql_par)
-        logger.debug(sql.format(*sql_par))
         cc = curs.execute(sql.format(*sql_par))
         return [(*map(str, x),) for x in cc]
 
 
 def pre_report(list_of_tuples):
-    logger.debug(list_of_tuples)
     if not list_of_tuples:
         return (), ()
     all_ = any_ = set(list_of_tuples[0])
@@ -517,15 +509,6 @@ def pre_report(list_of_tuples):
         any_ = any_ | tt
 
     return all_, any_
-
-
-def tab_list(lst: list, delim: str = '\t') -> list:
-    res = []
-    logger.debug(delim)
-    for ll in lst:
-        logger.debug(ll)
-        res.append(delim.join(ll))
-    return res
 
 
 def concrete_report(sort_key):
