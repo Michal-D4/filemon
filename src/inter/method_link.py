@@ -54,8 +54,8 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
         left_data = self.sourceModel().data(left)
         right_data = self.sourceModel().data(right)
 
-        # return (left_data is not None) and (right_data is not None) and left_data < right_data
-        return False
+        return (left_data is not None) and (right_data is not None) and left_data < right_data
+        # return False
 
     def filter_changed(self, item1, item2, item3):
         self.module_all = item1 == 'All'
@@ -268,14 +268,22 @@ class Window(QWidget):
         parent = self.proxyModel.mapToSource(index.parent())
         model.beginInsertRows(parent, 0, 0)
         items = ('', self.proxyModel.module_filter,
-                 self.proxyModel.class_filter, '', '---')
+                 self.proxyModel.class_filter, '', '')
         idx = addItem(model, idn, *items)
         model.endInsertRows()
         self.proxyView.setCurrentIndex(self.proxyModel.mapFromSource(idx))
 
     def delete_current(self, index: QModelIndex):
-        logger.debug(self.proxyModel.get_data(index, Qt.UserRole))
-        pass
+        if index.isValid():
+            id = self.proxyModel.get_data(index, Qt.UserRole)
+            conn.execute("delete from methods2 where id=?;", (id,))
+            conn.commit()
+            model = self.proxyModel.sourceModel()
+            parent = self.proxyModel.mapToSource(index.parent())
+            row = index.row()
+            model.beginRemoveRows(QModelIndex(), row, row)
+            model.removeRow(row, parent)
+            model.endRemoveRows()
 
     def edit_links(self, index: QModelIndex):
         logger.debug(self.proxyModel.get_data(index, Qt.UserRole))
@@ -595,7 +603,7 @@ headers = (
     "module",
     "Class",
     "method",
-    "Note",
+    "remark",
 )
 
 
