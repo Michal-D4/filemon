@@ -54,13 +54,14 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
         left_data = self.sourceModel().data(left)
         right_data = self.sourceModel().data(right)
 
-        return (left_data is not None) and (right_data is not None) and left_data < right_data
+        # return (left_data is not None) and (right_data is not None) and left_data < right_data
+        return False
 
     def filter_changed(self, item1, item2, item3):
         self.module_all = item1 == 'All'
-        self.module_filter = item1
+        self.module_filter = '' if self.module_all else item1
         self.class_all = item2  == 'All'
-        self.class_filter = item2
+        self.class_filter = '' if self.class_all else item2
         self.note_filter = item3 == 'All'
         self.invalidateFilter()
 
@@ -148,12 +149,10 @@ class Window(QWidget):
 
     def set_filters(self):
         self.filterModule = QComboBox()
-        self.filterModule.addItem("All")
         self.filterModuleLabel = QLabel("&Module Filter")
         self.filterModuleLabel.setBuddy(self.filterModule)
 
         self.filterClass = QComboBox()
-        self.filterClass.addItem("All")
         self.filterClassLabel = QLabel("&Class Filter")
         self.filterClassLabel.setBuddy(self.filterClass)
 
@@ -171,12 +170,17 @@ class Window(QWidget):
         self.set_filters_combo()
 
     def set_filters_combo(self):
+        self.filterModule.clear()
+        self.filterModule.addItem("All")
+        self.filterModule.addItem('')
         curs = self.conn.cursor()
-        curs.execute('select distinct module from methods2;')
+        curs.execute(sel0)
         for cc in curs:
             self.filterModule.addItem(cc[0])
 
-        curs.execute('select distinct class from methods2;')
+        self.filterClass.clear()
+        self.filterClass.addItem("All")
+        curs.execute(sel1)
         for cc in curs:
             self.filterClass.addItem(cc[0])
 
@@ -263,7 +267,9 @@ class Window(QWidget):
         model = self.proxyModel.sourceModel()
         parent = self.proxyModel.mapToSource(index.parent())
         model.beginInsertRows(parent, 0, 0)
-        idx = addItem(model, idn, *('',) * 5)
+        items = ('', self.proxyModel.module_filter,
+                 self.proxyModel.class_filter, '', '---')
+        idx = addItem(model, idn, *items)
         model.endInsertRows()
         self.proxyView.setCurrentIndex(self.proxyModel.mapFromSource(idx))
 
@@ -544,6 +550,8 @@ ins0 = (
     'type, module, class, method, remark) '
     'values (?, ?, ?, ?, ?);'
 )
+sel0 = "select distinct module from methods2 where module != '' order by module;"
+sel1 = 'select distinct class from methods2 order by upper(class);'
 rep_head = '<============== {} ==============>'
 memb_type = {
     'm': 'method',
