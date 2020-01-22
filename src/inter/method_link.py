@@ -516,6 +516,15 @@ class Window(QWidget):
         cc = curs.execute(sql.format(*sql_par))
         return [(*map(str, x),) for x in cc]
 
+    def closeEvent(self, event):
+        outfile = open(out_file, 'w', encoding='utf­8')
+        csr = conn.cursor()
+        csr.execute(save_links)
+        for row in csr:
+            outfile.write(','.join(row))
+
+        super(Window, self).closeEvent(event)
+
 
 def pre_report(list_of_tuples):
     if not list_of_tuples:
@@ -606,6 +615,13 @@ headers = (
     "remark",
 )
 
+save_links = (
+    "select a.type type, a.module module, a.class class, a.method method, "
+    "b.method c_method, b.module c_module, b.class c_class, "
+    "COALESCE(a.remark,'') remark from one_link c join methods2 a "
+    "on a.id = c.id left join methods2 b on b.id = c.call_ID;"
+)
+
 
 def prep_sql(sql: str, mod: str, cls:str, lvl: int = 0) -> str:
     logger.debug(mod + '|' + cls)
@@ -657,6 +673,7 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     DB = Path.cwd() / "prj.db"
+    out_file = Path.cwd() / "tmp/xls/prj.txt"
     logger.debug(DB)
     conn = sqlite3.connect(DB)
 
