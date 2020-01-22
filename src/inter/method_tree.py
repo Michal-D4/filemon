@@ -19,16 +19,6 @@ methods = (
     "c_method text, "
     "remark text);"
 )
-link_path = (  #  redundant table ?
-    "create table IF NOT EXISTS link_path ("
-    "ID integer, "
-    "call_ID integer, "
-    "level integer, "
-    "path text, "
-    "primary key(ID, call_ID, path), "
-    "foreign key (ID) references methods2(ID), "
-    "foreign key (call_ID) references methods2(ID));"
-)
 simple_link = (
     "create table IF NOT EXISTS simple_link ("
     "ID integer references methods2(ID) ON DELETE CASCADE, "
@@ -90,25 +80,19 @@ others = (
         "and b.class = c.c_class and b.method = c.c_method "
         "where b.ID is not null;"
     ),
-    (  # all levels link with full path -- redundant
-        "with recc (ID, call_ID, level, path) as ("
-        "select ID, call_ID, 1, '' || call_ID || '/' || ID from one_link "
-        "union select b.ID, a.call_ID, a.level+1, a.path || '/' || b.id "
+    (  # all levels link 
+        "with recc (ID, call_ID, level) as ("
+        "select ID, call_ID, 1 from one_link "
+        "union select b.ID, a.call_ID, a.level+1 "
         "from recc a join one_link b on b.call_ID = a.ID) "
-        "insert into link_path (ID, call_ID, level, path) "
-        "select * from recc;"
-    ),
-    (  # all pairs link of min level without path
-        "insert into simple_link (id, call_ID, level) "
-        "select id, call_ID, min(level) from link_path "
-        "group by id, call_ID;"
+        "insert into simple_link (ID, call_ID, level) "
+        "select ID, call_ID, min(level) from recc group by ID, call_ID;"
     ),
 )
 
 
 def drop_tables(con_):
     con_.execute("drop table simple_link;")
-    con_.execute("drop table link_path;")
     con_.execute("drop table one_link;")
     con_.execute("drop table methods2;")
     con_.execute("drop table methods;")
@@ -118,7 +102,6 @@ def create_tables(con_):
     con_.execute(methods)
     con_.execute(methods2)
     con_.execute(one_link)
-    con_.execute(link_path)
     con_.execute(simple_link)
 
 
@@ -130,7 +113,6 @@ def recreate_tables(con_):
 def clear_tables(con_):
     con_.execute("delete from methods2;")
     con_.execute("delete from one_link;")
-    con_.execute("delete from link_path;")
     con_.execute("delete from simple_link;")
 
 
