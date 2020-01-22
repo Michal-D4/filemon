@@ -96,8 +96,8 @@ others = (
         "union select b.ID, a.call_ID, a.level+1, a.path || '/' || b.id "
         "from recc a join one_link b on b.call_ID = a.ID) "
         "insert into link_path (ID, call_ID, level, path) "
-        "select * from recc where level > 1;"
-    ), 
+        "select * from recc;"
+    ),
     (  # all pairs link of min level without path
         "insert into simple_link (id, call_ID, level) "
         "select id, call_ID, min(level) from link_path "
@@ -117,14 +117,13 @@ def drop_tables(con_):
 def create_tables(con_):
     con_.execute(methods)
     con_.execute(methods2)
-    print(one_link)
     con_.execute(one_link)
     con_.execute(link_path)
     con_.execute(simple_link)
 
 
 def recreate_tables(con_):
-    # drop_tables(con_)
+    drop_tables(con_)
     create_tables(con_)
 
 
@@ -156,9 +155,9 @@ if __name__ == "__main__":
     con_ = sqlite3.connect(DB)
 
     # either
-    # clear_tables(con_)
-    # or
-    recreate_tables(con_)
+    clear_tables(con_)
+    # or; use only when change schema
+    # recreate_tables(con_)
 
     fill_methods(con_, in_file)
 
