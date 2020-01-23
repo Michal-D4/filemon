@@ -521,7 +521,7 @@ class Window(QWidget):
         csr = conn.cursor()
         csr.execute(save_links)
         for row in csr:
-            outfile.write(','.join(row))
+            outfile.write(','.join((*row, '\n')))
 
         super(Window, self).closeEvent(event)
 
@@ -617,9 +617,11 @@ headers = (
 
 save_links = (
     "select a.type type, a.module module, a.class class, a.method method, "
-    "b.method c_method, b.module c_module, b.class c_class, "
-    "COALESCE(a.remark,'') remark from one_link c join methods2 a "
-    "on a.id = c.id left join methods2 b on b.id = c.call_ID;"
+    "COALESCE(b.method,'') c_method, COALESCE(b.module,'') c_module, "
+    "COALESCE(b.class,'') c_class, COALESCE(a.remark,'') remark "
+    "from methods2 a left join one_link c on c.id = a.id "
+    "left join methods2 b on b.id = c.call_ID "
+    "order by module, type, method;"
 )
 
 
