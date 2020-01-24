@@ -214,15 +214,14 @@ class Window(QWidget):
         self.filterClass.clear()
         self.filterClass.addItem('All')
         if self.filterModule.currentText() == 'All':
-            curs.execute('select distinct class from methods2;')
-            for cc in curs:
-                self.filterClass.addItem(cc[0])
+            curs.execute(qsel1)
         else:
             curs.execute(('select distinct class from methods2 '
-                          'where module = ?;'),
+                          'where module = ? order by class;'),
                          (self.filterModule.currentText(),))
-            for cc in curs:
-                self.filterClass.addItem(cc[0])
+
+        for cc in curs:
+            self.filterClass.addItem(cc[0])
 
     def pop_menu(self, pos):
         idx = self.proxyView.indexAt(pos)
