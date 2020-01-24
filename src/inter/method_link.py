@@ -4,7 +4,8 @@ from PyQt5.QtCore import (QSortFilterProxyModel, Qt, QModelIndex)
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtWidgets import (QApplication, QComboBox, QGridLayout, QGroupBox, 
                              QMenu, QTextEdit, QLabel, QTreeView, QVBoxLayout, 
-                             QWidget, QAbstractItemView, QDialogButtonBox)
+                             QWidget, QAbstractItemView, QDialogButtonBox,
+                             QStackedLayout)
 import sqlite3
 from pathlib import Path
 from loguru import logger
@@ -123,8 +124,6 @@ class Window(QWidget):
         self.filterClass = QComboBox()
         self.filterNote = QComboBox()
 
-        self.filter_box = self.set_filters()
-
         self.infLabel = QLabel()
         self.link_type = QComboBox()
         self.ok_btn = QDialogButtonBox()
@@ -132,24 +131,12 @@ class Window(QWidget):
         self.resView = QTextEdit()
         self.resView.setReadOnly(True)
 
-        self.proxyLayout = QGridLayout()
-        self.proxyLayout.addWidget(self.proxyView, 0, 0)
-        self.proxyLayout.addLayout(self.filter_box, 1, 0)
-        self.proxyLayout.addWidget(self.resView, 2, 0)
-        # proxyLayout.addWidget(self.proxyView, 0, 0, 1, 4)
-        # proxyLayout.addWidget(self.filterModuleLabel, 1, 0)
-        # proxyLayout.addWidget(self.filterClassLabel, 1, 1)
-        # proxyLayout.addWidget(self.filterNoteLabel, 1, 2)
-        # proxyLayout.addWidget(self.infLabel, 1, 3)
-        # proxyLayout.addWidget(self.filterModule, 2, 0)
-        # proxyLayout.addWidget(self.filterClass, 2, 1)
-        # proxyLayout.addWidget(self.filterNote, 2, 2)
-        # proxyLayout.addWidget(self.resView, 3, 0, 1, 4)
-        proxyGroupBox = QGroupBox("Module/Class/Method list")
-        proxyGroupBox.setLayout(self.proxyLayout)
+        self.stack_layout = QStackedLayout()
+        self.proxyGroupBox = QGroupBox("Module/Class/Method list")
+        self.set_layout()
 
         mainLayout = QVBoxLayout()
-        mainLayout.addWidget(proxyGroupBox)
+        mainLayout.addWidget(self.proxyGroupBox)
         self.setLayout(mainLayout)
 
         self.report_creation_method = None      # method to create concrete report - apply sort key
@@ -158,7 +145,26 @@ class Window(QWidget):
         self.setWindowTitle("Custom Sort/Filter Model")
         self.resize(900, 750)
 
-    def set_filters(self):
+    def set_layout(self):
+        filter_box: QGroupBox = self.set_filter_box()
+        filter_box.setMaximumHeight(62)
+        link_box = self.set_link_box()
+        link_box.setMaximumHeight(62)
+        self.stack_layout.addWidget(filter_box)
+        self.stack_layout.addWidget(link_box)
+        self.stack_layout.setCurrentIndex(0)
+
+        proxyLayout = QGridLayout()
+        proxyLayout.addWidget(self.proxyView, 0, 0)
+        proxyLayout.addLayout(self.stack_layout, 1, 0)
+        proxyLayout.addWidget(self.resView, 2, 0)
+        proxyLayout.setRowStretch(0, 5)
+        proxyLayout.setRowStretch(1, 0)
+        proxyLayout.setRowStretch(2, 3)
+
+        self.proxyGroupBox.setLayout(proxyLayout)
+
+    def set_filter_box(self):
         self.filterNote.addItem("All")
         self.filterNote.addItem("Not blank")
 
@@ -166,7 +172,7 @@ class Window(QWidget):
         filterModuleLabel.setBuddy(self.filterModule)
         filterClassLabel = QLabel("&Class Filter")
         filterClassLabel.setBuddy(self.filterClass)
-        filterNoteLabel = QLabel("&Note Filter")
+        filterNoteLabel = QLabel("&Remark Filter")
         filterNoteLabel.setBuddy(self.filterNote)
 
         filter_box = QGridLayout()
@@ -184,10 +190,9 @@ class Window(QWidget):
         self.textFilterChanged()
         self.set_filters_combo()
 
-        # grp_box = QGroupBox()
-        # grp_box.setLayout(filter_box)
-        # return grp_box
-        return filter_box
+        grp_box = QGroupBox()
+        grp_box.setLayout(filter_box)
+        return grp_box
 
     def set_filters_combo(self):
         self.filterModule.clear()
@@ -306,33 +311,34 @@ class Window(QWidget):
             model.endRemoveRows()
 
     def edit_links(self, index: QModelIndex):
-
         ss = self.proxyModel.get_data(index)
         self.infLabel.setText('.'.join(ss[1:4]))
+        self.stack_layout.setCurrentIndex(1)
         
-
-    def link_box():
+    def set_link_box(self):
         self.link_type.addItem('What')
         self.link_type.addItem('From')
         f_type = QLabel('Link &type:')
         f_type.setBuddy(self.link_type)
 
         self.ok_btn.setStandardButtons(QDialogButtonBox.Ok)
-        self.ok_btn.clicked.connect(self.ok_clicked())
+        self.ok_btn.clicked.connect(self.ok_clicked)
 
         l_box = QGridLayout()
         l_box.addWidget(self.infLabel, 0, 0)
         l_box.addWidget(f_type, 1, 0)
         l_box.addWidget(self.link_type, 1, 1)
         l_box.addWidget(self.ok_btn, 1, 2)
+        l_box.setRowStretch(0, 1)
+        l_box.setRowStretch(1, 0)
+        l_box.setRowStretch(2, 1)
 
-        grp_box = QGroupBox()
-        grp_box.setLayout(l_box)
-        return grp_box
+        grp = QGroupBox()
+        grp.setLayout(l_box)
+        return grp
     
-    def ok_clicked():
-        # self.proxyLayout.
-        pass
+    def ok_clicked(self):
+        self.stack_layout.setCurrentIndex(0)
 
     def time_run(self):
         tt = datetime.now()
