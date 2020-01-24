@@ -2,8 +2,9 @@
 
 from PyQt5.QtCore import (QSortFilterProxyModel, Qt, QModelIndex)
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
-from PyQt5.QtWidgets import (QApplication, QComboBox, QGridLayout, QGroupBox, QMenu, QTextEdit,
-                             QLabel, QTreeView, QVBoxLayout, QWidget, QAbstractItemView)
+from PyQt5.QtWidgets import (QApplication, QComboBox, QGridLayout, QGroupBox, 
+                             QMenu, QTextEdit, QLabel, QTreeView, QVBoxLayout, 
+                             QWidget, QAbstractItemView, QDialogButtonBox)
 import sqlite3
 from pathlib import Path
 from loguru import logger
@@ -118,49 +119,63 @@ class Window(QWidget):
         self.proxyView.customContextMenuRequested.connect(self.pop_menu)
         self.proxyView.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
+        self.filterModule = QComboBox()
+        self.filterClass = QComboBox()
+        self.filterNote = QComboBox()
+
+        self.filter_box = self.set_filters()
+
+        self.infLabel = QLabel()
+        self.link_type = QComboBox()
+        self.ok_btn = QDialogButtonBox()
+
         self.resView = QTextEdit()
         self.resView.setReadOnly(True)
 
-        self.infLabel = QLabel()
-        self.set_filters()
-
-        proxyLayout = QGridLayout()
-        proxyLayout.addWidget(self.proxyView, 0, 0, 1, 4)
-        proxyLayout.addWidget(self.filterModuleLabel, 1, 0)
-        proxyLayout.addWidget(self.filterClassLabel, 1, 1)
-        proxyLayout.addWidget(self.filterNoteLabel, 1, 2)
-        proxyLayout.addWidget(self.infLabel, 1, 3)
-        proxyLayout.addWidget(self.filterModule, 2, 0)
-        proxyLayout.addWidget(self.filterClass, 2, 1)
-        proxyLayout.addWidget(self.filterNote, 2, 2)
-        proxyLayout.addWidget(self.resView, 3, 0, 1, 4)
+        self.proxyLayout = QGridLayout()
+        self.proxyLayout.addWidget(self.proxyView, 0, 0)
+        self.proxyLayout.addLayout(self.filter_box, 1, 0)
+        self.proxyLayout.addWidget(self.resView, 2, 0)
+        # proxyLayout.addWidget(self.proxyView, 0, 0, 1, 4)
+        # proxyLayout.addWidget(self.filterModuleLabel, 1, 0)
+        # proxyLayout.addWidget(self.filterClassLabel, 1, 1)
+        # proxyLayout.addWidget(self.filterNoteLabel, 1, 2)
+        # proxyLayout.addWidget(self.infLabel, 1, 3)
+        # proxyLayout.addWidget(self.filterModule, 2, 0)
+        # proxyLayout.addWidget(self.filterClass, 2, 1)
+        # proxyLayout.addWidget(self.filterNote, 2, 2)
+        # proxyLayout.addWidget(self.resView, 3, 0, 1, 4)
         proxyGroupBox = QGroupBox("Module/Class/Method list")
-        proxyGroupBox.setLayout(proxyLayout)
+        proxyGroupBox.setLayout(self.proxyLayout)
 
         mainLayout = QVBoxLayout()
         mainLayout.addWidget(proxyGroupBox)
         self.setLayout(mainLayout)
 
-        self.rep_append = None
+        self.report_creation_method = None      # method to create concrete report - apply sort key
         self.query_time = None
 
         self.setWindowTitle("Custom Sort/Filter Model")
         self.resize(900, 750)
 
     def set_filters(self):
-        self.filterModule = QComboBox()
-        self.filterModuleLabel = QLabel("&Module Filter")
-        self.filterModuleLabel.setBuddy(self.filterModule)
-
-        self.filterClass = QComboBox()
-        self.filterClassLabel = QLabel("&Class Filter")
-        self.filterClassLabel.setBuddy(self.filterClass)
-
-        self.filterNote = QComboBox()
         self.filterNote.addItem("All")
         self.filterNote.addItem("Not blank")
-        self.filterNoteLabel = QLabel("&Note Filter")
-        self.filterNoteLabel.setBuddy(self.filterNote)
+
+        filterModuleLabel = QLabel("&Module Filter")
+        filterModuleLabel.setBuddy(self.filterModule)
+        filterClassLabel = QLabel("&Class Filter")
+        filterClassLabel.setBuddy(self.filterClass)
+        filterNoteLabel = QLabel("&Note Filter")
+        filterNoteLabel.setBuddy(self.filterNote)
+
+        filter_box = QGridLayout()
+        filter_box.addWidget(filterModuleLabel, 0, 0)
+        filter_box.addWidget(filterClassLabel, 0, 1)
+        filter_box.addWidget(filterNoteLabel, 0, 2)
+        filter_box.addWidget(self.filterModule, 1, 0)
+        filter_box.addWidget(self.filterClass, 1, 1)
+        filter_box.addWidget(self.filterNote, 1, 2)
 
         self.filterModule.currentIndexChanged.connect(self.textFilterModuleChanged)
         self.filterClass.currentIndexChanged.connect(self.textFilterChanged)
@@ -169,18 +184,23 @@ class Window(QWidget):
         self.textFilterChanged()
         self.set_filters_combo()
 
+        # grp_box = QGroupBox()
+        # grp_box.setLayout(filter_box)
+        # return grp_box
+        return filter_box
+
     def set_filters_combo(self):
         self.filterModule.clear()
         self.filterModule.addItem("All")
         self.filterModule.addItem('')
         curs = self.conn.cursor()
-        curs.execute(sel0)
+        curs.execute(qsel0)
         for cc in curs:
             self.filterModule.addItem(cc[0])
 
         self.filterClass.clear()
         self.filterClass.addItem("All")
-        curs.execute(sel1)
+        curs.execute(qsel1)
         for cc in curs:
             self.filterClass.addItem(cc[0])
 
@@ -286,7 +306,32 @@ class Window(QWidget):
             model.endRemoveRows()
 
     def edit_links(self, index: QModelIndex):
-        logger.debug(self.proxyModel.get_data(index, Qt.UserRole))
+
+        ss = self.proxyModel.get_data(index)
+        self.infLabel.setText('.'.join(ss[1:4]))
+        
+
+    def link_box():
+        self.link_type.addItem('What')
+        self.link_type.addItem('From')
+        f_type = QLabel('Link &type:')
+        f_type.setBuddy(self.link_type)
+
+        self.ok_btn.setStandardButtons(QDialogButtonBox.Ok)
+        self.ok_btn.clicked.connect(self.ok_clicked())
+
+        l_box = QGridLayout()
+        l_box.addWidget(self.infLabel, 0, 0)
+        l_box.addWidget(f_type, 1, 0)
+        l_box.addWidget(self.link_type, 1, 1)
+        l_box.addWidget(self.ok_btn, 1, 2)
+
+        grp_box = QGroupBox()
+        grp_box.setLayout(l_box)
+        return grp_box
+    
+    def ok_clicked():
+        # self.proxyLayout.
         pass
 
     def time_run(self):
@@ -317,7 +362,7 @@ class Window(QWidget):
         @param ids: indexes of selected methods
         @return:
         """
-        self.rep_append = concrete_report(lambda row: ''.join(row[1:4]))
+        self.report_creation_method = concrete_report(lambda row: ''.join(row[1:4]))
         opt = len(ids) if len(ids) < 3 else 'more than 2'
         {1: self.first_1,
          2: self.first_2,
@@ -335,19 +380,19 @@ class Window(QWidget):
 
     def selected_only_one(self, ids, names, lvl):
         pre = (self.query_time[1], 'Sel', '')
-        self.rep_append(self.resView, names, pre=pre)
+        self.report_creation_method(self.resView, names, pre=pre)
         what_sql = prep_sql(what_call_1,
                             self.filterModule.currentText(),
                             self.filterClass.currentText(), lvl)
         lst = self.first_1_part(ids, what_sql)
         pre = (self.query_time[1], 'What', '')
-        self.rep_append(self.resView, lst, pre=pre)
+        self.report_creation_method(self.resView, lst, pre=pre)
         from_sql = prep_sql(called_from_1,
                             self.filterModule.currentText(),
                             self.filterClass.currentText(), lvl)
         lst = self.first_1_part(ids, from_sql)
         pre = (self.query_time[1], 'From', '')
-        self.rep_append(self.resView, lst, pre=pre)
+        self.report_creation_method(self.resView, lst, pre=pre)
 
     def first_1_part(self, ids, sql):
         lst = self.exec_sql_b(sql, ids)
@@ -374,7 +419,7 @@ class Window(QWidget):
     def selected_exactly_two(self, ids, names, lvl):
         pre = (self.query_time[1], 'Sel')
         n_names = [('A', *names[0]), ('B', *names[1])]
-        self.rep_append(self.resView, n_names, pre=pre)
+        self.report_creation_method(self.resView, n_names, pre=pre)
         what_sql = prep_sql(what_call_1,
                             self.filterModule.currentText(),
                             self.filterClass.currentText(), lvl)
@@ -390,16 +435,16 @@ class Window(QWidget):
 
     def report_four(self, lst_a, lst_b, what):
         logger.debug('A | B')
-        self.rep_append(self.resView, list(set(lst_a) | set(lst_b)),
+        self.report_creation_method(self.resView, list(set(lst_a) | set(lst_b)),
                         pre=(self.query_time[1], what, 'A | B'))
         logger.debug('A - B')
-        self.rep_append(self.resView, list(set(lst_a) - set(lst_b)),
+        self.report_creation_method(self.resView, list(set(lst_a) - set(lst_b)),
                         pre=(self.query_time[1], what, 'A - B'))
         logger.debug('B - A')
-        self.rep_append(self.resView, list(set(lst_b) - set(lst_a)),
+        self.report_creation_method(self.resView, list(set(lst_b) - set(lst_a)),
                         pre=(self.query_time[1], what, 'B - A'))
         logger.debug('A & B')
-        self.rep_append(self.resView, list(set(lst_a) & set(lst_b)),
+        self.report_creation_method(self.resView, list(set(lst_a) & set(lst_b)),
                         pre=(self.query_time[1], what, 'A & B'))
 
     def first_more_than_2(self, ids, names):
@@ -407,7 +452,7 @@ class Window(QWidget):
 
     def selected_more_than_two(self, ids, names, lvl):
         pre = (self.query_time[1], 'Sel', '')
-        self.rep_append(self.resView, names, pre=pre)
+        self.report_creation_method(self.resView, names, pre=pre)
         what_sql = prep_sql(what_call_3,
                             self.filterModule.currentText(),
                             self.filterClass.currentText(), lvl)
@@ -428,12 +473,12 @@ class Window(QWidget):
             cc = self.exec_sql_f(param[1], (','.join((rep_prep[0])),))
             logger.debug(cc)
             pre = (self.query_time[1], param[2], param[3])
-            self.rep_append(self.resView, cc, pre=pre)
+            self.report_creation_method(self.resView, cc, pre=pre)
 
         if rep_prep[1]:
             cc = self.exec_sql_f(param[1], (','.join((rep_prep[1])),))
             pre = (self.query_time[1], param[2], param[4])
-            self.rep_append(self.resView, cc, pre=pre)
+            self.report_creation_method(self.resView, cc, pre=pre)
 
     def exec_sql_2(self, ids, sql):
         res = []
@@ -450,7 +495,7 @@ class Window(QWidget):
         @param names: selected methods as (module, class, method) list
         @return: None
         """
-        self.rep_append = concrete_report(lambda row: ''.join((row[4].rjust(2), *row[1:4])))
+        self.report_creation_method = concrete_report(lambda row: ''.join((row[4].rjust(2), *row[1:4])))
         self.sel_count_handle(ids, names)
 
     def sort_by_module(self, ids, names):
@@ -460,7 +505,7 @@ class Window(QWidget):
         @param names: selected methods as (module, class, method) list
         @return: None
         """
-        self.rep_append = concrete_report(lambda row: ''.join(row[1:4]))
+        self.report_creation_method = concrete_report(lambda row: ''.join(row[1:4]))
         self.sel_count_handle(ids, names)
 
     def sel_count_handle(self, ids, names):
@@ -567,8 +612,8 @@ ins0 = (
     'type, module, class, method, remark) '
     'values (?, ?, ?, ?, ?);'
 )
-sel0 = "select distinct module from methods2 where module != '' order by module;"
-sel1 = 'select distinct class from methods2 order by upper(class);'
+qsel0 = "select distinct module from methods2 where module != '' order by module;"
+qsel1 = 'select distinct class from methods2 order by upper(class);'
 rep_head = '<============== {} ==============>'
 memb_type = {
     'm': 'method',
