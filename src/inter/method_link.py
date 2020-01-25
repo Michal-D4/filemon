@@ -78,7 +78,7 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
             row = index.row()
             res = []
             if role == Qt.DisplayRole:
-                for i in range(5):
+                for i in range(self.columnCount()):
                     idx = self.mapToSource(self.index(row, i, parent))
                     res.append(self.sourceModel().data(idx))
                 return res
@@ -138,8 +138,11 @@ class Window(QWidget):
         self.setLayout(mainLayout)
 
         self.report_creation_method = None      # method to create concrete report - apply sort key
+        self.repo = []
+        self.old_links = []
+        self.new_links = []
         self.query_time = None
-        self.current_idx = QModelIndex()
+        self.current_id = 0
 
         self.setWindowTitle("Custom Sort/Filter Model")
         self.resize(900, 750)
@@ -263,8 +266,12 @@ class Window(QWidget):
         if act == 'Cancel':
             return
 
-        self.resModel.clear()
         if act in menu_items[:3]:
+            self.repo.clear()
+            model = QStandardItemModel(0, len(rep_headers), self.resView)
+            self.resModel.setSourceModel(model)
+            set_columns_width(self.resView, proportion=(3, 2, 2, 2, 7, 7, 7, 1))
+            set_headers(self.resModel, rep_headers)
             self.time_run()
             method_ids, method_names = self.get_selected_methods()
 
@@ -282,19 +289,18 @@ class Window(QWidget):
 
     def append_row(self, index: QModelIndex):
         crs = conn.cursor()
-        crs.execute(ins0, ('',) * 5)
+        items = ('', self.proxyModel.module_filter,
+                 self.proxyModel.class_filter, '', '')
+        crs.execute(ins0, items)
         idn = crs.lastrowid
-        logger.debug(idn)
         conn.commit()
 
         model = self.proxyModel.sourceModel()
         parent = self.proxyModel.mapToSource(index.parent())
+
         model.beginInsertRows(parent, 0, 0)
-        items = ('', self.proxyModel.module_filter,
-                 self.proxyModel.class_filter, '', '')
-        idx = add_row(model, idn, *items)
+        add_row(model, idn, *items)
         model.endInsertRows()
-        self.proxyView.setCurrentIndex(self.proxyModel.mapFromSource(idx))
 
     def delete_current(self, index: QModelIndex):
         if index.isValid():
@@ -316,10 +322,15 @@ class Window(QWidget):
         id = self.proxyModel.get_data(index, Qt.UserRole)
         
         model = QStandardItemModel(0, len(link_headers), self.resView)
-        fill_in_model(model, sql_links.format(id, id))
+        qq = conn.cursor()
+        qq.execute(sql_links.format(id, id))
+        fill_in_model(model, qq)
+        self.old_links = qq.execute(sql_id2.format(id, id)).fetchall()
+        self.new_links = self.old_links[:]
+        self.current_id = id
         
         self.resModel.setSourceModel(model)
-        set_columns_width(self.resView, proportion=(1, 1, 5, 5, 5))
+        set_columns_width(self.resView, proportion=(3, 2, 8, 8, 8))
         set_headers(self.resModel, link_headers)
         
     def set_link_box(self):
@@ -355,6 +366,9 @@ class Window(QWidget):
         }[btn.text()]()
 
     def ok_clicked(self):
+        # Save edited links
+        pass
+        # restore proxyModel data
         pass
         self.stack_layout.setCurrentIndex(0)
 
@@ -362,9 +376,28 @@ class Window(QWidget):
         self.stack_layout.setCurrentIndex(0)
 
     def plus_clicked(self):
-        pass
+        # 1. add to resModel
+        stat = self.link_type.currentText()
+        idx_sel = self.proxyView.selectedIndexes()
+        to_insert = []
+        for idx in idx_sel:
+            id = self.proxyModel.get_data(idx, Qt.UserRole)
+            link = (id, self.current_id) if stat == "What" else (self.current_id, id)
+            if link in self.new_links:
+                continue
+            self.new_links.append(link)
+            to_insert.append(self.proxyModel.get_data(idx))
+        
+        if to_insert:
+            self.resModel.beginInsertRows(QModelIndex(), 0, 0)
+            model = self.resModel.sourceModel()
+            for row in to_insert:
+                add_row(model, row, True)
+            self.resModel.endInsertRows()
 
     def minus_clicked(self):
+        # 1. add to proxyModel
+        # 2. remove from resModel
         pass
 
     def time_run(self):
@@ -412,19 +445,20 @@ class Window(QWidget):
 
     def selected_only_one(self, ids, names, lvl):
         pre = (self.query_time[1], 'Sel', '')
-        self.report_creation_method(self.resView, names, pre=pre)
+        self.report_creation_method(self.repo, names, pre=pre)
         what_sql = prep_sql(what_call_1,
                             self.filterModule.currentText(),
                             self.filterClass.currentText(), lvl)
         lst = self.first_1_part(ids, what_sql)
         pre = (self.query_time[1], 'What', '')
-        self.report_creation_method(self.resView, lst, pre=pre)
+        self.report_creation_method(self.repo, lst, pre=pre)
         from_sql = prep_sql(called_from_1,
                             self.filterModule.currentText(),
                             self.filterClass.currentText(), lvl)
         lst = self.first_1_part(ids, from_sql)
         pre = (self.query_time[1], 'From', '')
-        self.report_creation_method(self.resView, lst, pre=pre)
+        self.report_creation_method(self.repo, lst, pre=pre)
+        fill_in_model(self.resModel.sourceModel(), self.repo, ud=False)
 
     def first_1_part(self, ids, sql):
         lst = self.exec_sql_b(sql, ids)
@@ -451,7 +485,7 @@ class Window(QWidget):
     def selected_exactly_two(self, ids, names, lvl):
         pre = (self.query_time[1], 'Sel')
         n_names = [('A', *names[0]), ('B', *names[1])]
-        self.report_creation_method(self.resView, n_names, pre=pre)
+        self.report_creation_method(self.repo, n_names, pre=pre)
         what_sql = prep_sql(what_call_1,
                             self.filterModule.currentText(),
                             self.filterClass.currentText(), lvl)
@@ -467,24 +501,25 @@ class Window(QWidget):
 
     def report_four(self, lst_a, lst_b, what):
         logger.debug('A | B')
-        self.report_creation_method(self.resView, list(set(lst_a) | set(lst_b)),
+        self.report_creation_method(self.repo, list(set(lst_a) | set(lst_b)),
                         pre=(self.query_time[1], what, 'A | B'))
         logger.debug('A - B')
-        self.report_creation_method(self.resView, list(set(lst_a) - set(lst_b)),
+        self.report_creation_method(self.repo, list(set(lst_a) - set(lst_b)),
                         pre=(self.query_time[1], what, 'A - B'))
         logger.debug('B - A')
-        self.report_creation_method(self.resView, list(set(lst_b) - set(lst_a)),
+        self.report_creation_method(self.repo, list(set(lst_b) - set(lst_a)),
                         pre=(self.query_time[1], what, 'B - A'))
         logger.debug('A & B')
-        self.report_creation_method(self.resView, list(set(lst_a) & set(lst_b)),
+        self.report_creation_method(self.repo, list(set(lst_a) & set(lst_b)),
                         pre=(self.query_time[1], what, 'A & B'))
+        fill_in_model(self.resModel.sourceModel(), self.repo, ud=False)
 
     def first_more_than_2(self, ids, names):
         self.selected_more_than_two(ids, names, 1)
 
     def selected_more_than_two(self, ids, names, lvl):
         pre = (self.query_time[1], 'Sel', '')
-        self.report_creation_method(self.resView, names, pre=pre)
+        self.report_creation_method(self.repo, names, pre=pre)
         what_sql = prep_sql(what_call_3,
                             self.filterModule.currentText(),
                             self.filterClass.currentText(), lvl)
@@ -505,12 +540,14 @@ class Window(QWidget):
             cc = self.exec_sql_f(param[1], (','.join((rep_prep[0])),))
             logger.debug(cc)
             pre = (self.query_time[1], param[2], param[3])
-            self.report_creation_method(self.resView, cc, pre=pre)
+            self.report_creation_method(self.repo, cc, pre=pre)
 
         if rep_prep[1]:
             cc = self.exec_sql_f(param[1], (','.join((rep_prep[1])),))
             pre = (self.query_time[1], param[2], param[4])
-            self.report_creation_method(self.resView, cc, pre=pre)
+            self.report_creation_method(self.repo, cc, pre=pre)
+
+        fill_in_model(self.resModel.sourceModel(), self.repo, ud=False)
 
     def exec_sql_2(self, ids, sql):
         res = []
@@ -594,6 +631,7 @@ class Window(QWidget):
         return [(*map(str, x),) for x in cc]
 
     def closeEvent(self, event):
+        logger.debug('EXIT')
         outfile = open(out_file, 'w', encoding='utf­8')
         csr = conn.cursor()
         csr.execute(save_links)
@@ -621,12 +659,14 @@ def concrete_report(sort_key):
     @param sort_key: BY_MODULE = 0 or BY_LEVEL = 1
     @return: function that appends report lines in the order of sort_key
     """
-    def sorted_report(report: list, lst: list, pre: Iterable = '', post: Iterable = ''):
+    def sorted_report(report: list, lst: list, 
+                      pre: Iterable = '', 
+                      post: Iterable = ''):
         lst.sort(key=sort_key)
         for ll in lst:
-            report.append('\t'.join((*pre, *ll, *post)))
+            logger.debug((*pre, *ll, *post))
+            report.append((*pre, *ll, *post))
     return sorted_report
-
 
 
 menu_items = (
@@ -651,6 +691,10 @@ sql_links = (
     "union select a.id, 'What', a.type, a.module, a.class, a.method "
     "from methods2 a join one_link b on b.id = a.id "
     "where b.call_id = {};"
+)
+sql_id2 = (
+    "select * from one_link where id={} "
+    "union select * from one_link where call_id={}"
 )
 qsel0 = "select distinct module from methods2 where module != '' order by module;"
 qsel1 = 'select distinct class from methods2 order by upper(class);'
@@ -737,21 +781,29 @@ def prep_sql(sql: str, mod: str, cls:str, lvl: int = 0) -> str:
             )
 
 
-def add_row(model, row):
+def add_row(model, row, ud):
+    """
+    @param: model
+    @param: row  - data 
+    @param: ud - user data, first item of list
+    """
     model.insertRow(0)
-    model.setData(model.index(0, 0), row[0], Qt.UserRole)
+    if ud:
+        model.setData(model.index(0, 0), row[0], Qt.UserRole)
+        rr = row[1:]
+    else:
+        rr = row
+
     k = 0
-    for item in row[1:]:
+    for item in rr:
         model.setData(model.index(0, k), item if item else '')
         k += 1
 
 
-def fill_in_model(model, sql: str, add_item_func=add_row):
-    curs = conn.cursor()
-    curs.execute(sql)
-
-    for cc in curs:
-        add_item_func(model, cc)
+def fill_in_model(model, row_list: Iterable, ud: bool=True):
+    for cc in row_list:
+        logger.debug(cc)
+        add_row(model, cc, ud)
 
 
 def set_headers(model, headers):
@@ -786,7 +838,9 @@ if __name__ == "__main__":
 
     window = Window(conn)
     model = QStandardItemModel(0, len(main_headers), window)
-    fill_in_model(model, 'select * from methods2;')
+    qq = conn.cursor()
+    qq.execute('select * from methods2;')
+    fill_in_model(model, qq)
     window.setSourceModel(model)
     window.show()
 
