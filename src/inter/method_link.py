@@ -1,7 +1,7 @@
 # src/inter/method_link.py
 
 from PyQt5.QtCore import (QSortFilterProxyModel, Qt, QModelIndex)
-from PyQt5.QtGui import QStandardItemModel, QStandardItem
+from PyQt5.QtGui import QStandardItemModel
 from PyQt5.QtWidgets import (QApplication, QComboBox, QGridLayout, QGroupBox, 
                              QMenu, QTextEdit, QLabel, QTreeView, QVBoxLayout, 
                              QWidget, QAbstractItemView, QDialogButtonBox,
@@ -91,12 +91,13 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
         ok = super(MySortFilterProxyModel, self).setData(index, data, role)
         if ok:
             if role == Qt.EditRole:
-                idn0 = self.mapToSource(self.index(index.row(), 0, 
-                                        self.parent(index)))
+                idn0 = self.mapToSource(
+                    self.index(index.row(), 0, self.parent(index))
+                    )
                 idx = self.sourceModel().data(idn0, Qt.UserRole) 
                 logger.debug((data, idx))
-                logger.debug(upd0.format(headers[index.column()]))
-                conn.execute(upd0.format(headers[index.column()]), (data, idx))
+                logger.debug(upd0.format(main_headers[index.column()]))
+                conn.execute(upd0.format(main_headers[index.column()]), (data, idx))
                 conn.commit()
         return ok
 
@@ -111,14 +112,9 @@ class Window(QWidget):
         self.proxyModel.setDynamicSortFilter(True)
 
         self.proxyView = QTreeView()
-        self.proxyView.setRootIsDecorated(False)
-        self.proxyView.setAlternatingRowColors(True)
+        self.set_tree_view(self.proxyView)
         self.proxyView.setModel(self.proxyModel)
-        self.proxyView.setSortingEnabled(True)
-        self.proxyView.sortByColumn(1, Qt.AscendingOrder)
-        self.proxyView.setContextMenuPolicy(Qt.CustomContextMenu)
         self.proxyView.customContextMenuRequested.connect(self.pop_menu)
-        self.proxyView.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
         self.filterModule = QComboBox()
         self.filterClass = QComboBox()
@@ -128,8 +124,10 @@ class Window(QWidget):
         self.link_type = QComboBox()
         self.ok_btn = QDialogButtonBox()
 
-        self.resView = QTextEdit()
-        self.resView.setReadOnly(True)
+        self.resView = QTreeView()
+        self.set_tree_view(self.resView)
+        self.resModel = QSortFilterProxyModel(self.resView)
+        self.resView.setModel(self.resModel)
 
         self.stack_layout = QStackedLayout()
         self.proxyGroupBox = QGroupBox("Module/Class/Method list")
@@ -141,15 +139,25 @@ class Window(QWidget):
 
         self.report_creation_method = None      # method to create concrete report - apply sort key
         self.query_time = None
+        self.current_idx = QModelIndex()
 
         self.setWindowTitle("Custom Sort/Filter Model")
         self.resize(900, 750)
 
+    def set_tree_view(self, view: QTreeView):
+        view.setRootIsDecorated(False)
+        view.setAlternatingRowColors(True)
+        view.setSortingEnabled(True)
+        view.sortByColumn(1, Qt.AscendingOrder)
+        view.setContextMenuPolicy(Qt.CustomContextMenu)
+        view.setSelectionMode(QAbstractItemView.ExtendedSelection)
+
     def set_layout(self):
         filter_box: QGroupBox = self.set_filter_box()
-        filter_box.setMaximumHeight(62)
+        height = 92
+        filter_box.setMaximumHeight(height)
         link_box = self.set_link_box()
-        link_box.setMaximumHeight(62)
+        link_box.setMaximumHeight(height)
         self.stack_layout.addWidget(filter_box)
         self.stack_layout.addWidget(link_box)
         self.stack_layout.setCurrentIndex(0)
@@ -243,17 +251,8 @@ class Window(QWidget):
 
     def setSourceModel(self, model: QStandardItemModel):
         self.proxyModel.setSourceModel(model)
-        self.set_columns_width()
-        set_headers(self.proxyModel)
-
-    def set_columns_width(self):
-        prop = (3, 6, 8, 9, 5)
-        ss = sum(prop)
-        model = self.proxyView.model()
-        n = model.columnCount()
-        w = self.proxyView.width()
-        for k in range(n):
-            self.proxyView.setColumnWidth(k, w / ss * prop[k])
+        set_columns_width(self.proxyView)
+        set_headers(self.proxyModel, main_headers)
 
     def textFilterChanged(self):
         self.proxyModel.filter_changed(self.filterModule.currentText(),
@@ -264,7 +263,7 @@ class Window(QWidget):
         if act == 'Cancel':
             return
 
-        self.resView.clear()
+        self.resModel.clear()
         if act in menu_items[:3]:
             self.time_run()
             method_ids, method_names = self.get_selected_methods()
@@ -293,7 +292,7 @@ class Window(QWidget):
         model.beginInsertRows(parent, 0, 0)
         items = ('', self.proxyModel.module_filter,
                  self.proxyModel.class_filter, '', '')
-        idx = addItem(model, idn, *items)
+        idx = add_row(model, idn, *items)
         model.endInsertRows()
         self.proxyView.setCurrentIndex(self.proxyModel.mapFromSource(idx))
 
@@ -313,6 +312,15 @@ class Window(QWidget):
         ss = self.proxyModel.get_data(index)
         self.infLabel.setText('.'.join(ss[1:4]))
         self.stack_layout.setCurrentIndex(1)
+
+        id = self.proxyModel.get_data(index, Qt.UserRole)
+        
+        model = QStandardItemModel(0, len(link_headers), self.resView)
+        fill_in_model(model, sql_links.format(id, id))
+        
+        self.resModel.setSourceModel(model)
+        set_columns_width(self.resView, proportion=(1, 1, 5, 5, 5))
+        set_headers(self.resModel, link_headers)
         
     def set_link_box(self):
         self.link_type.addItem('What')
@@ -320,8 +328,10 @@ class Window(QWidget):
         f_type = QLabel('Link &type:')
         f_type.setBuddy(self.link_type)
 
-        self.ok_btn.setStandardButtons(QDialogButtonBox.Ok)
-        self.ok_btn.clicked.connect(self.ok_clicked)
+        self.ok_btn.setStandardButtons(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.ok_btn.addButton('+', QDialogButtonBox.ActionRole)
+        self.ok_btn.addButton('-', QDialogButtonBox.ActionRole)
+        self.ok_btn.clicked.connect(self.btn_clicked)
 
         l_box = QGridLayout()
         l_box.addWidget(self.infLabel, 0, 0)
@@ -336,13 +346,30 @@ class Window(QWidget):
         grp.setLayout(l_box)
         return grp
     
+    def btn_clicked(self, btn):
+        {
+            'OK': self.ok_clicked,
+            'Cancel': self.cancel_cliked,
+            '+': self.plus_clicked,
+            '-': self.minus_clicked,
+        }[btn.text()]()
+
     def ok_clicked(self):
+        pass
         self.stack_layout.setCurrentIndex(0)
+
+    def cancel_cliked(self):
+        self.stack_layout.setCurrentIndex(0)
+
+    def plus_clicked(self):
+        pass
+
+    def minus_clicked(self):
+        pass
 
     def time_run(self):
         tt = datetime.now()
         self.query_time = (tt.strftime("%b %d"), tt.strftime("%H:%M:%S"))
-        self.resView.append(rep_head.format(self.query_time[0]))
 
     def get_selected_methods(self):
         """
@@ -617,9 +644,16 @@ ins0 = (
     'type, module, class, method, remark) '
     'values (?, ?, ?, ?, ?);'
 )
+sql_links = (
+    "select a.id, 'From', a.type, a.module, a.class, a.method "
+    "from methods2 a join one_link b on b.call_id = a.id "
+    "where b.id = {} "
+    "union select a.id, 'What', a.type, a.module, a.class, a.method "
+    "from methods2 a join one_link b on b.id = a.id "
+    "where b.call_id = {};"
+)
 qsel0 = "select distinct module from methods2 where module != '' order by module;"
 qsel1 = 'select distinct class from methods2 order by upper(class);'
-rep_head = '<============== {} ==============>'
 memb_type = {
     'm': 'method',
     'sql': 'sql',
@@ -657,13 +691,31 @@ where_mod = "and a.module = '{}' "
 where_cls = "and a.class = '{}' "
 and_level = 'and b.level = 1 '
 group_by = 'group by a.type, a.module, a.class, a.method;'
-headers = (
+main_headers = (
     "type",
     "module",
     "Class",
     "method",
     "remark",
 )
+rep_headers = (
+    "time",
+    'What/From',
+    'All/Any',
+    'Type',
+    'module',
+    'Class',
+    'method',
+    'level'
+)
+link_headers = (
+    'What/From',
+    'Type',
+    'module',
+    'Class',
+    'method',
+)
+
 
 save_links = (
     "select a.type type, a.module module, a.class class, a.method method, "
@@ -685,32 +737,35 @@ def prep_sql(sql: str, mod: str, cls:str, lvl: int = 0) -> str:
             )
 
 
-def addItem(model, id, type, module, class_, method, note):
+def add_row(model, row):
     model.insertRow(0)
-    idx0 = model.index(0, 0)
-    model.setData(idx0, memb_type[type.lower()])
-    model.setData(model.index(0, 1), module)
-    model.setData(model.index(0, 2), class_)
-    model.setData(model.index(0, 3), method)
-    model.setData(model.index(0, 4), note if note else '')
-    model.setData(idx0, id, Qt.UserRole)
-    return idx0
+    model.setData(model.index(0, 0), row[0], Qt.UserRole)
+    k = 0
+    for item in row[1:]:
+        model.setData(model.index(0, k), item if item else '')
+        k += 1
 
 
-def setupModel(model):
+def fill_in_model(model, sql: str, add_item_func=add_row):
     curs = conn.cursor()
-    curs.execute('select * from methods2;')
+    curs.execute(sql)
 
     for cc in curs:
-        addItem(model, *cc)
+        add_item_func(model, cc)
 
 
-def set_headers(model):
-    model.setHeaderData(0, Qt.Horizontal, headers[0])
-    model.setHeaderData(1, Qt.Horizontal, headers[1])
-    model.setHeaderData(2, Qt.Horizontal, headers[2])
-    model.setHeaderData(3, Qt.Horizontal, headers[3])
-    model.setHeaderData(4, Qt.Horizontal, headers[4])
+def set_headers(model, headers):
+    for i, header in enumerate(headers):
+        model.setHeaderData(i, Qt.Horizontal, header)
+
+
+def set_columns_width(view, proportion = (3, 6, 8, 9, 5)):
+    ss = sum(proportion)
+    model = view.model()
+    n = model.columnCount()
+    w = view.width()
+    for k in range(n):
+        view.setColumnWidth(k, w / ss * proportion[k])
 
 
 if __name__ == "__main__":
@@ -730,8 +785,8 @@ if __name__ == "__main__":
     conn = sqlite3.connect(DB)
 
     window = Window(conn)
-    model = QStandardItemModel(0, len(headers), window)
-    setupModel(model)
+    model = QStandardItemModel(0, len(main_headers), window)
+    fill_in_model(model, 'select * from methods2;')
     window.setSourceModel(model)
     window.show()
 
