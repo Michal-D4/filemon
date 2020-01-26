@@ -1,6 +1,7 @@
 # src/inter/method_link.py
 
-from PyQt5.QtCore import (QSortFilterProxyModel, Qt, QModelIndex)
+from PyQt5.QtCore import (QSortFilterProxyModel, Qt, QModelIndex, 
+                          QPersistentModelIndex)
 from PyQt5.QtGui import QStandardItemModel
 from PyQt5.QtWidgets import (QApplication, QComboBox, QGridLayout, QGroupBox, 
                              QMenu, QTextEdit, QLabel, QTreeView, QVBoxLayout, 
@@ -128,6 +129,7 @@ class Window(QWidget):
         self.set_tree_view(self.resView)
         self.resModel = QSortFilterProxyModel(self.resView)
         self.resView.setModel(self.resModel)
+        self.resView.customContextMenuRequested.connect(self.menu_res_view)
 
         self.stack_layout = QStackedLayout()
         self.proxyGroupBox = QGroupBox("Module/Class/Method list")
@@ -233,6 +235,24 @@ class Window(QWidget):
 
         for cc in curs:
             self.filterClass.addItem(cc[0])
+
+    def menu_res_view(self, pos):
+        menu = QMenu(self)
+        menu.addAction(menu_items[6])
+        action = menu.exec_(self.resView.mapToGlobal(pos))
+        if action:
+            self.menu_res_action(action.text())
+
+    def menu_res_action(self, act: str):
+        if act == menu_items[6]:
+            rr = []
+            for rep in self.repo:
+                pp = [str(x) for x in rep]
+                rr.extend('\t'.join(pp))
+                rr.append('\n')
+            txt = ''.join(rr)
+            
+            QApplication.clipboard().setText(txt)
 
     def pop_menu(self, pos):
         idx = self.proxyView.indexAt(pos)
@@ -366,27 +386,39 @@ class Window(QWidget):
         }[btn.text()]()
 
     def ok_clicked(self):
-        # Save edited links
-        pass
-        # restore proxyModel data
-        pass
+        s_new = set(self.new_links)
+        s_old = set(self.old_links)
+        added = s_new - s_old
+        removed = s_old - s_new
+        if removed:
+            for link in removed:
+                conn.execute("delete from one_link where id=? and call_id=?;", link)
+        if added:
+            for link in added:
+                conn.execute("insert into one_link (id, call_id) values (?, ?);", link)
+        conn.commit()
+        self.resModel.sourceModel().clear()
         self.stack_layout.setCurrentIndex(0)
 
     def cancel_cliked(self):
+        self.resModel.sourceModel().clear()
         self.stack_layout.setCurrentIndex(0)
 
     def plus_clicked(self):
         # 1. add to resModel
         stat = self.link_type.currentText()
         idx_sel = self.proxyView.selectedIndexes()
+        idx_col0 = [ix for ix in idx_sel if ix.column() == 0]
         to_insert = []
-        for idx in idx_sel:
+        for idx in idx_col0:
             id = self.proxyModel.get_data(idx, Qt.UserRole)
             link = (id, self.current_id) if stat == "What" else (self.current_id, id)
-            if link in self.new_links:
+            logger.debug(link)
+            if link in self.new_links or link[::-1] in self.new_links:
                 continue
             self.new_links.append(link)
-            to_insert.append(self.proxyModel.get_data(idx))
+            row = self.proxyModel.get_data(idx)[:-1]
+            to_insert.append([id, stat] + row)
         
         if to_insert:
             self.resModel.beginInsertRows(QModelIndex(), 0, 0)
@@ -396,9 +428,21 @@ class Window(QWidget):
             self.resModel.endInsertRows()
 
     def minus_clicked(self):
-        # 1. add to proxyModel
-        # 2. remove from resModel
-        pass
+        idx_sel = self.resView.selectionModel().selectedRows()
+        logger.debug(self.new_links)
+        to_remove = []
+        for idx in idx_sel:
+            tt = self.resModel.data(idx)
+            idb = self.resModel.data(idx, Qt.UserRole)
+            link = (idb, self.current_id) if tt == 'What' else (self.current_id, idb)
+            self.new_links.remove(link)
+        
+        model = self.resModel.sourceModel()
+        idx_per = []
+        idx_sel.reverse()
+        [idx_per.append(QPersistentModelIndex(self.resModel.mapToSource(x))) for x in idx_sel]
+        for idx in idx_per:
+            delete_row(model, idx)
 
     def time_run(self):
         tt = datetime.now()
@@ -500,16 +544,12 @@ class Window(QWidget):
         self.report_four(lst_a, lst_b, "From")
 
     def report_four(self, lst_a, lst_b, what):
-        logger.debug('A | B')
         self.report_creation_method(self.repo, list(set(lst_a) | set(lst_b)),
                         pre=(self.query_time[1], what, 'A | B'))
-        logger.debug('A - B')
         self.report_creation_method(self.repo, list(set(lst_a) - set(lst_b)),
                         pre=(self.query_time[1], what, 'A - B'))
-        logger.debug('B - A')
         self.report_creation_method(self.repo, list(set(lst_b) - set(lst_a)),
                         pre=(self.query_time[1], what, 'B - A'))
-        logger.debug('A & B')
         self.report_creation_method(self.repo, list(set(lst_a) & set(lst_b)),
                         pre=(self.query_time[1], what, 'A & B'))
         fill_in_model(self.resModel.sourceModel(), self.repo, ud=False)
@@ -536,9 +576,7 @@ class Window(QWidget):
         rep_prep = pre_report(links)
 
         if rep_prep[0]:
-            logger.debug(len(rep_prep[0]))
             cc = self.exec_sql_f(param[1], (','.join((rep_prep[0])),))
-            logger.debug(cc)
             pre = (self.query_time[1], param[2], param[3])
             self.report_creation_method(self.repo, cc, pre=pre)
 
@@ -614,8 +652,6 @@ class Window(QWidget):
         @return: cursor
         """
         curs = self.conn.cursor()
-        logger.debug(sql)
-        logger.debug(sql_par)
         cc = curs.execute(sql, sql_par)
         return [(*map(str, x),) for x in cc]
 
@@ -664,7 +700,6 @@ def concrete_report(sort_key):
                       post: Iterable = ''):
         lst.sort(key=sort_key)
         for ll in lst:
-            logger.debug((*pre, *ll, *post))
             report.append((*pre, *ll, *post))
     return sorted_report
 
@@ -676,6 +711,7 @@ menu_items = (
     'append row',
     'delete',
     'edit links',
+    'clipboard',
     'Cancel',    
 )
 upd0 = "update methods2 set {}=? where id=?;"
@@ -772,13 +808,21 @@ save_links = (
 
 
 def prep_sql(sql: str, mod: str, cls:str, lvl: int = 0) -> str:
-    logger.debug(mod + '|' + cls)
     return (sql +
             ('' if mod == 'All' else where_mod.format(mod)) +
             ('' if cls == 'All' else where_cls.format(cls)) +
             (and_level if lvl else '') +
             group_by
             )
+
+
+def delete_row(model: QStandardItemModel, index: QModelIndex):
+    if index.isValid():
+        parent = QModelIndex()
+        row = index.row()
+        model.beginRemoveRows(parent, row, row)
+        model.removeRow(row, parent)
+        model.endRemoveRows()
 
 
 def add_row(model, row, ud):
@@ -802,7 +846,6 @@ def add_row(model, row, ud):
 
 def fill_in_model(model, row_list: Iterable, ud: bool=True):
     for cc in row_list:
-        logger.debug(cc)
         add_row(model, cc, ud)
 
 
