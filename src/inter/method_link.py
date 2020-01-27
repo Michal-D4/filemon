@@ -120,6 +120,7 @@ class Window(QWidget):
         self.filterModule = QComboBox()
         self.filterClass = QComboBox()
         self.filterNote = QComboBox()
+        self.save_btn = QDialogButtonBox(Qt.Vertical)
 
         self.infLabel = QLabel()
         self.link_type = QComboBox()
@@ -177,7 +178,26 @@ class Window(QWidget):
 
         self.proxyGroupBox.setLayout(proxyLayout)
 
+    def save_clicked(self, btn):
+        {
+            'Save': self.save_init,
+            'Copy to clipboard': self.copy_to_clipboard,
+        }[btn.text()]()
+
+    def copy_to_clipboard(self):
+        csr = conn.cursor()
+        csr.execute(save_links)
+        to_save = []
+        for row in csr:
+            to_save.append('\t'.join(row))
+        
+        QApplication.clipboard().setText('\n'.join(to_save))
+
     def set_filter_box(self):
+        # self.save_btn.setStandardButtons(QDialogButtonBox.No)
+        self.save_btn.addButton('Save', QDialogButtonBox.ActionRole)
+        self.save_btn.addButton('Copy to clipboard', QDialogButtonBox.ActionRole)
+        self.save_btn.clicked.connect(self.save_clicked)
         self.filterNote.addItem("All")
         self.filterNote.addItem("Not blank")
 
@@ -192,6 +212,7 @@ class Window(QWidget):
         filter_box.addWidget(filterModuleLabel, 0, 0)
         filter_box.addWidget(filterClassLabel, 0, 1)
         filter_box.addWidget(filterNoteLabel, 0, 2)
+        filter_box.addWidget(self.save_btn, 0, 3, 2, 1)
         filter_box.addWidget(self.filterModule, 1, 0)
         filter_box.addWidget(self.filterClass, 1, 1)
         filter_box.addWidget(self.filterNote, 1, 2)
@@ -248,11 +269,9 @@ class Window(QWidget):
             rr = []
             for rep in self.repo:
                 pp = [str(x) for x in rep]
-                rr.extend('\t'.join(pp))
-                rr.append('\n')
-            txt = ''.join(rr)
+                rr.append('\t'.join(pp))
             
-            QApplication.clipboard().setText(txt)
+            QApplication.clipboard().setText('\n'.join(rr))
 
     def pop_menu(self, pos):
         idx = self.proxyView.indexAt(pos)
@@ -668,13 +687,14 @@ class Window(QWidget):
 
     def closeEvent(self, event):
         logger.debug('EXIT')
+        super(Window, self).closeEvent(event)
+
+    def save_init(self):
         outfile = open(out_file, 'w', encoding='utf­8')
         csr = conn.cursor()
         csr.execute(save_links)
         for row in csr:
             outfile.write(','.join((*row, '\n')))
-
-        super(Window, self).closeEvent(event)
 
 
 def pre_report(list_of_tuples):
