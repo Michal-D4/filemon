@@ -1,4 +1,4 @@
-﻿# load_db_data.py
+# load_db_data.py
 
 from typing import Set
 from loguru import logger
@@ -9,8 +9,9 @@ FIND_PART_PATH = 'select ParentID from Dirs where Path like :newPath;'
 
 FIND_EXACT_PATH = 'select DirID from Dirs where Path = :newPath;'
 
-CHANGE_PARENT_ID = 'update Dirs set ParentID = :newId where ParentID = :currId' \
-                   ' and Path like :newPath and DirID != :newId;'
+CHANGE_PARENT_ID = ('update Dirs set ParentID = :newId where ParentID = :currId' 
+                    ' and Path like :newPath and DirID != :newId;'
+                   )
 
 FIND_FILE = 'select * from Files where DirID = :dir_id and FileName = :file;'
 
@@ -169,7 +170,3 @@ class LoadDBData:
                 return parent_id[0], path_
 
         return 0, None
-
-
-if __name__ == "__main__":
-    pass
