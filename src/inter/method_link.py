@@ -144,7 +144,7 @@ class Window(QWidget):
         self.repo = []
         self.old_links = []
         self.new_links = []
-        self.query_time = None
+        self.query_time = time_run()
         self.current_id = 0
 
         self.setWindowTitle("Custom Sort/Filter Model")
@@ -311,7 +311,7 @@ class Window(QWidget):
             self.resModel.setSourceModel(model)
             set_columns_width(self.resView, proportion=(3, 2, 2, 2, 7, 7, 7, 1))
             set_headers(self.resModel, rep_headers)
-            self.time_run()
+            self.query_time = time_run()
             method_ids, method_names = self.get_selected_methods()
 
             {menu_items[0]: self.first_level_only,
@@ -329,7 +329,7 @@ class Window(QWidget):
     def append_row(self, index: QModelIndex):
         crs = conn.cursor()
         items = ('', self.proxyModel.module_filter,
-                 self.proxyModel.class_filter, '', '')
+                 self.proxyModel.class_filter, '', self.query_time[0])
         crs.execute(ins0, items)
         idn = crs.lastrowid
         conn.commit()
@@ -338,7 +338,7 @@ class Window(QWidget):
         parent = self.proxyModel.mapToSource(index.parent())
 
         model.beginInsertRows(parent, 0, 0)
-        add_row(model, idn, *items)
+        add_row(model, (idn, *items))
         model.endInsertRows()
 
     def delete_current(self, index: QModelIndex):
@@ -463,9 +463,9 @@ class Window(QWidget):
         for idx in idx_per:
             delete_row(model, idx)
 
-    def time_run(self):
+    def time_run():
         tt = datetime.now()
-        self.query_time = (tt.strftime("%b %d"), tt.strftime("%H:%M:%S"))
+        return (tt.strftime("%b %d"), tt.strftime("%H:%M:%S"))
 
     def get_selected_methods(self):
         """
@@ -825,6 +825,11 @@ save_links = (
     "left join methods2 b on b.id = c.call_ID "
     "order by module, type, method;"
 )
+
+
+def time_run():
+    tt = datetime.now()
+    return (tt.strftime("%d-%m-%Y"), tt.strftime("%H:%M:%S"))
 
 
 def prep_sql(sql: str, mod: str, cls:str, lvl: int = 0) -> str:
