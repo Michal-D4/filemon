@@ -829,16 +829,12 @@ class FilesCrt():
                                comment=comment[0], book_title=comment[1])
         return res
 
-    def _restore_file_list(self, curr_dir_idx):
-        logger.debug(f'file_list_source: {self.file_list_source}, valid? {curr_dir_idx.isValid()}')
-        # FOLDER, VIRTUAL, ADVANCE = (1, 2, 4)
-
+    def get_list_source(self, curr_dir_idx):
         if not curr_dir_idx.isValid():
             curr_dir_idx = self.ui.dirTree.model().index(0, 0)
         if ut.DB_Connection['SameDB']:
             settings = QSettings()
-            self.file_list_source = settings.value(
-                'FILE_LIST_SOURCE', FOLDER)
+            self.file_list_source = settings.value('FILE_LIST_SOURCE', FOLDER)
             row = settings.value('FILE_IDX', 0)
         else:
             if self.ui.dirTree.model().is_virtual(curr_dir_idx):
@@ -846,6 +842,14 @@ class FilesCrt():
             else:
                 self.file_list_source = FOLDER
             row = 0
+        return curr_dir_idx, row
+
+    def _restore_file_list(self, curr_dir_idx):
+        source_type = {1: "FOLDER", 2: "VIRTUAL", 4: "ADVANCE"}
+        logger.debug((f'file_list_source: {source_type[self.file_list_source]}, '
+                      f'valid? {curr_dir_idx.isValid()}'))
+        
+        curr_dir_idx, row = self.get_list_source()
 
         dir_idx = self.ui.dirTree.model().data(curr_dir_idx, Qt.UserRole)
 
