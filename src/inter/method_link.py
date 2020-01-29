@@ -120,11 +120,9 @@ class Window(QWidget):
         self.filterModule = QComboBox()
         self.filterClass = QComboBox()
         self.filterNote = QComboBox()
-        self.save_btn = QDialogButtonBox(Qt.Vertical)
 
         self.infLabel = QLabel()
         self.link_type = QComboBox()
-        self.ok_btn = QDialogButtonBox()
 
         self.resView = QTreeView()
         self.set_tree_view(self.resView)
@@ -133,11 +131,11 @@ class Window(QWidget):
         self.resView.customContextMenuRequested.connect(self.menu_res_view)
 
         self.stack_layout = QStackedLayout()
-        self.proxyGroupBox = QGroupBox("Module/Class/Method list")
-        self.set_layout()
+        proxyGroupBox = QGroupBox("Module/Class/Method list")
+        proxyGroupBox.setLayout(self.set_layout())
 
         mainLayout = QVBoxLayout()
-        mainLayout.addWidget(self.proxyGroupBox)
+        mainLayout.addWidget(proxyGroupBox)
         self.setLayout(mainLayout)
 
         self.report_creation_method = None      # method to create concrete report - apply sort key
@@ -175,8 +173,8 @@ class Window(QWidget):
         proxyLayout.setRowStretch(0, 5)
         proxyLayout.setRowStretch(1, 0)
         proxyLayout.setRowStretch(2, 3)
-
-        self.proxyGroupBox.setLayout(proxyLayout)
+        
+        return proxyLayout
 
     def save_clicked(self, btn):
         {
@@ -194,10 +192,10 @@ class Window(QWidget):
         QApplication.clipboard().setText('\n'.join(to_save))
 
     def set_filter_box(self):
-        # self.save_btn.setStandardButtons(QDialogButtonBox.No)
-        self.save_btn.addButton('Save', QDialogButtonBox.ActionRole)
-        self.save_btn.addButton('Copy to clipboard', QDialogButtonBox.ActionRole)
-        self.save_btn.clicked.connect(self.save_clicked)
+        save_btn = QDialogButtonBox(Qt.Vertical)
+        save_btn.addButton('Save', QDialogButtonBox.ActionRole)
+        save_btn.addButton('Copy to clipboard', QDialogButtonBox.ActionRole)
+        save_btn.clicked.connect(self.save_clicked)
         self.filterNote.addItem("All")
         self.filterNote.addItem("Not blank")
 
@@ -212,7 +210,7 @@ class Window(QWidget):
         filter_box.addWidget(filterModuleLabel, 0, 0)
         filter_box.addWidget(filterClassLabel, 0, 1)
         filter_box.addWidget(filterNoteLabel, 0, 2)
-        filter_box.addWidget(self.save_btn, 0, 3, 2, 1)
+        filter_box.addWidget(save_btn, 0, 3, 2, 1)
         filter_box.addWidget(self.filterModule, 1, 0)
         filter_box.addWidget(self.filterClass, 1, 1)
         filter_box.addWidget(self.filterNote, 1, 2)
@@ -378,16 +376,17 @@ class Window(QWidget):
         f_type = QLabel('Link &type:')
         f_type.setBuddy(self.link_type)
 
-        self.ok_btn.setStandardButtons(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        self.ok_btn.addButton('+', QDialogButtonBox.ActionRole)
-        self.ok_btn.addButton('-', QDialogButtonBox.ActionRole)
-        self.ok_btn.clicked.connect(self.btn_clicked)
+        ok_btn = QDialogButtonBox()
+        ok_btn.setStandardButtons(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        ok_btn.addButton('+', QDialogButtonBox.ActionRole)
+        ok_btn.addButton('-', QDialogButtonBox.ActionRole)
+        ok_btn.clicked.connect(self.btn_clicked)
 
         l_box = QGridLayout()
         l_box.addWidget(self.infLabel, 0, 0)
         l_box.addWidget(f_type, 1, 0)
         l_box.addWidget(self.link_type, 1, 1)
-        l_box.addWidget(self.ok_btn, 1, 2)
+        l_box.addWidget(ok_btn, 1, 2)
         l_box.setRowStretch(0, 1)
         l_box.setRowStretch(1, 0)
         l_box.setRowStretch(2, 1)
@@ -462,10 +461,6 @@ class Window(QWidget):
         [idx_per.append(QPersistentModelIndex(self.resModel.mapToSource(x))) for x in idx_sel]
         for idx in idx_per:
             delete_row(model, idx)
-
-    def time_run():
-        tt = datetime.now()
-        return (tt.strftime("%b %d"), tt.strftime("%H:%M:%S"))
 
     def get_selected_methods(self):
         """
@@ -764,8 +759,6 @@ memb_type = {
     'w': 'widget',
     '': '',
 }
-# method id-s from methods2 by their names
-meth = "select id from methods2 where module || class || method in ('{}');"
 # id-s of methods called from given method id
 what_id = 'select id from simple_link where call_id = ?;'
 # id-s of methods that call given method id
