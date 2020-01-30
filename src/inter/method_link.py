@@ -345,11 +345,10 @@ class Window(QWidget):
 
     def edit_links(self, index: QModelIndex):
         ss = self.proxyModel.get_data(index)
-        self.infLabel.setText('.'.join(ss[1:4]))
+        id = self.proxyModel.get_data(index, Qt.UserRole)
+        self.infLabel.setText("{:04d}: {}".format(id, '.'.join(ss[1:4])))
         self.stack_layout.setCurrentIndex(1)
 
-        id = self.proxyModel.get_data(index, Qt.UserRole)
-        
         model = QStandardItemModel(0, len(link_headers), self.resView)
         qq = conn.cursor()
         qq.execute(sql_links.format(id, id))
