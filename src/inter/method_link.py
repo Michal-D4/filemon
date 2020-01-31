@@ -674,6 +674,8 @@ class Window(QWidget):
         super(Window, self).closeEvent(event)
 
     def save_init(self):
+        vv = datetime.now().strftime("_%d-%m-%Y_%H%M%S")
+        out_file = Path.cwd() / ''.join(("tmp/xls/prj",  vv,  ".txt"))
         outfile = open(out_file, 'w', encoding='utf­8')
         csr = conn.cursor()
         csr.execute(save_links)
@@ -820,7 +822,7 @@ save_links = (
 
 def time_run():
     tt = datetime.now()
-    return (tt.strftime("%d-%m-%Y"), tt.strftime("%H:%M:%S"))
+    return tt.strftime("%d-%m-%Y"), tt.strftime("%H:%M:%S")
 
 
 def prep_sql(sql: str, mod: str, cls:str, lvl: int = 0) -> str:
