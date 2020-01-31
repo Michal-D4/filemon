@@ -447,8 +447,6 @@ class Window(QWidget):
 
     def minus_clicked(self):
         idx_sel = self.resView.selectionModel().selectedRows()
-        logger.debug(self.new_links)
-        to_remove = []
         for idx in idx_sel:
             tt = self.resModel.data(idx)
             idb = self.resModel.data(idx, Qt.UserRole)
@@ -754,7 +752,7 @@ memb_type = {
     'sql': 'sql',
     's': 'signal',
     'c': 'constant',
-    'f': 'field',
+    'f': 'function',
     'i': 'instance',
     'w': 'widget',
     '': '',
