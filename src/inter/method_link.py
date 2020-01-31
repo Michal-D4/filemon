@@ -113,7 +113,7 @@ class Window(QWidget):
         self.proxyModel.setDynamicSortFilter(True)
 
         self.proxyView = QTreeView()
-        self.set_tree_view(self.proxyView)
+        set_tree_view(self.proxyView)
         self.proxyView.setModel(self.proxyModel)
         self.proxyView.customContextMenuRequested.connect(self.pop_menu)
 
@@ -125,7 +125,7 @@ class Window(QWidget):
         self.link_type = QComboBox()
 
         self.resView = QTreeView()
-        self.set_tree_view(self.resView)
+        set_tree_view(self.resView)
         self.resModel = QSortFilterProxyModel(self.resView)
         self.resView.setModel(self.resModel)
         self.resView.customContextMenuRequested.connect(self.menu_res_view)
@@ -147,14 +147,6 @@ class Window(QWidget):
 
         self.setWindowTitle("Custom Sort/Filter Model")
         self.resize(900, 750)
-
-    def set_tree_view(self, view: QTreeView):
-        view.setRootIsDecorated(False)
-        view.setAlternatingRowColors(True)
-        view.setSortingEnabled(True)
-        view.sortByColumn(1, Qt.AscendingOrder)
-        view.setContextMenuPolicy(Qt.CustomContextMenu)
-        view.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
     def set_layout(self):
         filter_box: QGroupBox = self.set_filter_box()
@@ -353,11 +345,10 @@ class Window(QWidget):
 
     def edit_links(self, index: QModelIndex):
         ss = self.proxyModel.get_data(index)
-        self.infLabel.setText('.'.join(ss[1:4]))
+        id = self.proxyModel.get_data(index, Qt.UserRole)
+        self.infLabel.setText("{:04d}: {}".format(id, '.'.join(ss[1:4])))
         self.stack_layout.setCurrentIndex(1)
 
-        id = self.proxyModel.get_data(index, Qt.UserRole)
-        
         model = QStandardItemModel(0, len(link_headers), self.resView)
         qq = conn.cursor()
         qq.execute(sql_links.format(id, id))
@@ -715,6 +706,15 @@ def concrete_report(sort_key):
         for ll in lst:
             report.append((*pre, *ll, *post))
     return sorted_report
+
+
+def set_tree_view(view: QTreeView):
+    view.setRootIsDecorated(False)
+    view.setAlternatingRowColors(True)
+    view.setSortingEnabled(True)
+    view.sortByColumn(1, Qt.AscendingOrder)
+    view.setContextMenuPolicy(Qt.CustomContextMenu)
+    view.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
 
 menu_items = (
