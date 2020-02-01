@@ -328,7 +328,7 @@ class Window(QWidget):
         parent = self.proxyModel.mapToSource(index.parent())
 
         model.beginInsertRows(parent, 0, 0)
-        add_row(model, (idn, *items))
+        add_row(model, (idn, *items), True)
         model.endInsertRows()
 
     def delete_current(self, index: QModelIndex):
@@ -408,6 +408,9 @@ class Window(QWidget):
         conn.commit()
         self.resModel.sourceModel().clear()
         self.stack_layout.setCurrentIndex(0)
+        if removed or added:
+            logger.debug('recreate_links')
+            recreate_links()
 
     def cancel_cliked(self):
         self.resModel.sourceModel().clear()
@@ -566,11 +569,13 @@ class Window(QWidget):
         what_sql = prep_sql(what_call_3,
                             self.filterModule.currentText(),
                             self.filterClass.currentText(), lvl)
+        logger.debug(what_sql)
         param = (what_id, what_sql, 'What', 'ALL', 'ANY')
         self.report_23(ids, param)
         from_sql = prep_sql(called_from_3,
                             self.filterModule.currentText(),
                             self.filterClass.currentText(), lvl)
+        logger.debug(from_sql)
         param = (from_id, from_sql, 'From', 'ALL', 'ANY')
         self.report_23(ids, param)
 
@@ -679,6 +684,7 @@ class Window(QWidget):
         outfile = open(out_file, 'w', encoding='utf­8')
         csr = conn.cursor()
         csr.execute(save_links)
+        outfile.write(' headers imitation\n')
         for row in csr:
             outfile.write(','.join((*row, '\n')))
 
@@ -820,6 +826,20 @@ save_links = (
 )
 
 
+def recreate_links():
+    re_sql = (  # all levels link 
+    "with recc (ID, call_ID, level) as ("
+    "select ID, call_ID, 1 from one_link "
+    "union select b.ID, a.call_ID, a.level+1 "
+    "from recc a join one_link b on b.call_ID = a.ID) "
+    "insert into simple_link (ID, call_ID, level) "
+    "select ID, call_ID, min(level) from recc group by ID, call_ID;"
+    )
+    conn.execute("delete from simple_link;")
+    conn.execute(re_sql)
+    conn.commit()
+
+
 def time_run():
     tt = datetime.now()
     return tt.strftime("%d-%m-%Y"), tt.strftime("%H:%M:%S")
@@ -843,23 +863,21 @@ def delete_row(model: QStandardItemModel, index: QModelIndex):
         model.endRemoveRows()
 
 
-def add_row(model, row, ud):
+def add_row(model, row, user_data: bool):
     """
     @param: model
     @param: row  - data 
-    @param: ud - user data, first item of list
+    @param: user_data - True when first item of row is user data
     """
     model.insertRow(0)
-    if ud:
+    if user_data:
         model.setData(model.index(0, 0), row[0], Qt.UserRole)
         rr = row[1:]
     else:
         rr = row
 
-    k = 0
-    for item in rr:
+    for k, item in enumerate(rr):
         model.setData(model.index(0, k), item if item else '')
-        k += 1
 
 
 def fill_in_model(model, row_list: Iterable, ud: bool=True):
