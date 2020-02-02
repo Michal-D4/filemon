@@ -566,42 +566,42 @@ class Window(QWidget):
     def selected_more_than_two(self, ids, names, lvl):
         pre = (self.query_time[1], 'Sel', '')
         self.report_creation_method(self.repo, names, pre=pre)
-        what_sql = prep_sql(what_call_3,
-                            self.filterModule.currentText(),
-                            self.filterClass.currentText(), lvl)
-        logger.debug(what_sql)
-        param = (what_id, what_sql, 'What', 'ALL', 'ANY')
-        self.report_23(ids, param)
-        from_sql = prep_sql(called_from_3,
-                            self.filterModule.currentText(),
-                            self.filterClass.currentText(), lvl)
-        logger.debug(from_sql)
-        param = (from_id, from_sql, 'From', 'ALL', 'ANY')
-        self.report_23(ids, param)
+        
+        self.report_23(ids, 'What', lvl)
 
-    def report_23(self, ids, param):
-        links = self.exec_sql_2(ids, param[0])
+        self.report_23(ids, 'From', lvl)
+
+    def report_23(self, ids, param, lvl):
+        logger.debug(f' {param}; lvl = {lvl}')
+        opt = {'What': (what_id, what_call_3),
+               'From': (from_id, called_from_3)
+               }[param]
+        links = self.exec_sql_2(ids, lvl, opt[0])
         rep_prep = pre_report(links)
 
-        if rep_prep[0]:
-            cc = self.exec_sql_f(param[1], (','.join((rep_prep[0])),))
-            pre = (self.query_time[1], param[2], param[3])
-            self.report_creation_method(self.repo, cc, pre=pre)
+        self.methods_by_id_list(opt[1], rep_prep[0:3:2], param, 'ALL')
 
-        if rep_prep[1]:
-            cc = self.exec_sql_f(param[1], (','.join((rep_prep[1])),))
-            pre = (self.query_time[1], param[2], param[4])
-            self.report_creation_method(self.repo, cc, pre=pre)
+        self.methods_by_id_list(opt[1], rep_prep[1:], param, 'ANY')
 
         fill_in_model(self.resModel.sourceModel(), self.repo, ud=False)
 
-    def exec_sql_2(self, ids, sql):
+    def exec_sql_2(self, ids, lvl, sql):
         res = []
         curs = self.conn.cursor()
+        loc_sql = sql.format('and level=1' if lvl else '')
+        logger.debug(loc_sql)
         for id_ in ids:
-            w_id = curs.execute(sql, (id_,))
-            res.append([str(x[0]) for x in w_id])
+            w_id = curs.execute(loc_sql, (id_,))
+            res.append(dict(w_id))
+            logger.debug(res[-1])
         return res
+
+    def methods_by_id_list(self, sql: str, ids: list, what: str, all_any: str):
+        if ids:
+            cc = self.exec_sql_f(sql, (','.join((map(str, ids[0]))),))
+            pre = (self.query_time[1], what, all_any)
+            vv = insert_levels(cc, ids[1])
+            self.report_creation_method(self.repo, vv, pre=pre)
 
     def sort_by_level(self, ids, names):
         """
@@ -657,7 +657,7 @@ class Window(QWidget):
         exesute SQL - bind parameters with '?'
         @param sql:
         @param sql_par:
-        @return: cursor
+        @return: list of lists of strings
         """
         curs = self.conn.cursor()
         cc = curs.execute(sql, sql_par)
@@ -668,7 +668,7 @@ class Window(QWidget):
         exesute SQL - insert parameters into SQL with str.format method
         @param sql:
         @param sql_par:
-        @return: cursor
+        @return: list of lists of strings
         """
         curs = self.conn.cursor()
         cc = curs.execute(sql.format(*sql_par))
@@ -689,16 +689,21 @@ class Window(QWidget):
             outfile.write(','.join((*row, '\n')))
 
 
-def pre_report(list_of_tuples):
-    if not list_of_tuples:
-        return (), ()
-    all_ = any_ = set(list_of_tuples[0])
-    for tpl in list_of_tuples:
-        tt = set(tpl)
+def pre_report(list_of_dicts):
+    if not list_of_dicts:
+        return (), (), {}
+    rd = list_of_dicts[0]
+    all_ = set(rd.keys())
+    any_ = set(rd.keys())
+    logger.debug(rd)
+    for tpl in list_of_dicts[1:]:
+        logger.debug(tpl)
+        rd.update(tpl)
+        tt = set(tpl.keys())
         all_ = all_ & tt
         any_ = any_ | tt
 
-    return all_, any_
+    return all_, any_, rd
 
 
 def concrete_report(sort_key):
@@ -766,9 +771,11 @@ memb_type = {
     '': '',
 }
 # id-s of methods called from given method id
-what_id = 'select id from simple_link where call_id = ?;'
+what_id = ('select id idn, min(level) from simple_link '
+           'where call_id = ? {} group by idn;')
 # id-s of methods that call given method id
-from_id = 'select call_id from simple_link where id = ?;'
+from_id = ('select call_id idn, min(level) from simple_link '
+           'where id = ? {} group by idn;')
 
 what_call_1 = ('select a.type, a.module, a.class, a.method, min(b.level) '
                'from simple_link b join methods2 a on a.id = b.id '
@@ -778,13 +785,11 @@ called_from_1 = ('select a.type, a.module, a.class, a.method, min(b.level) '
                  'from simple_link b join methods2 a on a.id = b.call_id '
                  'where b.id = ? '
                  )
-what_call_3 = ('select a.type, a.module, a.class, a.method, min(b.level) '
-               'from simple_link b join methods2 a on a.id = b.id '
-               'where b.call_id in ({}) '
+what_call_3 = ('select type, module, class, method, id '
+               'from methods2 where id in ({}) '
                )
-called_from_3 = ('select a.type, a.module, a.class, a.method, min(b.level) '
-                 'from simple_link b join methods2 a on a.id = b.call_id '
-                 'where b.id in ({}) '
+called_from_3 = ('select type, module, class, method, id '
+                 'from methods2 where id in ({}) '
                  )
 where_mod = "and a.module = '{}' "
 where_cls = "and a.class = '{}' "
@@ -825,6 +830,13 @@ save_links = (
     "order by module, type, method;"
 )
 
+
+def insert_levels(cc: sqlite3.Cursor, dd: dict):
+    rr = []
+    logger.debug(dd)
+    for row in cc:
+        rr.append((*row[:-1], dd[int(row[-1])]))
+    return rr
 
 def recreate_links():
     re_sql = (  # all levels link 
