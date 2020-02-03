@@ -1,5 +1,7 @@
 # src/inter/method_link.py
 
+import sqlite3
+
 from PyQt5.QtCore import (QSortFilterProxyModel, Qt, QModelIndex, 
                           QPersistentModelIndex)
 from PyQt5.QtGui import QStandardItemModel
@@ -7,10 +9,10 @@ from PyQt5.QtWidgets import (QApplication, QComboBox, QGridLayout, QGroupBox,
                              QMenu, QTextEdit, QLabel, QTreeView, QVBoxLayout, 
                              QWidget, QAbstractItemView, QDialogButtonBox,
                              QStackedLayout)
-import sqlite3
 from pathlib import Path
 from loguru import logger
 from datetime import datetime
+from collections import defaultdict
 from collections.abc import Iterable
 
 # ---------------------------------------------------------
@@ -89,17 +91,21 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
         return None
 
     def setData(self, index, data, role=Qt.DisplayRole):
+        if role == Qt.EditRole:
+            idn0 = self.mapToSource(
+                self.index(index.row(), 0, self.parent(index))
+                )
+            idx = self.sourceModel().data(idn0, Qt.UserRole) 
+            data_0 = memb_type[data]
+            if data_0:
+                data_ins = data
+                data = data_0
+            else:
+                data_ins = memb_type[data]
+                data = data if data_ins else data_ins
+            conn.execute(upd0.format(main_headers[index.column()]), (data_ins, idx))
+            conn.commit()
         ok = super(MySortFilterProxyModel, self).setData(index, data, role)
-        if ok:
-            if role == Qt.EditRole:
-                idn0 = self.mapToSource(
-                    self.index(index.row(), 0, self.parent(index))
-                    )
-                idx = self.sourceModel().data(idn0, Qt.UserRole) 
-                logger.debug((data, idx))
-                logger.debug(upd0.format(main_headers[index.column()]))
-                conn.execute(upd0.format(main_headers[index.column()]), (data, idx))
-                conn.commit()
         return ok
 
 
@@ -508,7 +514,7 @@ class Window(QWidget):
         lst = self.first_1_part(ids, from_sql)
         pre = (self.query_time[1], 'From', '')
         self.report_creation_method(self.repo, lst, pre=pre)
-        fill_in_model(self.resModel.sourceModel(), self.repo, ud=False)
+        fill_in_model(self.resModel.sourceModel(), self.repo, user_data=False)
 
     def first_1_part(self, ids, sql):
         lst = self.exec_sql_b(sql, ids)
@@ -558,7 +564,7 @@ class Window(QWidget):
                         pre=(self.query_time[1], what, 'B - A'))
         self.report_creation_method(self.repo, list(set(lst_a) & set(lst_b)),
                         pre=(self.query_time[1], what, 'A & B'))
-        fill_in_model(self.resModel.sourceModel(), self.repo, ud=False)
+        fill_in_model(self.resModel.sourceModel(), self.repo, user_data=False)
 
     def first_more_than_2(self, ids, names):
         self.selected_more_than_two(ids, names, 1)
@@ -583,7 +589,7 @@ class Window(QWidget):
 
         self.methods_by_id_list(opt[1], rep_prep[1:], param, 'ANY')
 
-        fill_in_model(self.resModel.sourceModel(), self.repo, ud=False)
+        fill_in_model(self.resModel.sourceModel(), self.repo, user_data=False)
 
     def exec_sql_2(self, ids, lvl, sql):
         res = []
@@ -730,6 +736,30 @@ def set_tree_view(view: QTreeView):
     view.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
 
+memb_type = defaultdict(str)
+memb_type.update({
+    'm': 'method',
+    'sql': 'sql',
+    's': 'signal',
+    'c': 'constant',
+    'C': 'Class',
+    'f': 'function',
+    'i': 'instance',
+    'w': 'widget',
+    }
+)
+memb_key = defaultdict(str)
+memb_key.update({
+    'method': 'm',  
+    'sql': 'sql',
+    'signal': 's',  
+    'constant': 'c',  
+    'Class': 'C',
+    'function': 'f',  
+    'instance': 'i',  
+    'widget': 'w',  
+    }
+)
 menu_items = (
     'First level only',
     'sort by level',
@@ -760,17 +790,6 @@ sql_id2 = (
 )
 qsel0 = "select distinct module from methods2 where module != '' order by module;"
 qsel1 = 'select distinct class from methods2 order by upper(class);'
-memb_type = {
-    'm': 'method',
-    'sql': 'sql',
-    's': 'signal',
-    'c': 'constant',
-    'C': 'Class',
-    'f': 'function',
-    'i': 'instance',
-    'w': 'widget',
-    '': '',
-}
 # id-s of methods called from given method id
 what_id = ('select id idn, min(level) from simple_link '
            'where call_id = ? {} group by idn;')
@@ -892,9 +911,9 @@ def add_row(model, row, user_data: bool):
         model.setData(model.index(0, k), item if item else '')
 
 
-def fill_in_model(model, row_list: Iterable, ud: bool=True):
+def fill_in_model(model, row_list: Iterable, user_data: bool=True):
     for cc in row_list:
-        add_row(model, cc, ud)
+        add_row(model, cc, user_data)
 
 
 def set_headers(model, headers):
