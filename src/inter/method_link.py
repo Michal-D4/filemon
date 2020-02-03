@@ -765,6 +765,7 @@ memb_type = {
     'sql': 'sql',
     's': 'signal',
     'c': 'constant',
+    'C': 'Class',
     'f': 'function',
     'i': 'instance',
     'w': 'widget',
@@ -827,13 +828,12 @@ save_links = (
     "COALESCE(b.class,'') c_class, COALESCE(a.remark,'') remark "
     "from methods2 a left join one_link c on c.id = a.id "
     "left join methods2 b on b.id = c.call_ID "
-    "order by module, type, method;"
+    "order by module, type, class, method, c_module, c_class, c_method;"
 )
 
 
 def insert_levels(cc: sqlite3.Cursor, dd: dict):
     rr = []
-    logger.debug(dd)
     for row in cc:
         rr.append((*row[:-1], dd[int(row[-1])]))
     return rr
