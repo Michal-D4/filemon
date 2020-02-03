@@ -92,10 +92,10 @@ others = (
 
 
 def drop_tables(con_):
-    con_.execute("drop table simple_link;")
-    con_.execute("drop table one_link;")
-    con_.execute("drop table methods2;")
-    con_.execute("drop table methods;")
+    con_.execute("drop table IF EXISTS simple_link;")
+    con_.execute("drop table IF EXISTS one_link;")
+    con_.execute("drop table IF EXISTS methods2;")
+    con_.execute("drop table IF EXISTS methods;")
 
 
 def create_tables(con_):
