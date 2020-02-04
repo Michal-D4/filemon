@@ -92,18 +92,22 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
 
     def setData(self, index, data, role=Qt.DisplayRole):
         if role == Qt.EditRole:
-            idn0 = self.mapToSource(
-                self.index(index.row(), 0, self.parent(index))
-                )
-            idx = self.sourceModel().data(idn0, Qt.UserRole) 
-            data_0 = memb_type[data]
-            if data_0:
-                data_ins = data
-                data = data_0
+            col = index.column()
+            logger.debug(f'column: {col}')
+            idn0 = self.mapToSource(self.index(index.row(), 0, self.parent(index)))
+            if col == 0:
+                data_0 = memb_type[data]
+                if data_0:
+                    data_ins = data
+                    data = data_0
+                else:
+                    data_ins = memb_type[data]
+                    data = data if data_ins else data_ins
             else:
-                data_ins = memb_type[data]
-                data = data if data_ins else data_ins
-            conn.execute(upd0.format(main_headers[index.column()]), (data_ins, idx))
+                data_ins = data
+                
+            idx = self.sourceModel().data(idn0, Qt.UserRole) 
+            conn.execute(upd0.format(main_headers[col]), (data_ins, idx))
             conn.commit()
         ok = super(MySortFilterProxyModel, self).setData(index, data, role)
         return ok
@@ -950,7 +954,8 @@ if __name__ == "__main__":
     model = QStandardItemModel(0, len(main_headers), window)
     qq = conn.cursor()
     qq.execute('select * from methods2;')
-    fill_in_model(model, qq)
+    vv = ((x[0], memb_type[x[1]], *x[2:]) for x in qq)
+    fill_in_model(model, vv)
     window.setSourceModel(model)
     window.show()
 
