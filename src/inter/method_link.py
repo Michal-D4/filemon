@@ -93,7 +93,6 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
     def setData(self, index, data, role=Qt.DisplayRole):
         if role == Qt.EditRole:
             col = index.column()
-            logger.debug(f'column: {col}')
             idn0 = self.mapToSource(self.index(index.row(), 0, self.parent(index)))
             if col == 0:
                 data_0 = memb_type[data]
@@ -419,7 +418,6 @@ class Window(QWidget):
         self.resModel.sourceModel().clear()
         self.stack_layout.setCurrentIndex(0)
         if removed or added:
-            logger.debug('recreate_links')
             recreate_links()
 
     def cancel_cliked(self):
@@ -435,7 +433,6 @@ class Window(QWidget):
         for idx in idx_col0:
             id = self.proxyModel.get_data(idx, Qt.UserRole)
             link = (id, self.current_id) if stat == "What" else (self.current_id, id)
-            logger.debug(link)
             if link in self.new_links or link[::-1] in self.new_links:
                 continue
             self.new_links.append(link)
@@ -582,7 +579,6 @@ class Window(QWidget):
         self.report_23(ids, 'From', lvl)
 
     def report_23(self, ids, param, lvl):
-        logger.debug(f' {param}; lvl = {lvl}')
         opt = {'What': (what_id, what_call_3),
                'From': (from_id, called_from_3)
                }[param]
@@ -599,11 +595,9 @@ class Window(QWidget):
         res = []
         curs = self.conn.cursor()
         loc_sql = sql.format('and level=1' if lvl else '')
-        logger.debug(loc_sql)
         for id_ in ids:
             w_id = curs.execute(loc_sql, (id_,))
             res.append(dict(w_id))
-            logger.debug(res[-1])
         return res
 
     def methods_by_id_list(self, sql: str, ids: list, what: str, all_any: str):
@@ -640,7 +634,6 @@ class Window(QWidget):
         @param names: selected methods as (module, class, method) list
         @return:
         """
-        logger.debug(ids)
         opt = len(ids) if len(ids) < 3 else 'more than 2'
         {1: self.do_1,
          2: self.do_2,
@@ -684,10 +677,6 @@ class Window(QWidget):
         cc = curs.execute(sql.format(*sql_par))
         return [(*map(str, x),) for x in cc]
 
-    def closeEvent(self, event):
-        logger.debug('EXIT')
-        super(Window, self).closeEvent(event)
-
     def save_init(self):
         vv = datetime.now().strftime("_%d-%m-%Y_%H%M%S")
         out_file = Path.cwd() / ''.join(("tmp/xls/prj",  vv,  ".txt"))
@@ -705,9 +694,7 @@ def pre_report(list_of_dicts):
     rd = list_of_dicts[0]
     all_ = set(rd.keys())
     any_ = set(rd.keys())
-    logger.debug(rd)
     for tpl in list_of_dicts[1:]:
-        logger.debug(tpl)
         rd.update(tpl)
         tt = set(tpl.keys())
         all_ = all_ & tt
@@ -942,11 +929,9 @@ if __name__ == "__main__":
           '<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> '   \
           '- <level>{message}</level>'
     logger.add(sys.stderr, level="DEBUG", format=fmt, enqueue = True)
-    logger.debug("logger DEBUG add")
 
     app = QApplication(sys.argv)
     DB = Path.cwd() / "prj.db"
-    out_file = Path.cwd() / "tmp/xls/prj.txt"
     logger.debug(DB)
     conn = sqlite3.connect(DB)
 
