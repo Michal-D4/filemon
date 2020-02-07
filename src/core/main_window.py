@@ -2,16 +2,33 @@
 
 from loguru import logger
 
-from PyQt5.QtCore import (pyqtSignal, QSettings, QVariant, QSize, Qt, QUrl, QEvent, QMimeData)
+from PyQt5.QtCore import (
+    pyqtSignal,
+    QSettings,
+    QVariant,
+    QSize,
+    Qt,
+    QUrl,
+    QEvent,
+    QMimeData,
+)
 from PyQt5.QtGui import QResizeEvent, QDrag, QPixmap, QDropEvent, QDragMoveEvent
 from PyQt5.QtWidgets import QMainWindow, QMenu, QWidget
 
 from src.core.utilities import open_create_db
 
 from src.ui.ui_main_window import Ui_MainWindow
-from src.core.helper import (REAL_FOLDER, VIRTUAL_FOLDER, REAL_FILE,
-                             VIRTUAL_FILE, MimeTypes, DROP_NO_ACTION,
-                             DROP_COPY_FOLDER, DROP_MOVE_FOLDER, DROP_COPY_FILE)
+from src.core.helper import (
+    REAL_FOLDER,
+    VIRTUAL_FOLDER,
+    REAL_FILE,
+    VIRTUAL_FILE,
+    MimeTypes,
+    DROP_NO_ACTION,
+    DROP_COPY_FOLDER,
+    DROP_MOVE_FOLDER,
+    DROP_COPY_FILE,
+)
 from src.core.db_choice import DBChoice
 
 
@@ -21,7 +38,7 @@ def restore_obj_state(obj: QWidget, settings_value: QVariant):
 
 
 class AppWindow(QMainWindow):
-    change_data_signal = pyqtSignal(str)   # str - name of action
+    change_data_signal = pyqtSignal(str)  # str - name of action
     scan_files_signal = pyqtSignal()
 
     def __init__(self, parent=None):
@@ -40,7 +57,7 @@ class AppWindow(QMainWindow):
         self.setup_context_menu()
 
         self.open_dialog = None
-        logger.debug('finish')
+        logger.debug("finish")
 
     def show_message(self, message, time=3000):
         self.ui.statusbar.showMessage(message, time)
@@ -53,10 +70,14 @@ class AppWindow(QMainWindow):
         # toolbar buttons actions
         self.ui.actionOpenDB.triggered.connect(lambda: self.open_dialog.exec_())
         self.ui.actionScanFiles.triggered.connect(lambda: self.scan_files_signal.emit())
-        self.ui.actionFileFilter.triggered.connect(lambda: self.change_data_signal.emit('Select files'))
+        self.ui.actionFileFilter.triggered.connect(
+            lambda: self.change_data_signal.emit("Select files")
+        )
 
         self.ui.commentField.anchorClicked.connect(self.ref_clicked)
-        self.ui.filesList.doubleClicked.connect(lambda: self.change_data_signal.emit('File_doubleClicked'))
+        self.ui.filesList.doubleClicked.connect(
+            lambda: self.change_data_signal.emit("File_doubleClicked")
+        )
 
         self.ui.dirTree.startDrag = self._start_drag
         self.ui.dirTree.dropEvent = self._drop_event
@@ -114,29 +135,38 @@ class AppWindow(QMainWindow):
         Menu: drag-drop action chooser
         when drop file(s) to directory tree item(folder)
         Actions: Copy | Move | Cancel
-        Returns: int (DROP_COPY_FILE=4, DROP_MOVE_FILE=8, DROP_NO_ACTION=0)
+        Returns: int (DROP_COPY_FILE, DROP_MOVE_FILE, DROP_NO_ACTION)
         """
-        return self._ask_action_folder(pos) * 4
+        menu = self.set_ask_action_menu()
+        action = menu.exec_(self.ui.dirTree.mapToGlobal(pos))
+        return {
+            "Copy": DROP_COPY_FILE,
+            "Move": DROP_MOVE_FILE,
+            "Cancel": DROP_NO_ACTION,
+        }[action]
 
     def _ask_action_folder(self, pos):
         """
         Menu: drag-drop action chooser
         when drop folder(s) to directory tree item(folder)
         Actions: Copy | Move | Cancel
-        Returns: int (DROP_COPY_FOLDER=1, DROP_MOVE_FOLDER=2, DROP_NO_ACTION=0)
+        Returns: int (DROP_COPY_FOLDER, DROP_MOVE_FOLDER, DROP_NO_ACTION)
         """
-        menu = QMenu(self)
-        menu.addAction('Copy')
-        menu.addAction('Move')
-        menu.addSeparator()
-        menu.addAction('Cancel')
+        menu = self.set_ask_action_menu()
         action = menu.exec_(self.ui.dirTree.mapToGlobal(pos))
-        if action:
-            if action.text() == 'Copy':
-                return DROP_COPY_FOLDER
-            elif action.text() == 'Move':
-                return DROP_MOVE_FOLDER
-        return DROP_NO_ACTION
+        return {
+            "Copy": DROP_COPY_FOLDER,
+            "Move": DROP_MOVE_FOLDER,
+            "Cancel": DROP_NO_ACTION,
+        }[action]
+
+    def set_ask_action_menu(self) -> QMenu:
+        menu = QMenu(self)
+        menu.addAction("Copy")
+        menu.addAction("Move")
+        menu.addSeparator()
+        menu.addAction("Cancel")
+        return menu
 
     def _start_drag_files(self, action):
         drag = QDrag(self)
@@ -163,18 +193,22 @@ class AppWindow(QMainWindow):
         :return:
         """
         menu = QMenu(self)
-        open_db = menu.addAction('Open DB')
-        change_font = menu.addAction('Change Font')
-        set_fields = menu.addAction('Set fields')
+        open_db = menu.addAction("Open DB")
+        change_font = menu.addAction("Change Font")
+        set_fields = menu.addAction("Set fields")
         self.ui.btnOption.setMenu(menu)
         open_db.triggered.connect(lambda: self.open_dialog.exec_())
-        change_font.triggered.connect(lambda: self.change_data_signal.emit('change_font'))
-        set_fields.triggered.connect(lambda: self.change_data_signal.emit('Set fields'))
+        change_font.triggered.connect(
+            lambda: self.change_data_signal.emit("change_font")
+        )
+        set_fields.triggered.connect(lambda: self.change_data_signal.emit("Set fields"))
 
         menu2 = QMenu(self)
-        sel_opt = menu2.addAction('Selection options')
+        sel_opt = menu2.addAction("Selection options")
         self.ui.btnFilter.setMenu(menu2)
-        sel_opt.triggered.connect(lambda: self.change_data_signal.emit('Selection options'))
+        sel_opt.triggered.connect(
+            lambda: self.change_data_signal.emit("Selection options")
+        )
 
     def setup_context_menu(self):
         """
@@ -191,76 +225,76 @@ class AppWindow(QMainWindow):
         idx = self.ui.filesList.indexAt(pos)
         if idx.isValid():
             menu = QMenu(self)
-            menu.addAction('Open')
-            menu.addAction('Open folder')
-            menu.addAction('Delete row')
+            menu.addAction("Open")
+            menu.addAction("Open folder")
+            menu.addAction("Delete row")
             menu.addSeparator()
-            menu.addAction('Copy file name')
-            menu.addAction('Copy path')
+            menu.addAction("Copy file name")
+            menu.addAction("Copy path")
             menu.addSeparator()
-            menu.addAction('Rename file')
-            menu.addAction('Copy file(s)')
+            menu.addAction("Rename file")
+            menu.addAction("Copy file(s)")
             if self.ui.filesList.model().in_real_folder(idx):
-                menu.addAction('Move file(s)')
-                menu.addAction('Delete file(s)')
+                menu.addAction("Move file(s)")
+                menu.addAction("Delete file(s)")
             action = menu.exec_(self.ui.filesList.mapToGlobal(pos))
             if action:
-                self.change_data_signal.emit('File {}'.format(action.text()))
+                self.change_data_signal.emit("File {}".format(action.text()))
 
     def _ext_menu(self, pos):
         menu = QMenu(self)
-        menu.addAction('Remove unused')
-        menu.addAction('Create group')
-        menu.addAction('Delete all files with current extension')
+        menu.addAction("Remove unused")
+        menu.addAction("Create group")
+        menu.addAction("Delete all files with current extension")
         action = menu.exec_(self.ui.extList.mapToGlobal(pos))
         if action:
-            self.change_data_signal.emit('Ext {}'.format(action.text()))
+            self.change_data_signal.emit("Ext {}".format(action.text()))
 
     def _tag_menu(self, pos):
         idx = self.ui.tagsList.indexAt(pos)
         menu = QMenu(self)
-        menu.addAction('Remove unused')
+        menu.addAction("Remove unused")
         if idx.isValid():
-            menu.addAction('Scan in names')
-            menu.addAction('Rename')
+            menu.addAction("Scan in names")
+            menu.addAction("Rename")
 
         action = menu.exec_(self.ui.tagsList.mapToGlobal(pos))
         if action:
-            self.change_data_signal.emit('Tag {}'.format(action.text()))
+            self.change_data_signal.emit("Tag {}".format(action.text()))
 
     def _author_menu(self, pos):
         menu = QMenu(self)
-        menu.addAction('Remove unused')
+        menu.addAction("Remove unused")
         action = menu.exec_(self.ui.authorsList.mapToGlobal(pos))
         if action:
-            self.change_data_signal.emit('Author {}'.format(action.text()))
+            self.change_data_signal.emit("Author {}".format(action.text()))
 
     def _dir_menu(self, pos):
         idx = self.ui.dirTree.indexAt(pos)
         menu = QMenu(self)
-        menu.addAction('Remove empty folders')
+        menu.addAction("Remove empty folders")
         if idx.isValid():
             if self.ui.dirTree.model().is_virtual(idx):
                 menu.addSeparator()
-                menu.addAction('Rename folder')
-                menu.addAction('Delete folder')
+                menu.addAction("Rename folder")
+                menu.addAction("Delete folder")
             else:
                 parent = self.ui.dirTree.model().parent(idx)
                 if self.ui.dirTree.model().is_virtual(parent):
                     menu.addSeparator()
-                    menu.addAction('Delete folder')
-                menu.addAction('Rescan dir')
+                    menu.addAction("Delete folder")
+                menu.addAction("Rescan dir")
                 menu.addSeparator()
-                menu.addAction('Group')
+                menu.addAction("Group")
             menu.addSeparator()
-            menu.addAction('Create virtual folder')
-            menu.addAction('Create virtual folder as child')
+            menu.addAction("Create virtual folder")
+            menu.addAction("Create virtual folder as child")
         else:
-            menu.addAction('Create virtual folder')
+            menu.addAction("Create virtual folder")
 
         action = menu.exec_(self.ui.dirTree.mapToGlobal(pos))
         if action:
-            self.change_data_signal.emit('Dirs {}'.format(action.text()))
+            self.change_data_signal.emit("Dirs {}".format(action.text()))
 
     def ref_clicked(self, href):
         """
@@ -291,7 +325,7 @@ class AppWindow(QMainWindow):
         old_w = event.oldSize().width()
         w = event.size().width()
         if not old_w == w:
-            self.change_data_signal.emit('Resize columns')
+            self.change_data_signal.emit("Resize columns")
 
     def changeEvent(self, event):
         """
@@ -303,8 +337,10 @@ class AppWindow(QMainWindow):
             settings = QSettings()
             if event.oldState() == Qt.WindowMaximized:
                 settings.setValue("MainFlow/isFullScreen", QVariant(False))
-            elif event.oldState() == Qt.WindowNoState and \
-                    self.windowState() == Qt.WindowMaximized:
+            elif (
+                event.oldState() == Qt.WindowNoState
+                and self.windowState() == Qt.WindowMaximized
+            ):
                 settings.setValue("MainFlow/isFullScreen", QVariant(True))
                 if self.old_size:
                     settings.setValue("MainFlow/Size", QVariant(self.old_size))
@@ -366,7 +402,7 @@ class AppWindow(QMainWindow):
         :return: None
         """
         if open_create_db(create, file_name, same_db):
-            self.change_data_signal.emit('start app')
+            self.change_data_signal.emit("start app")
         else:
             self.show_message("Data base does not exist")
 
