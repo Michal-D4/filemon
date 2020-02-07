@@ -12,8 +12,6 @@ from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot, QRunnable
 
 from src.core.load_db_data import LoadDBData
 
-DETECT_TYPES = sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
-
 AUTHOR_ID = 'select AuthorID from Authors where Author = ?;'
 
 INSERT_AUTHOR = 'insert into Authors (Author) values (?);'
