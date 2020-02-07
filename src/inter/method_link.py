@@ -185,6 +185,9 @@ class Window(QWidget):
         }[btn.text()]()
 
     def copy_to_clipboard(self):
+        """
+        copy current content of methods2 & one_link tables in clipboard
+        """
         csr = conn.cursor()
         csr.execute(save_links)
         to_save = []
@@ -258,20 +261,22 @@ class Window(QWidget):
             self.filterClass.addItem(cc[0])
 
     def menu_res_view(self, pos):
+        """
+        only copy to clipboard
+        """
         menu = QMenu(self)
         menu.addAction(menu_items[6])
         action = menu.exec_(self.resView.mapToGlobal(pos))
         if action:
-            self.menu_res_action(action.text())
+            self._to_clipboard()
 
-    def menu_res_action(self, act: str):
-        if act == menu_items[6]:
-            rr = []
-            for rep in self.repo:
-                pp = [str(x) for x in rep]
-                rr.append('\t'.join(pp))
-            
-            QApplication.clipboard().setText('\n'.join(rr))
+    def _to_clipboard(self):
+        rr = []
+        for rep in self.repo:
+            pp = [str(x) for x in rep]
+            rr.append('\t'.join(pp))
+        
+        QApplication.clipboard().setText('\n'.join(rr))
 
     def pop_menu(self, pos):
         idx = self.proxyView.indexAt(pos)
@@ -679,6 +684,9 @@ class Window(QWidget):
         return [(*map(str, x),) for x in cc]
 
     def save_init(self):
+        """
+        save content of methods2 & one_link tables in file
+        """
         vv = datetime.now().strftime("_%d-%m-%Y_%H%M%S")
         out_file = Path.cwd() / ''.join(("tmp/xls/prj",  vv,  ".txt"))
         outfile = open(out_file, 'w', encoding='utf­8')
