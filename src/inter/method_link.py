@@ -7,8 +7,7 @@ from PyQt5.QtCore import (QSortFilterProxyModel, Qt, QModelIndex,
 from PyQt5.QtGui import QStandardItemModel
 from PyQt5.QtWidgets import (QApplication, QComboBox, QGridLayout, QGroupBox, 
                              QMenu, QTextEdit, QLabel, QTreeView, QVBoxLayout, 
-                             QWidget, QAbstractItemView, QDialogButtonBox,
-                             QStackedLayout)
+                             QWidget, QAbstractItemView, QDialogButtonBox)
 from pathlib import Path
 from loguru import logger
 from datetime import datetime
@@ -139,9 +138,7 @@ class Window(QWidget):
         self.resView.setModel(self.resModel)
         self.resView.customContextMenuRequested.connect(self.menu_res_view)
 
-        self.stack_layout = QStackedLayout()
-
-        self.set_layout()
+        self.link_box = self.set_layout()
 
         self.report_creation_method = None      # method to create concrete report - apply sort key
         self.repo = []
@@ -159,13 +156,14 @@ class Window(QWidget):
         filter_box.setMaximumHeight(height)
         link_box = self.set_link_box()
         link_box.setMaximumHeight(height)
-        self.stack_layout.addWidget(filter_box)
-        self.stack_layout.addWidget(link_box)
-        self.stack_layout.setCurrentIndex(0)
+        link_box.hide()
+        stack_layout = QVBoxLayout()
+        stack_layout.addWidget(filter_box)
+        stack_layout.addWidget(link_box)
 
         proxyLayout = QGridLayout()
         proxyLayout.addWidget(self.proxyView, 0, 0)
-        proxyLayout.addLayout(self.stack_layout, 1, 0)
+        proxyLayout.addLayout(stack_layout, 1, 0)
         proxyLayout.addWidget(self.resView, 2, 0)
         proxyLayout.setRowStretch(0, 5)
         proxyLayout.setRowStretch(1, 0)
@@ -178,7 +176,7 @@ class Window(QWidget):
         mainLayout.addWidget(proxyGroupBox)
         self.setLayout(mainLayout)
 
-        # return link_box
+        return link_box
 
     def save_clicked(self, btn):
         {
@@ -359,7 +357,7 @@ class Window(QWidget):
         ss = self.proxyModel.get_data(index)
         id = self.proxyModel.get_data(index, Qt.UserRole)
         self.infLabel.setText("{:04d}: {}".format(id, '.'.join(ss[1:4])))
-        self.stack_layout.setCurrentIndex(1)
+        self.link_box.show()
 
         model = QStandardItemModel(0, len(link_headers), self.resView)
         qq = conn.cursor()
@@ -419,13 +417,13 @@ class Window(QWidget):
                 conn.execute("insert into one_link (id, call_id) values (?, ?);", link)
         conn.commit()
         self.resModel.sourceModel().clear()
-        self.stack_layout.setCurrentIndex(0)
+        self.link_box.hide()
         if removed or added:
             recreate_links()
 
     def cancel_cliked(self):
         self.resModel.sourceModel().clear()
-        self.stack_layout.setCurrentIndex(0)
+        self.link_box.hide()
 
     def plus_clicked(self):
         # 1. add to resModel
