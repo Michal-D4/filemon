@@ -140,12 +140,8 @@ class Window(QWidget):
         self.resView.customContextMenuRequested.connect(self.menu_res_view)
 
         self.stack_layout = QStackedLayout()
-        proxyGroupBox = QGroupBox("Module/Class/Method list")
-        proxyGroupBox.setLayout(self.set_layout())
 
-        mainLayout = QVBoxLayout()
-        mainLayout.addWidget(proxyGroupBox)
-        self.setLayout(mainLayout)
+        self.set_layout()
 
         self.report_creation_method = None      # method to create concrete report - apply sort key
         self.repo = []
@@ -174,8 +170,15 @@ class Window(QWidget):
         proxyLayout.setRowStretch(0, 5)
         proxyLayout.setRowStretch(1, 0)
         proxyLayout.setRowStretch(2, 3)
-        
-        return proxyLayout
+
+        proxyGroupBox = QGroupBox("Module/Class/Method list")
+        proxyGroupBox.setLayout(proxyLayout)
+
+        mainLayout = QVBoxLayout()
+        mainLayout.addWidget(proxyGroupBox)
+        self.setLayout(mainLayout)
+
+        # return link_box
 
     def save_clicked(self, btn):
         {
