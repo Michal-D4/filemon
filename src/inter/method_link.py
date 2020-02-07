@@ -735,6 +735,7 @@ memb_type.update({
     'c': 'constant',
     'C': 'Class',
     'f': 'function',
+    'g': 'global',
     'i': 'instance',
     'w': 'widget',
     }
@@ -747,6 +748,7 @@ memb_key.update({
     'constant': 'c',  
     'Class': 'C',
     'function': 'f',  
+    'global': 'g',
     'instance': 'i',  
     'widget': 'w',  
     }
