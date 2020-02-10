@@ -358,7 +358,7 @@ class FilesCrt():
         :@param to_path:  target directory
         :@return: (DirId: int, isNewDirID: bool) ID of target directory
         '''
-        ld = LoadDBData(ut.DB_Connection['Conn'])
+        ld = LoadDBData(ut.DB_setting['Conn'])
         return ld.insert_dir(to_path)
 
     def _copy_files(self):
@@ -577,7 +577,7 @@ class FilesCrt():
         self._populate_directory_tree()
         self._populate_ext_list()
 
-        files_ = FileInfo(updated_dirs, ut.create_connection(ut.DB_Connection['Path']))
+        files_ = FileInfo(updated_dirs, ut.create_connection(ut.DB_setting['Path']))
         files_.signal.finished.connect(self._dir_update_finish)
         self.thread_pool.start(files_)
 
@@ -832,7 +832,7 @@ class FilesCrt():
     def get_list_source(self, curr_dir_idx):
         if not curr_dir_idx.isValid():
             curr_dir_idx = self.ui.dirTree.model().index(0, 0)
-        if ut.DB_Connection['SameDB']:
+        if ut.DB_setting['SameDB']: # TODO save/restore setting with DB, then if won't need
             settings = QSettings()
             self.file_list_source = settings.value('FILE_LIST_SOURCE', FOLDER)
             row = settings.value('FILE_IDX', 0)
@@ -951,7 +951,7 @@ class FilesCrt():
         settings.setValue('TAG_SEL_LIST', sel)
 
     def _restore_tag_selection(self):
-        if ut.DB_Connection['SameDB']:
+        if ut.DB_setting['SameDB']: # TODO save/restore setting with DB, then if won't need
             settings = QSettings()
             sel = settings.value('TAG_SEL_LIST', [])
             model = self.ui.tagsList.model()
@@ -978,7 +978,7 @@ class FilesCrt():
         settings.setValue('AUTHOR_SEL_LIST', sel)
 
     def _restore_author_selection(self):
-        if ut.DB_Connection['SameDB']:
+        if ut.DB_setting['SameDB']: # TODO save/restore setting with DB, then if won't need
             settings = QSettings()
             sel = settings.value('AUTHOR_SEL_LIST', [])
             model = self.ui.authorsList.model()
@@ -1101,8 +1101,8 @@ class FilesCrt():
             model.update(idx, cur_date)
 
     def _populate_all_widgets(self):
-        logger.debug(ut.DB_Connection['Path'])
-        self.app_window.setWindowTitle(f"Current DB:{ut.DB_Connection['Path']}")
+        logger.debug(ut.DB_setting['Path'])
+        self.app_window.setWindowTitle(f"Current DB:{ut.DB_setting['Path']}")
         self._populate_ext_list()
         self._restore_ext_selection()
         self._populate_tag_list()
@@ -1112,7 +1112,7 @@ class FilesCrt():
         self._populate_directory_tree()
 
     def _restore_ext_selection(self):
-        if ut.DB_Connection['SameDB']:
+        if ut.DB_setting['SameDB']: # TODO save/restore setting with DB, then if won't need
             settings = QSettings()
             sel = settings.value('EXT_SEL_LIST', [])
             model = self.ui.extList.model()
@@ -1173,10 +1173,10 @@ class FilesCrt():
         restore expand state and current index of dirTree
         :return: current index
         """
-        logger.debug(f"same_db: {ut.DB_Connection['SameDB']}")
+        logger.debug(f"same_db: {ut.DB_setting['SameDB']}")
         model = self.ui.dirTree.model()
         parent = QModelIndex()
-        if ut.DB_Connection['SameDB']:
+        if ut.DB_setting['SameDB']:  # TODO save/restore setting with DB, then if won't need
             settings = QSettings()
             aux = settings.value('TREE_SEL_IDX', [0])
             for id_ in aux:
@@ -1229,7 +1229,7 @@ class FilesCrt():
 
     def _load_files(self, path_: str, ext_):
         logger.debug(' | '.join((path_, '|', ext_, '|')))
-        load_ = LoadFiles(path_, ext_, ut.create_connection(ut.DB_Connection['Path']))
+        load_ = LoadFiles(path_, ext_, ut.create_connection(ut.DB_setting['Path']))
         load_.signal.finished.connect(self._dir_update)
         self.thread_pool.start(load_)
 

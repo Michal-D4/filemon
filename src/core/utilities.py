@@ -157,10 +157,10 @@ Delete = {'EXT': 'delete from Extensions where ExtID = ?;',
           }
 
 
-DB_Connection = {'Path': '',
-                 'Conn': None,
-                 'SameDB' : False,
-                }
+DB_setting = {'Path': '',
+              'Conn': None,
+              'SameDB' : False,   # TODO save/restore setting with DB, then 'SameDB' won't need
+              }
 
 
 def generate_adv_sql(param: dict) -> str:
@@ -197,13 +197,13 @@ def generate_adv_sql(param: dict) -> str:
 
 
 def advanced_selection(param):
-    if not DB_Connection['Conn']:
+    if not DB_setting['Conn']:
         return ()
 
     sql = generate_adv_sql(param)
 
     if sql:
-        return DB_Connection['Conn'].execute(sql)
+        return DB_setting['Conn'].execute(sql)
     return ()
 
 
@@ -230,7 +230,7 @@ def dir_tree_select(dir_id, level):
     """
     sql = generate_sql(dir_id, level)
 
-    return DB_Connection['Conn'].cursor().execute(sql)
+    return DB_setting['Conn'].cursor().execute(sql)
 
 
 def dir_ids_select(dir_id, level):
@@ -242,65 +242,65 @@ def dir_ids_select(dir_id, level):
     """
     sql = generate_sql(dir_id, level, sql='DIR_IDS')
 
-    return DB_Connection['Conn'].cursor().execute(sql)
+    return DB_setting['Conn'].cursor().execute(sql)
 
 
 def select_other(sql, params=()):
     logger.debug(sql)
     logger.debug(params)
-    return DB_Connection['Conn'].cursor().execute(Selects[sql], params)
+    return DB_setting['Conn'].cursor().execute(Selects[sql], params)
 
 
 def select_other2(sql, params=()):
     logger.debug(sql)
     logger.debug(params)
-    return DB_Connection['Conn'].cursor().execute(Selects[sql].format(*params))
+    return DB_setting['Conn'].cursor().execute(Selects[sql].format(*params))
 
 
 def insert_other(sql, data):
     logger.debug(sql)
     logger.debug(data)
-    ss = DB_Connection['Conn'].cursor().execute(Insert[sql], data)
-    DB_Connection['Conn'].commit()
+    ss = DB_setting['Conn'].cursor().execute(Insert[sql], data)
+    DB_setting['Conn'].commit()
     return ss.lastrowid
 
 
 def insert_other2(sql, data):
     logger.debug(sql)
     logger.debug(data)
-    ss = DB_Connection['Conn'].cursor().execute(Insert[sql].format(*data))
-    DB_Connection['Conn'].commit()
+    ss = DB_setting['Conn'].cursor().execute(Insert[sql].format(*data))
+    DB_setting['Conn'].commit()
     return ss.lastrowid
 
 
 def update_other(sql, data):
     logger.debug(sql)
     logger.debug(data)
-    DB_Connection['Conn'].cursor().execute(Update[sql], data)
-    DB_Connection['Conn'].commit()
+    DB_setting['Conn'].cursor().execute(Update[sql], data)
+    DB_setting['Conn'].commit()
 
 
 def delete_other(sql, data):
     logger.debug(sql)
     logger.debug(data)
     try:
-        DB_Connection['Conn'].cursor().execute(Delete[sql], data)
+        DB_setting['Conn'].cursor().execute(Delete[sql], data)
     except sqlite3.IntegrityError:
         pass
     else:
-        DB_Connection['Conn'].commit()
+        DB_setting['Conn'].commit()
 
 
 def delete_other2(sql, data):
     logger.debug(sql)
     logger.debug(data)
-    DB_Connection['Conn'].cursor().execute(Delete[sql].format(*data))
-    DB_Connection['Conn'].commit()
+    DB_setting['Conn'].cursor().execute(Delete[sql].format(*data))
+    DB_setting['Conn'].commit()
 
 
 def open_create_db(create, file_name, same_db) -> bool:
     logger.debug(f'|--> file_name: {file_name}, to create: {create}, same DB: {same_db}')
-    DB_Connection['SameDB'] = same_db
+    DB_setting['SameDB'] = same_db
     if create:
         conn = create_connection(file_name)
         create_all_objects(conn)
@@ -310,15 +310,15 @@ def open_create_db(create, file_name, same_db) -> bool:
         else:
             return False
 
-    DB_Connection['Path'] = file_name
-    DB_Connection['Conn'] = conn
+    DB_setting['Path'] = file_name
+    DB_setting['Conn'] = conn
     logger.debug('|---> end')
     return True
 
 
 def create_connection(name: str = None) -> sqlite3.Connection:
     if name is None:
-        return DB_Connection['Conn']
+        return DB_setting['Conn']
 
     conn = sqlite3.connect(name, check_same_thread=False,
                            detect_types=DETECT_TYPES)
