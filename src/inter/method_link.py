@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import (
 from pathlib import Path
 from loguru import logger
 from datetime import datetime
-from collections import defaultdict
+from collections import defaultdict, Callable
 from collections.abc import Iterable
 
 # ---------------------------------------------------------
@@ -155,9 +155,7 @@ class Window(QWidget):
 
         self.link_box = self.set_layout()
 
-        self.report_creation_method = (
-            None
-        )  # method to create concrete report - apply sort key
+        self.sort_key = None
         self.repo = []
         self.old_links = []
         self.new_links = []
@@ -524,7 +522,7 @@ class Window(QWidget):
         @param ids: indexes of selected methods
         @return:
         """
-        self.report_creation_method = concrete_report(lambda row: "".join(row[1:4]))
+        self.sort_key = sort_keys["by module"]
         opt = len(ids) if len(ids) < 3 else "more than 2"
         {1: self.first_1, 2: self.first_2, "more than 2": self.first_more_than_2}[opt](
             ids, names
@@ -541,7 +539,7 @@ class Window(QWidget):
 
     def selected_only_one(self, ids, names, lvl):
         pre = (self.query_time[1], "Sel", "")
-        self.report_creation_method(self.repo, names, pre=pre)
+        self.sorted_report(self.repo, names, pre=pre)
         what_sql = prep_sql(
             what_call_1,
             self.filterModule.currentText(),
@@ -550,7 +548,7 @@ class Window(QWidget):
         )
         lst = self.first_1_part(ids, what_sql)
         pre = (self.query_time[1], "What", "")
-        self.report_creation_method(self.repo, lst, pre=pre)
+        self.sorted_report(self.repo, lst, pre=pre)
         from_sql = prep_sql(
             called_from_1,
             self.filterModule.currentText(),
@@ -559,7 +557,7 @@ class Window(QWidget):
         )
         lst = self.first_1_part(ids, from_sql)
         pre = (self.query_time[1], "From", "")
-        self.report_creation_method(self.repo, lst, pre=pre)
+        self.sorted_report(self.repo, lst, pre=pre)
         fill_in_model(self.resModel.sourceModel(), self.repo, user_data=False)
 
     def first_1_part(self, ids, sql):
@@ -587,7 +585,7 @@ class Window(QWidget):
     def selected_exactly_two(self, ids, names, lvl):
         pre = (self.query_time[1], "Sel")
         n_names = [("A", *names[0]), ("B", *names[1])]
-        self.report_creation_method(self.repo, n_names, pre=pre)
+        self.sorted_report(self.repo, n_names, pre=pre)
         what_sql = prep_sql(
             what_call_1,
             self.filterModule.currentText(),
@@ -608,22 +606,22 @@ class Window(QWidget):
         self.report_four(lst_a, lst_b, "From")
 
     def report_four(self, lst_a, lst_b, what):
-        self.report_creation_method(
+        self.sorted_report(
             self.repo,
             list(set(lst_a) | set(lst_b)),
             pre=(self.query_time[1], what, "A | B"),
         )
-        self.report_creation_method(
+        self.sorted_report(
             self.repo,
             list(set(lst_a) - set(lst_b)),
             pre=(self.query_time[1], what, "A - B"),
         )
-        self.report_creation_method(
+        self.sorted_report(
             self.repo,
             list(set(lst_b) - set(lst_a)),
             pre=(self.query_time[1], what, "B - A"),
         )
-        self.report_creation_method(
+        self.sorted_report(
             self.repo,
             list(set(lst_a) & set(lst_b)),
             pre=(self.query_time[1], what, "A & B"),
@@ -635,7 +633,7 @@ class Window(QWidget):
 
     def selected_more_than_two(self, ids, names, lvl):
         pre = (self.query_time[1], "Sel", "")
-        self.report_creation_method(self.repo, names, pre=pre)
+        self.sorted_report(self.repo, names, pre=pre)
 
         self.report_23(ids, "What", lvl)
 
@@ -666,7 +664,7 @@ class Window(QWidget):
             cc = self.exec_sql_f(sql, (",".join((map(str, ids[0]))),))
             pre = (self.query_time[1], what, all_any)
             vv = insert_levels(cc, ids[1])
-            self.report_creation_method(self.repo, vv, pre=pre)
+            self.sorted_report(self.repo, vv, pre=pre)
 
     def sort_by_level(self, ids, names):
         """
@@ -675,9 +673,7 @@ class Window(QWidget):
         @param names: selected methods as (module, class, method) list
         @return: None
         """
-        self.report_creation_method = concrete_report(
-            lambda row: "".join((row[4].rjust(2), *row[1:4]))
-        )
+        self.sort_key = sort_keys["by level"]
         self.sel_count_handle(ids, names)
 
     def sort_by_module(self, ids, names):
@@ -687,7 +683,7 @@ class Window(QWidget):
         @param names: selected methods as (module, class, method) list
         @return: None
         """
-        self.report_creation_method = concrete_report(lambda row: "".join(row[1:4]))
+        self.sort_key = sort_keys["by module"]
         self.sel_count_handle(ids, names)
 
     def sel_count_handle(self, ids, names):
@@ -752,6 +748,13 @@ class Window(QWidget):
         for row in csr:
             outfile.write(",".join((*row, "\n")))
 
+    def sorted_report(
+        self, report: list, lst: list, pre: Iterable = "", post: Iterable = ""
+    ):
+        lst.sort(key=self.sort_key)
+        for ll in lst:
+            report.append((*pre, *ll, *post))
+
 
 def pre_report(list_of_dicts):
     if not list_of_dicts:
@@ -766,21 +769,6 @@ def pre_report(list_of_dicts):
         any_ = any_ | tt
 
     return all_, any_, rd
-
-
-def concrete_report(sort_key):
-    """
-    sort report list
-    @param sort_key: BY_MODULE = 0 or BY_LEVEL = 1
-    @return: function that appends report lines in the order of sort_key
-    """
-
-    def sorted_report(report: list, lst: list, pre: Iterable = "", post: Iterable = ""):
-        lst.sort(key=sort_key)
-        for ll in lst:
-            report.append((*pre, *ll, *post))
-
-    return sorted_report
 
 
 def set_tree_view(view: QTreeView):
@@ -891,8 +879,6 @@ rep_headers = (
     "level",
 )
 link_headers = ("What/From", "Type", "module", "Class", "method")
-
-
 save_links = (
     "select a.type type, a.module module, a.class class, a.method method, "
     "COALESCE(b.method,'') c_method, COALESCE(b.module,'') c_module, "
@@ -901,6 +887,10 @@ save_links = (
     "left join methods2 b on b.id = c.call_ID "
     "order by module, type, class, method, c_module, c_class, c_method;"
 )
+sort_keys = {
+    "by module": lambda row: "".join(row[1:4]),
+    "by level": lambda row: "".join((row[4].rjust(2), *row[1:4])),
+}
 
 
 def insert_levels(cc: sqlite3.Cursor, dd: dict):
