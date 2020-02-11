@@ -792,6 +792,7 @@ memb_type.update(
         "g": "global",
         "i": "instance",
         "w": "widget",
+        "p": "package",
     }
 )
 memb_key = defaultdict(str)
@@ -806,6 +807,7 @@ memb_key.update(
         "global": "g",
         "instance": "i",
         "widget": "w",
+        "package": "p",
     }
 )
 menu_items = (
