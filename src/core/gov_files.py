@@ -653,7 +653,7 @@ class FilesCrt():
         try:
             webbrowser.open(path_)
         except webbrowser.Error:
-            self.app_window.show_message('Folder is inaccessible on "{}"'.format(path_))
+            self.app_window.show_message(f'Folder is inaccessible on "{path_}"')
         else:
             pass
 
@@ -709,9 +709,9 @@ class FilesCrt():
                     idx_s = model.sourceModel().createIndex(idx.row(), heads.index('Opened'))
                     model.sourceModel().update(idx_s, cur_date)
             except OSError:
-                self.app_window.show_message('Can\'t open file "{}"'.format(full_file_name))
+                self.app_window.show_message(f'Can\'t open file "{full_file_name}"')
         else:
-            self.app_window.show_message("Can't find file \"{}\"".format(full_file_name))
+            self.app_window.show_message(f'Can\'t find file "{full_file_name}"')
 
     def _file_path(self) -> (str, str, int, int):
         """
@@ -849,7 +849,7 @@ class FilesCrt():
         logger.debug((f'file_list_source: {source_type[self.file_list_source]}, '
                       f'valid? {curr_dir_idx.isValid()}'))
         
-        curr_dir_idx, row = self.get_list_source()
+        curr_dir_idx, row = self.get_list_source(curr_dir_idx)
 
         dir_idx = self.ui.dirTree.model().data(curr_dir_idx, Qt.UserRole)
 
