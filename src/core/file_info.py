@@ -223,7 +223,7 @@ class FileInfo(QRunnable):
         self.conn.commit()
         if len(self.file_info) > 3 and self.file_info[3]:
             authors = re.split(r',|;|&|\band\b', self.file_info[3])
-            self.insert_authors(file_.file_id)
+            self.insert_authors(file_.file_id, authors)
 
     def update_files(self):
         logger.debug("<- start")
