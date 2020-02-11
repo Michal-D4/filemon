@@ -21,8 +21,8 @@ from PyQt5.QtWidgets import (
 from pathlib import Path
 from loguru import logger
 from datetime import datetime
-from collections import defaultdict, Callable
-from collections.abc import Iterable
+from collections import defaultdict
+from collections.abc import Iterable, Callable
 
 # ---------------------------------------------------------
 # doesn't catch exception without this code in Windows ! ! !
