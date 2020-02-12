@@ -160,7 +160,7 @@ class Window(QWidget):
         self.old_links = []
         self.new_links = []
         self.query_time = time_run()
-        self.current_id = 0
+        self.curr_id_db = 0
 
         self.setWindowTitle("Custom Sort/Filter Model")
         self.resize(900, 750)
@@ -284,7 +284,7 @@ class Window(QWidget):
         only copy to clipboard
         """
         menu = QMenu(self)
-        menu.addAction(menu_items[6])
+        menu.addAction("clipboard")
         action = menu.exec_(self.resView.mapToGlobal(pos))
         if action:
             self._to_clipboard()
@@ -301,16 +301,16 @@ class Window(QWidget):
         idx = self.proxyView.indexAt(pos)
         if idx.isValid():
             menu = QMenu(self)
-            menu.addAction(menu_items[0])
+            menu.addAction("First level only")
             menu.addSeparator()
-            menu.addAction(menu_items[1])
-            menu.addAction(menu_items[2])
+            menu.addAction("sort by level")
+            menu.addAction("sort by module")
             menu.addSeparator()
-            menu.addAction(menu_items[3])
-            menu.addAction(menu_items[4])
-            menu.addAction(menu_items[5])
+            menu.addAction("append row")
+            menu.addAction("delete rows")
+            menu.addAction("edit links")
             menu.addSeparator()
-            menu.addAction(menu_items[-1])
+            menu.addAction("Reload")
             action = menu.exec_(self.proxyView.mapToGlobal(pos))
             if action:
                 self.menu_action(action.text())
@@ -328,31 +328,49 @@ class Window(QWidget):
         )
 
     def menu_action(self, act: str):
-        if act == "Cancel":
-            return
+        menu_items = (
+            "First level only",
+            "sort by level",
+            "sort by module",
+            "append row",
+            "edit links",
+            "delete rows",
+            "Reload",
+        )
 
         if act in menu_items[:3]:
-            self.repo.clear()
-            model = QStandardItemModel(0, len(rep_headers), self.resView)
-            self.resModel.setSourceModel(model)
-            set_columns_width(self.resView, proportion=(3, 2, 2, 2, 7, 7, 7, 1))
-            set_headers(self.resModel, rep_headers)
-            self.query_time = time_run()
+            self.prepare_report_view()
             method_ids, method_names = self.get_selected_methods()
-
             {
                 menu_items[0]: self.first_level_only,
                 menu_items[1]: self.sort_by_level,
                 menu_items[2]: self.sort_by_module,
             }[act](method_ids, method_names)
+        elif act in menu_items[5:]:
+            {menu_items[5]: self.delete_selected_rows, menu_items[6]: self.reload}[
+                act
+            ]()
         else:
             curr_idx = self.proxyView.currentIndex()
+            {menu_items[3]: self.append_row, menu_items[4]: self.edit_links}[act](
+                curr_idx
+            )
 
-            {
-                menu_items[3]: self.append_row,
-                menu_items[4]: self.delete_current,
-                menu_items[5]: self.edit_links,
-            }[act](curr_idx)
+    def reload(self):
+        model = QStandardItemModel(0, len(main_headers), self.resView)
+        qq = conn.cursor()
+        qq.execute(qsel2)
+        vv = ((x[0], memb_type[x[1]], *x[2:]) for x in qq)
+        fill_in_model(model, vv)
+        self.setSourceModel(model)
+
+    def prepare_report_view(self):
+        self.repo.clear()
+        model = QStandardItemModel(0, len(rep_headers), self.resView)
+        self.resModel.setSourceModel(model)
+        set_columns_width(self.resView, proportion=(3, 2, 2, 2, 7, 7, 7, 1))
+        set_headers(self.resModel, rep_headers)
+        self.query_time = time_run()
 
     def append_row(self, index: QModelIndex):
         crs = conn.cursor()
@@ -374,31 +392,44 @@ class Window(QWidget):
         add_row(model, (idn, *items), True)
         model.endInsertRows()
 
-    def delete_current(self, index: QModelIndex):
-        if index.isValid():
-            id = self.proxyModel.get_data(index, Qt.UserRole)
-            conn.execute("delete from methods2 where id=?;", (id,))
-            conn.commit()
-            model = self.proxyModel.sourceModel()
-            parent = self.proxyModel.mapToSource(index.parent())
-            row = index.row()
-            model.beginRemoveRows(QModelIndex(), row, row)
-            model.removeRow(row, parent)
-            model.endRemoveRows()
+    def delete_selected_rows(self):
+
+        sel_rows, idx_list = persistent_row_indexes(self.proxyView)
+        for p_idx in idx_list:
+            if p_idx.isValid():
+                data = self.proxyModel.get_data(p_idx)
+                s_idx = self.proxyModel.mapToSource(p_idx)
+                logger.debug(f"{data[3]}; row {s_idx.row()}")
+                self.delete_from_db(p_idx)
+
+        model = self.proxyModel.sourceModel()
+        sel_rows.reverse()
+        for p_row in sel_rows:
+            if p_row.isValid():
+                idx = QModelIndex(p_row)
+                logger.debug(f"row {idx.row()}; col {idx.column()}")
+                idx3 = model.index(idx.row(), 3)
+                logger.debug(model.data(idx3))
+                delete_row(model, p_row)
+
+    def delete_from_db(self, index: QModelIndex):
+        id_db = self.proxyModel.get_data(index, Qt.UserRole)
+        conn.execute("delete from methods2 where id=?;", (id_db,))
+        conn.commit()
 
     def edit_links(self, index: QModelIndex):
         ss = self.proxyModel.get_data(index)
-        id = self.proxyModel.get_data(index, Qt.UserRole)
-        self.infLabel.setText("{:04d}: {}".format(id, ".".join(ss[1:4])))
+        id_db = self.proxyModel.get_data(index, Qt.UserRole)
+        self.infLabel.setText("{:04d}: {}".format(id_db, ".".join(ss[1:4])))
         self.link_box.show()
 
         model = QStandardItemModel(0, len(link_headers), self.resView)
         qq = conn.cursor()
-        qq.execute(sql_links.format(id, id))
+        qq.execute(sql_links.format(id_db, id_db))
         fill_in_model(model, qq)
-        self.old_links = qq.execute(sql_id2.format(id, id)).fetchall()
+        self.old_links = qq.execute(sql_id2.format(id_db, id_db)).fetchall()
         self.new_links = self.old_links[:]
-        self.current_id = id
+        self.curr_id_db = id_db
 
         self.resModel.setSourceModel(model)
         set_columns_width(self.resView, proportion=(3, 2, 8, 8, 8))
@@ -467,7 +498,7 @@ class Window(QWidget):
         to_insert = []
         for idx in idx_col0:
             id = self.proxyModel.get_data(idx, Qt.UserRole)
-            link = (id, self.current_id) if stat == "What" else (self.current_id, id)
+            link = (id, self.curr_id_db) if stat == "What" else (self.curr_id_db, id)
             if link in self.new_links or link[::-1] in self.new_links:
                 continue
             self.new_links.append(link)
@@ -484,9 +515,13 @@ class Window(QWidget):
     def minus_clicked(self):
         idx_sel = self.resView.selectionModel().selectedRows()
         for idx in idx_sel:
-            tt = self.resModel.data(idx)
-            idb = self.resModel.data(idx, Qt.UserRole)
-            link = (idb, self.current_id) if tt == "What" else (self.current_id, idb)
+            link_type = self.resModel.data(idx)
+            id_db = self.resModel.data(idx, Qt.UserRole)
+            link = (
+                (id_db, self.curr_id_db)
+                if link_type == "What"
+                else (self.curr_id_db, id_db)
+            )
             self.new_links.remove(link)
 
         model = self.resModel.sourceModel()
@@ -810,16 +845,6 @@ memb_key.update(
         "package": "p",
     }
 )
-menu_items = (
-    "First level only",
-    "sort by level",
-    "sort by module",
-    "append row",
-    "delete",
-    "edit links",
-    "clipboard",
-    "Cancel",
-)
 upd0 = "update methods2 set {}=? where id=?;"
 ins0 = (
     "insert into methods2 ("
@@ -840,6 +865,7 @@ sql_id2 = (
 )
 qsel0 = "select distinct module from methods2 where module != '' order by module;"
 qsel1 = "select distinct class from methods2 order by upper(class);"
+qsel2 = "select * from methods2;"
 # id-s of methods called from given method id
 what_id = (
     "select id idn, min(level) from simple_link " "where call_id = ? {} group by idn;"
@@ -895,6 +921,21 @@ sort_keys = {
 }
 
 
+def persistent_row_indexes(view_: QAbstractItemView) -> (list, list):
+    """
+    :@param view_:
+    :@return: list of row and list of model indexes
+    """
+    indexes = view_.selectionModel().selectedRows()
+    model_ = view_.model()
+    list_rows = []
+    list_id_db = []
+    for idx_ in indexes:
+        list_id_db.append(idx_)
+        list_rows.append(QPersistentModelIndex(model_.mapToSource(idx_)))
+    return list_rows, list_id_db
+
+
 def insert_levels(cc: sqlite3.Cursor, dd: dict):
     rr = []
     for row in cc:
@@ -935,12 +976,13 @@ def delete_row(model: QStandardItemModel, index: QModelIndex):
     if index.isValid():
         parent = QModelIndex()
         row = index.row()
+        logger.debug(row)
         model.beginRemoveRows(parent, row, row)
-        model.removeRow(row, parent)
+        model.removeRows(row, 1)
         model.endRemoveRows()
 
 
-def add_row(model, row, user_data: bool):
+def add_row(model: QStandardItemModel, row: Iterable, user_data: bool):
     """
     @param: model
     @param: row  - data 
@@ -957,7 +999,9 @@ def add_row(model, row, user_data: bool):
         model.setData(model.index(0, k), item if item else "")
 
 
-def fill_in_model(model, row_list: Iterable, user_data: bool = True):
+def fill_in_model(
+    model: QStandardItemModel, row_list: Iterable, user_data: bool = True
+):
     for cc in row_list:
         add_row(model, cc, user_data)
 
@@ -995,7 +1039,7 @@ if __name__ == "__main__":
     window = Window(conn)
     model = QStandardItemModel(0, len(main_headers), window)
     qq = conn.cursor()
-    qq.execute("select * from methods2;")
+    qq.execute(qsel2)
     vv = ((x[0], memb_type[x[1]], *x[2:]) for x in qq)
     fill_in_model(model, vv)
     window.setSourceModel(model)
