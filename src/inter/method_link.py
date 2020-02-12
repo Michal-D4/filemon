@@ -32,10 +32,7 @@ _excepthook = sys.excepthook
 
 
 def my_exception_hook(exc_, value, traceback):
-    # Print the error and traceback
-    # logger.debug(f'{exc_}, {value}, {traceback}')
     print(traceback)
-    # Call the normal Exception hook after
     _excepthook(exc_, value, traceback)
     sys.exit(1)
 
@@ -393,24 +390,16 @@ class Window(QWidget):
         model.endInsertRows()
 
     def delete_selected_rows(self):
-
-        sel_rows, idx_list = persistent_row_indexes(self.proxyView)
+        idx_list = self.proxyView.selectionModel().selectedRows()
+        idx_list.reverse()
+        parent = QModelIndex()
         for p_idx in idx_list:
             if p_idx.isValid():
-                data = self.proxyModel.get_data(p_idx)
-                s_idx = self.proxyModel.mapToSource(p_idx)
-                logger.debug(f"{data[3]}; row {s_idx.row()}")
+                row = p_idx.row()
                 self.delete_from_db(p_idx)
-
-        model = self.proxyModel.sourceModel()
-        sel_rows.reverse()
-        for p_row in sel_rows:
-            if p_row.isValid():
-                idx = QModelIndex(p_row)
-                logger.debug(f"row {idx.row()}; col {idx.column()}")
-                idx3 = model.index(idx.row(), 3)
-                logger.debug(model.data(idx3))
-                delete_row(model, p_row)
+                self.proxyModel.beginRemoveRows(parent, row, row)
+                self.proxyModel.removeRows(row, 1)
+                self.proxyModel.endRemoveRows()
 
     def delete_from_db(self, index: QModelIndex):
         id_db = self.proxyModel.get_data(index, Qt.UserRole)
@@ -514,25 +503,28 @@ class Window(QWidget):
 
     def minus_clicked(self):
         idx_sel = self.resView.selectionModel().selectedRows()
-        for idx in idx_sel:
-            link_type = self.resModel.data(idx)
-            id_db = self.resModel.data(idx, Qt.UserRole)
-            link = (
-                (id_db, self.curr_id_db)
-                if link_type == "What"
-                else (self.curr_id_db, id_db)
-            )
-            self.new_links.remove(link)
-
-        model = self.resModel.sourceModel()
-        idx_per = []
         idx_sel.reverse()
-        [
-            idx_per.append(QPersistentModelIndex(self.resModel.mapToSource(x)))
-            for x in idx_sel
-        ]
-        for idx in idx_per:
-            delete_row(model, idx)
+        for idx in idx_sel:
+            self.remove_in_new_links(idx)
+            self.remove_row(idx)
+
+    def remove_in_new_links(self, index: QModelIndex):
+        link_type = self.resModel.data(index)
+        id_db = self.resModel.data(index, Qt.UserRole)
+        link = (
+            (id_db, self.curr_id_db)
+            if link_type == "What"
+            else (self.curr_id_db, id_db)
+        )
+        self.new_links.remove(link)
+
+    def remove_row(self, index):
+        row = index.row()
+        self.resModel.beginRemoveRows(
+            QModelIndex(), row, row
+        )
+        self.resModel.removeRows(row, 1)
+        self.resModel.endRemoveRows()
 
     def get_selected_methods(self):
         """
@@ -921,21 +913,6 @@ sort_keys = {
 }
 
 
-def persistent_row_indexes(view_: QAbstractItemView) -> (list, list):
-    """
-    :@param view_:
-    :@return: list of row and list of model indexes
-    """
-    indexes = view_.selectionModel().selectedRows()
-    model_ = view_.model()
-    list_rows = []
-    list_id_db = []
-    for idx_ in indexes:
-        list_id_db.append(idx_)
-        list_rows.append(QPersistentModelIndex(model_.mapToSource(idx_)))
-    return list_rows, list_id_db
-
-
 def insert_levels(cc: sqlite3.Cursor, dd: dict):
     rr = []
     for row in cc:
@@ -970,16 +947,6 @@ def prep_sql(sql: str, mod: str, cls: str, lvl: int = 0) -> str:
         + (and_level if lvl else "")
         + group_by
     )
-
-
-def delete_row(model: QStandardItemModel, index: QModelIndex):
-    if index.isValid():
-        parent = QModelIndex()
-        row = index.row()
-        logger.debug(row)
-        model.beginRemoveRows(parent, row, row)
-        model.removeRows(row, 1)
-        model.endRemoveRows()
 
 
 def add_row(model: QStandardItemModel, row: Iterable, user_data: bool):
