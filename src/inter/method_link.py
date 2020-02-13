@@ -117,7 +117,8 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
                 data_ins = data
 
             idx = self.sourceModel().data(idn0, Qt.UserRole)
-            conn.execute(upd0.format(main_headers[col]), (data_ins, idx))
+            field = main_headers.split(",")[col]
+            conn.execute(upd0.format(field), (data_ins, idx))
             conn.commit()
         ok = super(MySortFilterProxyModel, self).setData(index, data, role)
         return ok
@@ -307,6 +308,8 @@ class Window(QWidget):
             menu.addAction("delete rows")
             menu.addAction("edit links")
             menu.addSeparator()
+            menu.addAction("not called")
+            menu.addSeparator()
             menu.addAction("Reload")
             action = menu.exec_(self.proxyView.mapToGlobal(pos))
             if action:
@@ -333,6 +336,7 @@ class Window(QWidget):
             "edit links",
             "delete rows",
             "Reload",
+            "not called",
         )
 
         if act in menu_items[:3]:
@@ -344,17 +348,31 @@ class Window(QWidget):
                 menu_items[2]: self.sort_by_module,
             }[act](method_ids, method_names)
         elif act in menu_items[5:]:
-            {menu_items[5]: self.delete_selected_rows, menu_items[6]: self.reload}[
-                act
-            ]()
+            {
+                menu_items[5]: self.delete_selected_rows,
+                menu_items[6]: self.reload,
+                menu_items[7]: self.is_not_called,
+            }[act]()
         else:
             curr_idx = self.proxyView.currentIndex()
             {menu_items[3]: self.append_row, menu_items[4]: self.edit_links}[act](
                 curr_idx
             )
 
+    def is_not_called(self):
+        qq = self.conn.cursor()
+        qq.execute(not_called)
+        self.repo.clear()
+        for row in qq:
+            self.repo.append(row)
+        model = QStandardItemModel(0, len(call_headers.split(",")), self.resView)
+        fill_in_model(model, self.repo, user_data=False)
+        self.resModel.setSourceModel(model)
+        set_columns_width(self.resView, proportion=(2, 2, 5, 7, 7, 9))
+        set_headers(self.resModel, call_headers)
+
     def reload(self):
-        model = QStandardItemModel(0, len(main_headers), self.resView)
+        model = QStandardItemModel(0, len(main_headers.split(",")), self.proxyView)
         qq = conn.cursor()
         qq.execute(qsel2)
         vv = ((x[0], memb_type[x[1]], *x[2:]) for x in qq)
@@ -363,7 +381,7 @@ class Window(QWidget):
 
     def prepare_report_view(self):
         self.repo.clear()
-        model = QStandardItemModel(0, len(rep_headers), self.resView)
+        model = QStandardItemModel(0, len(rep_headers.split(",")), self.resView)
         self.resModel.setSourceModel(model)
         set_columns_width(self.resView, proportion=(3, 2, 2, 2, 7, 7, 7, 1))
         set_headers(self.resModel, rep_headers)
@@ -412,7 +430,7 @@ class Window(QWidget):
         self.infLabel.setText("{:04d}: {}".format(id_db, ".".join(ss[1:4])))
         self.link_box.show()
 
-        model = QStandardItemModel(0, len(link_headers), self.resView)
+        model = QStandardItemModel(0, len(link_headers.split(",")), self.resView)
         qq = conn.cursor()
         qq.execute(sql_links.format(id_db, id_db))
         fill_in_model(model, qq)
@@ -520,9 +538,7 @@ class Window(QWidget):
 
     def remove_row(self, index):
         row = index.row()
-        self.resModel.beginRemoveRows(
-            QModelIndex(), row, row
-        )
+        self.resModel.beginRemoveRows(QModelIndex(), row, row)
         self.resModel.removeRows(row, 1)
         self.resModel.endRemoveRows()
 
@@ -858,6 +874,12 @@ sql_id2 = (
 qsel0 = "select distinct module from methods2 where module != '' order by module;"
 qsel1 = "select distinct class from methods2 order by upper(class);"
 qsel2 = "select * from methods2;"
+not_called = (
+    "with not_called (id) as (select id from methods2 "
+    "except select id from one_link) "
+    "select a.Id,a.type,a.module,a.class,a.method,a.remark "
+    "from methods2 a join not_called b on a.id = b.id;"
+)
 # id-s of methods called from given method id
 what_id = (
     "select id idn, min(level) from simple_link " "where call_id = ? {} group by idn;"
@@ -887,18 +909,10 @@ where_mod = "and a.module = '{}' "
 where_cls = "and a.class = '{}' "
 and_level = "and b.level = 1 "
 group_by = "group by a.type, a.module, a.class, a.method;"
-main_headers = ("type", "module", "Class", "method", "remark")
-rep_headers = (
-    "time",
-    "What/From",
-    "All/Any",
-    "Type",
-    "module",
-    "Class",
-    "method",
-    "level",
-)
-link_headers = ("What/From", "Type", "module", "Class", "method")
+main_headers = "type,module,Class,method,remark"
+rep_headers = "time,What/From,All/Any,Type,module,Class,method,level"
+link_headers = "What/From,Type,module,Class,method"
+call_headers = "Id,type,module,class,method,Comment"
 save_links = (
     "select a.type type, a.module module, a.class class, a.method method, "
     "COALESCE(b.method,'') c_method, COALESCE(b.module,'') c_module, "
@@ -974,7 +988,7 @@ def fill_in_model(
 
 
 def set_headers(model, headers):
-    for i, header in enumerate(headers):
+    for i, header in enumerate(headers.split(",")):
         model.setHeaderData(i, Qt.Horizontal, header)
 
 
@@ -1004,7 +1018,7 @@ if __name__ == "__main__":
     conn = sqlite3.connect(DB)
 
     window = Window(conn)
-    model = QStandardItemModel(0, len(main_headers), window)
+    model = QStandardItemModel(0, len(main_headers.split(",")), window)
     qq = conn.cursor()
     qq.execute(qsel2)
     vv = ((x[0], memb_type[x[1]], *x[2:]) for x in qq)
