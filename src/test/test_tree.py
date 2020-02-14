@@ -1,4 +1,4 @@
-import src.method_tree as mt
+import src.inter.method_tree as mt
 import sqlite3
 import pytest
 
