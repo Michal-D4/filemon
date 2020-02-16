@@ -2,10 +2,15 @@ from pathlib import Path
 from typing import Iterable
 import pytest
 import sqlite3
+
+import sys
+from os import path
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
+
 from src.core import create_db as db
 
 
-PATH_TO_DATA = Path('data')
+PATH_TO_DATA = Path('test/data')
 
 # Files with input data for DB (table name, autoincrement)
 #  if "autoincrement" then the ID (first field) should be skipped: [1:]
@@ -37,7 +42,7 @@ def schema_db():
     @return:
     """
     lines = []
-    with open('data/file.sql') as fl:
+    with open(PATH_TO_DATA / 'file.sql') as fl:
         curr = next(fl)
         for line in fl:
             if line.startswith('CREATE'):

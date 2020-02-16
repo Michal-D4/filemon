@@ -2,6 +2,10 @@ import sqlite3
 
 import pytest
 
+import sys
+from os import path
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
+
 from src.core import load_db_data as ld, create_db as db
 
 

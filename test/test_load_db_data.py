@@ -2,11 +2,15 @@ import pytest
 from pathlib import Path
 import sqlite3
 from loguru import logger
-# import sys
+
+from conftest import DETECT_TYPES
+
+import sys
+from os import path
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from src.core import create_db as db
 import src.core.load_db_data as ld
-from src.test.conftest import DETECT_TYPES
 
 TEST_ROOT_DIR = Path.cwd().parent.parent / 'test_data'
 logger.remove()

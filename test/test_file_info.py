@@ -1,6 +1,11 @@
 import pytest
 from pathlib import Path
 import sqlite3
+
+import sys
+from os import path
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
+
 import src.core.file_info as lf   # lf ~ fiLe_inFo
 
 
