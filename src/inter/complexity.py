@@ -19,7 +19,8 @@ def in_cc_report(module: str, source: str) -> list:
     blocks = cc_visit(source)
     for blk in blocks:
         tt = str(blk).split()[0:5:2]
-        length = blk.endline - blk.lineno + 1
+        tt[2] = tt[2].rjust(2)
+        length = str(blk.endline - blk.lineno + 1).rjust(4)
         if tt[0] == 'C':
             res.append((tt[2], length, tt[0], module, tt[1], ''))
         elif tt[0] == 'F':
