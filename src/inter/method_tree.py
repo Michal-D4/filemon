@@ -40,6 +40,9 @@ methods2 = (
     "module text, "
     "class text, "
     "method text, "
+    "CC text, "
+    "CC_old text, "
+    "length integer, "
     "remark text);"
 )
 
@@ -80,14 +83,15 @@ others = (
         "and b.class = c.c_class and b.method = c.c_method "
         "where b.ID is not null;"
     ),
-    (  # all levels link 
-        "with recc (ID, call_ID, level) as ("
-        "select ID, call_ID, 1 from one_link "
-        "union select b.ID, a.call_ID, a.level+1 "
-        "from recc a join one_link b on b.call_ID = a.ID) "
-        "insert into simple_link (ID, call_ID, level) "
-        "select ID, call_ID, min(level) from recc group by ID, call_ID;"
-    ),
+)
+
+all_levels_link =(  
+    "with recc (ID, call_ID, level) as ("
+    "select ID, call_ID, 1 from one_link "
+    "union select b.ID, a.call_ID, a.level+1 "
+    "from recc a join one_link b on b.call_ID = a.ID) "
+    "insert into simple_link (ID, call_ID, level) "
+    "select ID, call_ID, min(level) from recc group by ID, call_ID;"
 )
 
 
@@ -137,12 +141,15 @@ if __name__ == "__main__":
     con_ = sqlite3.connect(DB)
 
     # either
-    clear_tables(con_)
+    # clear_tables(con_)
     # or; use only when change schema
-    # recreate_tables(con_)
+    recreate_tables(con_)
 
     fill_methods(con_, in_file)
 
     for sql in others:
         con_.execute(sql)
         con_.commit()
+
+    con_.execute(all_levels_link)
+    con_.commit()

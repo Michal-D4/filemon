@@ -24,6 +24,9 @@ from datetime import datetime
 from collections import defaultdict
 from collections.abc import Iterable, Callable
 
+from complexity import cc_report
+from method_tree import all_levels_link
+
 # ---------------------------------------------------------
 # doesn't catch exception without this code in Windows ! ! !
 import sys
@@ -192,21 +195,9 @@ class Window(QWidget):
         return link_box
 
     def save_clicked(self, btn):
-        {"Save": self.save_init, "Copy to clipboard": self.copy_to_clipboard}[
+        {"Save": save_init, "Copy to clipboard": copy_to_clipboard}[
             btn.text()
         ]()
-
-    def copy_to_clipboard(self):
-        """
-        copy current content of methods2 & one_link tables in clipboard
-        """
-        csr = conn.cursor()
-        csr.execute(save_links)
-        to_save = []
-        for row in csr:
-            to_save.append("\t".join(row))
-
-        QApplication.clipboard().setText("\n".join(to_save))
 
     def set_filter_box(self):
         save_btn = QDialogButtonBox(Qt.Vertical)
@@ -311,6 +302,8 @@ class Window(QWidget):
             menu.addAction("not called")
             menu.addSeparator()
             menu.addAction("Reload")
+            menu.addSeparator()
+            menu.addAction("complexity")
             action = menu.exec_(self.proxyView.mapToGlobal(pos))
             if action:
                 self.menu_action(action.text())
@@ -337,6 +330,7 @@ class Window(QWidget):
             "delete rows",
             "Reload",
             "not called",
+            "complexity"
         )
 
         if act in menu_items[:3]:
@@ -352,12 +346,33 @@ class Window(QWidget):
                 menu_items[5]: self.delete_selected_rows,
                 menu_items[6]: self.reload,
                 menu_items[7]: self.is_not_called,
+                menu_items[8]: self.recalc_complexity
             }[act]()
         else:
             curr_idx = self.proxyView.currentIndex()
             {menu_items[3]: self.append_row, menu_items[4]: self.edit_links}[act](
                 curr_idx
             )
+
+    def recalc_complexity(self):
+        mm = self.filterModule.currentText()
+        module = "" if mm == "All" else mm
+        cc_list = cc_report(module)
+        for row in cc_list:
+            self.update_cc(row)
+
+    def update_cc(self, row: Iterable):
+        """
+        @param row: type(C/F/M), module, class, method, CC, length
+        """
+        sql = (
+            "update methods2 set cc_old = cc, cc = ?, length = ? " 
+            "where type = ? and module = ? and class = ? and method = ?"
+        )
+        qq = self.conn.cursor()
+        qq.execute(sql, row)
+        self.conn.commit()
+
 
     def is_not_called(self):
         qq = self.conn.cursor()
@@ -582,7 +597,7 @@ class Window(QWidget):
 
     def selected_only_one(self, ids, names, lvl):
         pre = (self.query_time[1], "Sel", "")
-        self.sorted_report(self.repo, names, pre=pre)
+        self.sorted_report(self.repo, (pre, names, ''))
         what_sql = prep_sql(
             what_call_1,
             self.filterModule.currentText(),
@@ -591,7 +606,7 @@ class Window(QWidget):
         )
         lst = self.first_1_part(ids, what_sql)
         pre = (self.query_time[1], "What", "")
-        self.sorted_report(self.repo, lst, pre=pre)
+        self.sorted_report(self.repo, (pre, lst, ''))
         from_sql = prep_sql(
             called_from_1,
             self.filterModule.currentText(),
@@ -600,7 +615,7 @@ class Window(QWidget):
         )
         lst = self.first_1_part(ids, from_sql)
         pre = (self.query_time[1], "From", "")
-        self.sorted_report(self.repo, lst, pre=pre)
+        self.sorted_report(self.repo, (pre, lst, ''))
         fill_in_model(self.resModel.sourceModel(), self.repo, user_data=False)
 
     def first_1_part(self, ids, sql):
@@ -628,7 +643,7 @@ class Window(QWidget):
     def selected_exactly_two(self, ids, names, lvl):
         pre = (self.query_time[1], "Sel")
         n_names = [("A", *names[0]), ("B", *names[1])]
-        self.sorted_report(self.repo, n_names, pre=pre)
+        self.sorted_report(self.repo, (pre, n_names, ''))
         what_sql = prep_sql(
             what_call_1,
             self.filterModule.currentText(),
@@ -651,23 +666,23 @@ class Window(QWidget):
     def report_four(self, lst_a, lst_b, what):
         self.sorted_report(
             self.repo,
-            list(set(lst_a) | set(lst_b)),
-            pre=(self.query_time[1], what, "A | B"),
+            ((self.query_time[1], what, "A | B"),
+            list(set(lst_a) | set(lst_b)), '')
         )
         self.sorted_report(
             self.repo,
-            list(set(lst_a) - set(lst_b)),
-            pre=(self.query_time[1], what, "A - B"),
+            ((self.query_time[1], what, "A - B"),
+            list(set(lst_a) - set(lst_b)), '')
         )
         self.sorted_report(
             self.repo,
-            list(set(lst_b) - set(lst_a)),
-            pre=(self.query_time[1], what, "B - A"),
+            ((self.query_time[1], what, "B - A"),
+            list(set(lst_b) - set(lst_a)), '')
         )
         self.sorted_report(
             self.repo,
-            list(set(lst_a) & set(lst_b)),
-            pre=(self.query_time[1], what, "A & B"),
+            ((self.query_time[1], what, "A & B"),
+            list(set(lst_a) & set(lst_b)), '')
         )
         fill_in_model(self.resModel.sourceModel(), self.repo, user_data=False)
 
@@ -676,14 +691,16 @@ class Window(QWidget):
 
     def selected_more_than_two(self, ids, names, lvl):
         pre = (self.query_time[1], "Sel", "")
-        self.sorted_report(self.repo, names, pre=pre)
+        self.sorted_report(self.repo, (pre, names, ''))
 
         self.report_23(ids, "What", lvl)
 
         self.report_23(ids, "From", lvl)
 
     def report_23(self, ids, param, lvl):
-        opt = {"What": (what_id, what_call_3), "From": (from_id, called_from_3)}[param]
+        opt = {
+            "What": (what_id, what_call_3), 
+            "From": (from_id, called_from_3)}[param]
         links = self.exec_sql_2(ids, lvl, opt[0])
         rep_prep = pre_report(links)
 
@@ -707,7 +724,7 @@ class Window(QWidget):
             cc = self.exec_sql_f(sql, (",".join((map(str, ids[0]))),))
             pre = (self.query_time[1], what, all_any)
             vv = insert_levels(cc, ids[1])
-            self.sorted_report(self.repo, vv, pre=pre)
+            self.sorted_report(self.repo, (pre, vv, ''))
 
     def sort_by_level(self, ids, names):
         """
@@ -778,25 +795,84 @@ class Window(QWidget):
         cc = curs.execute(sql.format(*sql_par))
         return [(*map(str, x),) for x in cc]
 
-    def save_init(self):
-        """
-        save content of methods2 & one_link tables in file
-        """
-        vv = datetime.now().strftime("_%d-%m-%Y_%H%M%S")
-        out_file = Path.cwd() / "".join(("tmp/xls/prj", vv, ".txt"))
-        outfile = open(out_file, "w", encoding="utf­8")
-        csr = conn.cursor()
-        csr.execute(save_links)
-        outfile.write(" headers imitation\n")
-        for row in csr:
-            outfile.write(",".join((*row, "\n")))
-
-    def sorted_report(
-        self, report: list, lst: list, pre: Iterable = "", post: Iterable = ""
-    ):
+    def sorted_report(self, report: list, rep_data: tuple):
+        pre, lst, post = rep_data
         lst.sort(key=self.sort_key)
         for ll in lst:
             report.append((*pre, *ll, *post))
+
+
+def save_init():
+    """
+    save content of methods2 & one_link tables in file
+    """
+    ts = datetime.now().strftime("_%d-%m-%Y_%H%M%S")
+    save_method_list(ts)
+    save_links_table(ts)
+
+
+def save_method_list(ts: str):
+    out_file = Path.cwd() / "".join(("tmp/xls/meth", ts, ".txt"))
+    outfile = open(out_file, "w", encoding="utf­8")
+    csr = conn.cursor()
+    sql = (
+        "select ID,type,module,class,method,COALESCE(CC,''),"
+        "COALESCE(CC_old,''),COALESCE(length,0),"
+        "COALESCE(remark,'') from methods2;"
+    )
+    csr.execute(sql)
+    for row in csr:
+        rr = (row[0], memb_key[memb_type[row[1]]], *row[2:])
+        outfile.write(",".join((*map(str,rr), "\n")))
+
+
+def save_links_table(ts: str):
+    out_file = Path.cwd() / "".join(("tmp/xls/link", ts, ".txt"))
+    outfile = open(out_file, "w", encoding="utf­8")
+    csr = conn.cursor()
+    csr.execute("select * from one_link;")
+    for row in csr:
+        outfile.write(",".join((*map(str, row), "\n")))
+
+
+def copy_to_clipboard():
+    """
+    copy current content of methods2 & one_link tables in clipboard
+    """
+    csr = conn.cursor()
+    csr.execute(save_links)
+    to_save = []
+    for row in csr:
+        to_save.append("\t".join(row))
+
+    QApplication.clipboard().setText("\n".join(to_save))
+
+
+def reload_data():
+    in_path = Path.cwd() / "tmp/xls"
+    sql1 = (
+        "insert into methods2  ("
+        "ID, type, module, class, method, CC, CC_old, length, remark "
+        "values (?, ?, ?, ?, ?, ?, ?, ?, ?);"
+    )
+    input_file = in_path / "methods.txt"
+    load_table(input_file, sql1)
+
+    sql2 = ( 
+        "insert into one_link (id, call_id) values (?, ?)"
+    )
+    input_file = in_path / "links.txt"
+    load_table(input_file, sql2)
+
+    curs = conn.cursor()
+    curs.execute(all_levels_link)
+
+
+def load_table(input_file: str, sql: str):
+    curs = conn.cursor()
+    with open(input_file) as fl:
+        for line in fl:
+            curs.execute(sql, line.split(','))
 
 
 def pre_report(list_of_dicts):
@@ -826,31 +902,31 @@ def set_tree_view(view: QTreeView):
 memb_type = defaultdict(str)
 memb_type.update(
     {
-        "m": "method",
+        "M": "method",
         "sql": "sql",
-        "s": "signal",
-        "c": "constant",
+        "S": "signal",
+        "cc": "constant",
         "C": "Class",
-        "f": "function",
-        "g": "global",
+        "F": "function",
+        "G": "global",
         "i": "instance",
-        "w": "widget",
-        "p": "package",
+        "W": "widget",
+        "P": "package",
     }
 )
 memb_key = defaultdict(str)
 memb_key.update(
     {
-        "method": "m",
+        "method": "M",
         "sql": "sql",
-        "signal": "s",
-        "constant": "c",
+        "signal": "S",
+        "constant": "cc",
         "Class": "C",
-        "function": "f",
-        "global": "g",
+        "function": "F",
+        "global": "G",
         "instance": "i",
-        "widget": "w",
-        "package": "p",
+        "widget": "W",
+        "package": "P",
     }
 )
 upd0 = "update methods2 set {}=? where id=?;"
@@ -909,7 +985,7 @@ where_mod = "and a.module = '{}' "
 where_cls = "and a.class = '{}' "
 and_level = "and b.level = 1 "
 group_by = "group by a.type, a.module, a.class, a.method;"
-main_headers = "type,module,Class,method,remark"
+main_headers = "type,module,Class,method,CC,olcCC,length,remark"
 rep_headers = "time,What/From,All/Any,Type,module,Class,method,level"
 link_headers = "What/From,Type,module,Class,method"
 call_headers = "Id,type,module,class,method,Comment"
@@ -930,7 +1006,7 @@ sort_keys = {
 def insert_levels(cc: sqlite3.Cursor, dd: dict):
     rr = []
     for row in cc:
-        rr.append((*row[:-1], dd[int(row[-1])]))
+        rr.append((*row[:-1], str(dd[int(row[-1])])))
     return rr
 
 
@@ -992,7 +1068,7 @@ def set_headers(model, headers):
         model.setHeaderData(i, Qt.Horizontal, header)
 
 
-def set_columns_width(view, proportion=(3, 6, 8, 9, 5)):
+def set_columns_width(view, proportion=(3, 6, 8, 8, 2, 2, 2, 5)):
     ss = sum(proportion)
     model = view.model()
     n = model.columnCount()
