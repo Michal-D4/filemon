@@ -301,7 +301,9 @@ class Window(QWidget):
             menu.addSeparator()
             menu.addAction("not called")
             menu.addSeparator()
-            menu.addAction("Reload")
+            menu.addAction("refresh")
+            menu.addSeparator()
+            menu.addAction("reload")
             menu.addSeparator()
             menu.addAction("complexity")
             action = menu.exec_(self.proxyView.mapToGlobal(pos))
@@ -328,9 +330,10 @@ class Window(QWidget):
             "append row",
             "edit links",
             "delete rows",
-            "Reload",
+            "refresh",
             "not called",
-            "complexity"
+            "complexity",
+            "reload",
         )
 
         if act in menu_items[:3]:
@@ -344,9 +347,10 @@ class Window(QWidget):
         elif act in menu_items[5:]:
             {
                 menu_items[5]: self.delete_selected_rows,
-                menu_items[6]: self.reload,
+                menu_items[6]: self.refresh,
                 menu_items[7]: self.is_not_called,
-                menu_items[8]: self.recalc_complexity
+                menu_items[8]: self.recalc_complexity,
+                menu_items[9]: reload_data
             }[act]()
         else:
             curr_idx = self.proxyView.currentIndex()
@@ -365,14 +369,27 @@ class Window(QWidget):
         """
         @param row: type(C/F/M), module, class, method, CC, length
         """
-        sql = (
-            "update methods2 set cc_old = cc, cc = ?, length = ? " 
-            "where type = ? and module = ? and class = ? and method = ?"
+        sql_sel = (
+            "select id from methods2 where "
+            "type = ? and module = ? and class = ? and method = ?"
         )
+        sql_upd = (
+            "update methods2 set cc_old = cc, cc = ?, length = ? " 
+            "where id = ?"
+        )
+        sql_ins = (
+            "insert into methods2 (CC, length, type, module, "
+            "Class, method, remark) values(?,?,?,?,?,?,?);"
+        )
+        rr = (*row,)
         qq = self.conn.cursor()
-        qq.execute(sql, row)
+        id = qq.execute(sql_sel, rr[2:]).fetchone()
+        if id:
+            qq.execute(sql_upd, (*rr[:2], id[0]))
+        else:
+            tt = datetime.now().strftime("%Y-%m-%d %H:%M")
+            qq.execute(sql_ins, (*rr, tt))
         self.conn.commit()
-
 
     def is_not_called(self):
         qq = self.conn.cursor()
@@ -386,7 +403,7 @@ class Window(QWidget):
         set_columns_width(self.resView, proportion=(2, 2, 5, 7, 7, 9))
         set_headers(self.resModel, call_headers)
 
-    def reload(self):
+    def refresh(self):
         model = QStandardItemModel(0, len(main_headers.split(",")), self.proxyView)
         qq = conn.cursor()
         qq.execute(qsel2)
@@ -851,28 +868,36 @@ def copy_to_clipboard():
 def reload_data():
     in_path = Path.cwd() / "tmp/xls"
     sql1 = (
+        "delete from methods2;", 
         "insert into methods2  ("
-        "ID, type, module, class, method, CC, CC_old, length, remark "
+        "ID, type, module, class, method, CC, CC_old, length, remark) "
         "values (?, ?, ?, ?, ?, ?, ?, ?, ?);"
     )
     input_file = in_path / "methods.txt"
     load_table(input_file, sql1)
 
     sql2 = ( 
-        "insert into one_link (id, call_id) values (?, ?)"
+        "delete from one_link;",
+        "insert into one_link (id, call_id) values (?, ?);"
     )
     input_file = in_path / "links.txt"
     load_table(input_file, sql2)
 
     curs = conn.cursor()
+    curs.execute("delete from links;")
+    conn.commit()
     curs.execute(all_levels_link)
+    conn.commit()
 
 
 def load_table(input_file: str, sql: str):
     curs = conn.cursor()
+    curs.execute(sql[0])
+    conn.commit()
     with open(input_file) as fl:
         for line in fl:
-            curs.execute(sql, line.split(','))
+            curs.execute(sql[1], line.split(',')[:-1])
+        conn.commit()
 
 
 def pre_report(list_of_dicts):
@@ -958,21 +983,21 @@ not_called = (
 )
 # id-s of methods called from given method id
 what_id = (
-    "select id idn, min(level) from simple_link " "where call_id = ? {} group by idn;"
+    "select id idn, min(level) from links " "where call_id = ? {} group by idn;"
 )
 # id-s of methods that call given method id
 from_id = (
-    "select call_id idn, min(level) from simple_link " "where id = ? {} group by idn;"
+    "select call_id idn, min(level) from links " "where id = ? {} group by idn;"
 )
 
 what_call_1 = (
     "select a.type, a.module, a.class, a.method, min(b.level) "
-    "from simple_link b join methods2 a on a.id = b.id "
+    "from links b join methods2 a on a.id = b.id "
     "where b.call_id = ? "
 )
 called_from_1 = (
     "select a.type, a.module, a.class, a.method, min(b.level) "
-    "from simple_link b join methods2 a on a.id = b.call_id "
+    "from links b join methods2 a on a.id = b.call_id "
     "where b.id = ? "
 )
 what_call_3 = (
@@ -1016,10 +1041,10 @@ def recreate_links():
         "select ID, call_ID, 1 from one_link "
         "union select b.ID, a.call_ID, a.level+1 "
         "from recc a join one_link b on b.call_ID = a.ID) "
-        "insert into simple_link (ID, call_ID, level) "
+        "insert into links (ID, call_ID, level) "
         "select ID, call_ID, min(level) from recc group by ID, call_ID;"
     )
-    conn.execute("delete from simple_link;")
+    conn.execute("delete from links;")
     conn.execute(re_sql)
     conn.commit()
 
