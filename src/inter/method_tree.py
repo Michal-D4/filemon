@@ -19,8 +19,8 @@ methods = (
     "c_method text, "
     "remark text);"
 )
-simple_link = (
-    "create table IF NOT EXISTS simple_link ("
+links = (
+    "create table IF NOT EXISTS links ("
     "ID integer references methods2(ID) ON DELETE CASCADE, "
     "call_ID integer references methods2(ID) ON DELETE CASCADE, "
     "level integer, "
@@ -42,7 +42,7 @@ methods2 = (
     "method text, "
     "CC text, "
     "CC_old text, "
-    "length integer, "
+    "length text, "
     "remark text);"
 )
 
@@ -90,13 +90,13 @@ all_levels_link =(
     "select ID, call_ID, 1 from one_link "
     "union select b.ID, a.call_ID, a.level+1 "
     "from recc a join one_link b on b.call_ID = a.ID) "
-    "insert into simple_link (ID, call_ID, level) "
+    "insert into links (ID, call_ID, level) "
     "select ID, call_ID, min(level) from recc group by ID, call_ID;"
 )
 
 
 def drop_tables(con_):
-    con_.execute("drop table IF EXISTS simple_link;")
+    con_.execute("drop table IF EXISTS links;")
     con_.execute("drop table IF EXISTS one_link;")
     con_.execute("drop table IF EXISTS methods2;")
     con_.execute("drop table IF EXISTS methods;")
@@ -106,7 +106,7 @@ def create_tables(con_):
     con_.execute(methods)
     con_.execute(methods2)
     con_.execute(one_link)
-    con_.execute(simple_link)
+    con_.execute(links)
 
 
 def recreate_tables(con_):
@@ -117,7 +117,7 @@ def recreate_tables(con_):
 def clear_tables(con_):
     con_.execute("delete from methods2;")
     con_.execute("delete from one_link;")
-    con_.execute("delete from simple_link;")
+    con_.execute("delete from links;")
 
 
 def fill_methods(con_, file_):
@@ -141,9 +141,9 @@ if __name__ == "__main__":
     con_ = sqlite3.connect(DB)
 
     # either
-    # clear_tables(con_)
+    clear_tables(con_)
     # or; use only when change schema
-    recreate_tables(con_)
+    # recreate_tables(con_)
 
     fill_methods(con_, in_file)
 
