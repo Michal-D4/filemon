@@ -3,29 +3,25 @@ from typing import Iterable
 import pytest
 import sqlite3
 
-import sys
-from os import path
-sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
-
 from src.core import create_db as db
 
 
-PATH_TO_DATA = Path('test/data')
+PATH_TO_DATA = Path("test/data")
 
 # Files with input data for DB (table name, autoincrement)
 #  if "autoincrement" then the ID (first field) should be skipped: [1:]
 FILES = [
-    ('Dirs.txt', 1),
-    ('VirtDirs.txt', 0),
-    ('Files.txt', 1),
-    ('VirtFiles.txt', 0),
-    ('Comments.txt', 1),
-    ('Extensions.txt', 1),
-    ('ExtGroups.txt', 1),
-    ('Authors.txt', 1),
-    ('FileAuthor.txt', 0),
-    ('Tags.txt', 1),
-    ('FileTag.txt', 0),
+    ("Dirs.txt", 1),
+    ("VirtDirs.txt", 0),
+    ("Files.txt", 1),
+    ("VirtFiles.txt", 0),
+    ("Comments.txt", 1),
+    ("Extensions.txt", 1),
+    ("ExtGroups.txt", 1),
+    ("Authors.txt", 1),
+    ("FileAuthor.txt", 0),
+    ("Tags.txt", 1),
+    ("FileTag.txt", 0),
 ]
 
 
@@ -42,11 +38,11 @@ def schema_db():
     @return:
     """
     lines = []
-    with open(PATH_TO_DATA / 'file.sql') as fl:
+    with open(PATH_TO_DATA / "file.sql") as fl:
         curr = next(fl)
         for line in fl:
-            if line.startswith('CREATE'):
-                lines.append(curr.strip('\n'))
+            if line.startswith("CREATE"):
+                lines.append(curr.strip("\n"))
                 curr = line
             else:
                 curr += line
@@ -66,9 +62,11 @@ def expected() -> dict():
                 if skip_line:
                     skip_line = False
                 else:
-                    values.append(tuple(line.strip('\n').split('|')))
+                    values.append(tuple(line.strip("\n").split("|")))
 
-        res[fl[0].split('.')[0]] = values  # fl[0].split('.')[0] a dict key = "table name"
+        res[
+            fl[0].split(".")[0]
+        ] = values  # fl[0].split('.')[0] a dict key = "table name"
     return res
 
 
@@ -80,21 +78,22 @@ def init_db() -> sqlite3.Connection:
     Load data from saved working database tables (full select)
     @return: None
     """
+
     def create_sql(table: str, header: Iterable):
-        placeholders = ','.join(['?'] * len(header))
+        placeholders = ",".join(["?"] * len(header))
         return f'INSERT INTO {table} ({",".join(header)}) VALUES ({placeholders});'
 
     conn = sqlite3.connect(":memory:")
     db.create_all_objects(conn)
     for fl in FILES:
         fll = PATH_TO_DATA / fl[0]
-        tbl = fl[0].split('.')[0]
+        tbl = fl[0].split(".")[0]
         vals = []
-        sql = ''
+        sql = ""
         with open(fll) as fi:
             is_header = True
             for line in fi:
-                fields = line.strip('\n').split('|')[fl[1]:]
+                fields = line.strip("\n").split("|")[fl[1] :]
                 if is_header:
                     sql = create_sql(tbl, fields)
                     is_header = False
@@ -103,7 +102,7 @@ def init_db() -> sqlite3.Connection:
         if vals:
             conn.executemany(sql, vals)
 
-    conn.execute('PRAGMA foreign_keys = ON;')
+    conn.execute("PRAGMA foreign_keys = ON;")
     return conn
 
 
@@ -125,7 +124,9 @@ def test_create_all_objects(start_db, schema_db):
 
     schema_ = schema_db
     # sql == ''  for auto created primary keys
-    lines = con.execute("select count(*)  from sqlite_master where sql != '';").fetchone()
+    lines = con.execute(
+        "select count(*)  from sqlite_master where sql != '';"
+    ).fetchone()
     assert lines[0] == len(schema_)
 
     schema = con.execute("select sql from sqlite_master where sql != '';")
@@ -147,10 +148,10 @@ def test_load_data(init_db, expected):
 
     for key, it in exp.items():
         if it:
-            sql = f'select * from {key};'
+            sql = f"select * from {key};"
             curs = conn.execute(sql)
             i = 0
             for row in curs:
-                if None not in row:     # skip common root record in Dirs table
-                    assert tuple(map(str,row)) == it[i]
+                if None not in row:  # skip common root record in Dirs table
+                    assert tuple(map(str, row)) == it[i]
                     i += 1
