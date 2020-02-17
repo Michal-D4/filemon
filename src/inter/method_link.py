@@ -195,9 +195,7 @@ class Window(QWidget):
         return link_box
 
     def save_clicked(self, btn):
-        {"Save": save_init, "Copy to clipboard": copy_to_clipboard}[
-            btn.text()
-        ]()
+        {"Save": save_init, "Copy to clipboard": copy_to_clipboard}[btn.text()]()
 
     def set_filter_box(self):
         save_btn = QDialogButtonBox(Qt.Vertical)
@@ -350,7 +348,7 @@ class Window(QWidget):
                 menu_items[6]: self.refresh,
                 menu_items[7]: self.is_not_called,
                 menu_items[8]: self.recalc_complexity,
-                menu_items[9]: reload_data
+                menu_items[9]: reload_data,
             }[act]()
         else:
             curr_idx = self.proxyView.currentIndex()
@@ -373,10 +371,7 @@ class Window(QWidget):
             "select id from methods2 where "
             "type = ? and module = ? and class = ? and method = ?"
         )
-        sql_upd = (
-            "update methods2 set cc_old = cc, cc = ?, length = ? " 
-            "where id = ?"
-        )
+        sql_upd = "update methods2 set cc_old = cc, cc = ?, length = ? " "where id = ?"
         sql_ins = (
             "insert into methods2 (CC, length, type, module, "
             "Class, method, remark) values(?,?,?,?,?,?,?);"
@@ -400,7 +395,7 @@ class Window(QWidget):
         model = QStandardItemModel(0, len(call_headers.split(",")), self.resView)
         fill_in_model(model, self.repo, user_data=False)
         self.resModel.setSourceModel(model)
-        set_columns_width(self.resView, proportion=(2,2,5,7,7,2,3,5))
+        set_columns_width(self.resView, proportion=(2, 2, 5, 7, 7, 2, 3, 5))
         set_headers(self.resModel, call_headers)
 
     def refresh(self):
@@ -614,7 +609,7 @@ class Window(QWidget):
 
     def selected_only_one(self, ids, names, lvl):
         pre = (self.query_time[1], "Sel", "")
-        self.sorted_report(self.repo, (pre, names, ''))
+        self.sorted_report(self.repo, (pre, names, ""))
         what_sql = prep_sql(
             what_call_1,
             self.filterModule.currentText(),
@@ -623,7 +618,7 @@ class Window(QWidget):
         )
         lst = self.first_1_part(ids, what_sql)
         pre = (self.query_time[1], "What", "")
-        self.sorted_report(self.repo, (pre, lst, ''))
+        self.sorted_report(self.repo, (pre, lst, ""))
         from_sql = prep_sql(
             called_from_1,
             self.filterModule.currentText(),
@@ -632,7 +627,7 @@ class Window(QWidget):
         )
         lst = self.first_1_part(ids, from_sql)
         pre = (self.query_time[1], "From", "")
-        self.sorted_report(self.repo, (pre, lst, ''))
+        self.sorted_report(self.repo, (pre, lst, ""))
         fill_in_model(self.resModel.sourceModel(), self.repo, user_data=False)
 
     def first_1_part(self, ids, sql):
@@ -660,7 +655,7 @@ class Window(QWidget):
     def selected_exactly_two(self, ids, names, lvl):
         pre = (self.query_time[1], "Sel")
         n_names = [("A", *names[0]), ("B", *names[1])]
-        self.sorted_report(self.repo, (pre, n_names, ''))
+        self.sorted_report(self.repo, (pre, n_names, ""))
         what_sql = prep_sql(
             what_call_1,
             self.filterModule.currentText(),
@@ -683,23 +678,19 @@ class Window(QWidget):
     def report_four(self, lst_a, lst_b, what):
         self.sorted_report(
             self.repo,
-            ((self.query_time[1], what, "A | B"),
-            list(set(lst_a) | set(lst_b)), '')
+            ((self.query_time[1], what, "A | B"), list(set(lst_a) | set(lst_b)), ""),
         )
         self.sorted_report(
             self.repo,
-            ((self.query_time[1], what, "A - B"),
-            list(set(lst_a) - set(lst_b)), '')
+            ((self.query_time[1], what, "A - B"), list(set(lst_a) - set(lst_b)), ""),
         )
         self.sorted_report(
             self.repo,
-            ((self.query_time[1], what, "B - A"),
-            list(set(lst_b) - set(lst_a)), '')
+            ((self.query_time[1], what, "B - A"), list(set(lst_b) - set(lst_a)), ""),
         )
         self.sorted_report(
             self.repo,
-            ((self.query_time[1], what, "A & B"),
-            list(set(lst_a) & set(lst_b)), '')
+            ((self.query_time[1], what, "A & B"), list(set(lst_a) & set(lst_b)), ""),
         )
         fill_in_model(self.resModel.sourceModel(), self.repo, user_data=False)
 
@@ -708,16 +699,14 @@ class Window(QWidget):
 
     def selected_more_than_two(self, ids, names, lvl):
         pre = (self.query_time[1], "Sel", "")
-        self.sorted_report(self.repo, (pre, names, ''))
+        self.sorted_report(self.repo, (pre, names, ""))
 
         self.report_23(ids, "What", lvl)
 
         self.report_23(ids, "From", lvl)
 
     def report_23(self, ids, param, lvl):
-        opt = {
-            "What": (what_id, what_call_3), 
-            "From": (from_id, called_from_3)}[param]
+        opt = {"What": (what_id, what_call_3), "From": (from_id, called_from_3)}[param]
         links = self.exec_sql_2(ids, lvl, opt[0])
         rep_prep = pre_report(links)
 
@@ -741,7 +730,7 @@ class Window(QWidget):
             cc = self.exec_sql_f(sql, (",".join((map(str, ids[0]))),))
             pre = (self.query_time[1], what, all_any)
             vv = insert_levels(cc, ids[1])
-            self.sorted_report(self.repo, (pre, vv, ''))
+            self.sorted_report(self.repo, (pre, vv, ""))
 
     def sort_by_level(self, ids, names):
         """
@@ -840,7 +829,7 @@ def save_method_list(ts: str):
     csr.execute(sql)
     for row in csr:
         rr = (row[0], memb_key[memb_type[row[1]]], *row[2:])
-        outfile.write(",".join((*map(str,rr), "\n")))
+        outfile.write(",".join((*map(str, rr), "\n")))
 
 
 def save_links_table(ts: str):
@@ -868,17 +857,17 @@ def copy_to_clipboard():
 def reload_data():
     in_path = Path.cwd() / "tmp/xls"
     sql1 = (
-        "delete from methods2;", 
+        "delete from methods2;",
         "insert into methods2  ("
         "ID, type, module, class, method, CC, CC_old, length, remark) "
-        "values (?, ?, ?, ?, ?, ?, ?, ?, ?);"
+        "values (?, ?, ?, ?, ?, ?, ?, ?, ?);",
     )
     input_file = in_path / "methods.txt"
     load_table(input_file, sql1)
 
-    sql2 = ( 
+    sql2 = (
         "delete from one_link;",
-        "insert into one_link (id, call_id) values (?, ?);"
+        "insert into one_link (id, call_id) values (?, ?);",
     )
     input_file = in_path / "links.txt"
     load_table(input_file, sql2)
@@ -896,7 +885,7 @@ def load_table(input_file: str, sql: str):
     conn.commit()
     with open(input_file) as fl:
         for line in fl:
-            curs.execute(sql[1], line.split(',')[:-1])
+            curs.execute(sql[1], line.split(",")[:-1])
         conn.commit()
 
 
@@ -974,7 +963,10 @@ sql_id2 = (
 )
 qsel0 = "select distinct module from methods2 where module != '' order by module;"
 qsel1 = "select distinct class from methods2 order by upper(class);"
-qsel2 = "select * from methods2;"
+qsel2 = (
+    "select ID, type, module, class, method, CC, CC_old, "
+    "COALESCE(length, ''), remark from methods2;"
+)
 not_called = (
     "with not_called (id) as (select id from methods2 "
     "except select id from one_link) "
@@ -982,13 +974,9 @@ not_called = (
     "from methods2 a join not_called b on a.id = b.id;"
 )
 # id-s of methods called from given method id
-what_id = (
-    "select id idn, min(level) from links " "where call_id = ? {} group by idn;"
-)
+what_id = "select id idn, min(level) from links " "where call_id = ? {} group by idn;"
 # id-s of methods that call given method id
-from_id = (
-    "select call_id idn, min(level) from links " "where id = ? {} group by idn;"
-)
+from_id = "select call_id idn, min(level) from links " "where id = ? {} group by idn;"
 
 what_call_1 = (
     "select a.type, a.module, a.class, a.method, min(b.level) "
