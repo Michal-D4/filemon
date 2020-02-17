@@ -400,14 +400,14 @@ class Window(QWidget):
         model = QStandardItemModel(0, len(call_headers.split(",")), self.resView)
         fill_in_model(model, self.repo, user_data=False)
         self.resModel.setSourceModel(model)
-        set_columns_width(self.resView, proportion=(2, 2, 5, 7, 7, 9))
+        set_columns_width(self.resView, proportion=(2,2,5,7,7,2,3,5))
         set_headers(self.resModel, call_headers)
 
     def refresh(self):
         model = QStandardItemModel(0, len(main_headers.split(",")), self.proxyView)
         qq = conn.cursor()
         qq.execute(qsel2)
-        vv = ((x[0], memb_type[x[1]], *x[2:]) for x in qq)
+        vv = ((x[0], memb_type[x[1]], *x[2:-2], x[-2].rjust(4), x[-1]) for x in qq)
         fill_in_model(model, vv)
         self.setSourceModel(model)
 
@@ -978,7 +978,7 @@ qsel2 = "select * from methods2;"
 not_called = (
     "with not_called (id) as (select id from methods2 "
     "except select id from one_link) "
-    "select a.Id,a.type,a.module,a.class,a.method,a.remark "
+    "select a.Id,a.type,a.module,a.class,a.method,a.cc,a.length,a.remark "
     "from methods2 a join not_called b on a.id = b.id;"
 )
 # id-s of methods called from given method id
@@ -1010,10 +1010,10 @@ where_mod = "and a.module = '{}' "
 where_cls = "and a.class = '{}' "
 and_level = "and b.level = 1 "
 group_by = "group by a.type, a.module, a.class, a.method;"
-main_headers = "type,module,Class,method,CC,olcCC,length,remark"
+main_headers = "type,module,Class,method,cc,occ,length,remark"
 rep_headers = "time,What/From,All/Any,Type,module,Class,method,level"
 link_headers = "What/From,Type,module,Class,method"
-call_headers = "Id,type,module,class,method,Comment"
+call_headers = "id,type,module,class,method,cc,lemgth,comment"
 save_links = (
     "select a.type type, a.module module, a.class class, a.method method, "
     "COALESCE(b.method,'') c_method, COALESCE(b.module,'') c_module, "
@@ -1093,7 +1093,7 @@ def set_headers(model, headers):
         model.setHeaderData(i, Qt.Horizontal, header)
 
 
-def set_columns_width(view, proportion=(3, 6, 8, 8, 2, 2, 2, 5)):
+def set_columns_width(view, proportion=(4, 6, 8, 8, 2, 2, 3, 5)):
     ss = sum(proportion)
     model = view.model()
     n = model.columnCount()
@@ -1122,7 +1122,7 @@ if __name__ == "__main__":
     model = QStandardItemModel(0, len(main_headers.split(",")), window)
     qq = conn.cursor()
     qq.execute(qsel2)
-    vv = ((x[0], memb_type[x[1]], *x[2:]) for x in qq)
+    vv = ((x[0], memb_type[x[1]], *x[2:-2], x[-2].rjust(4), x[-1]) for x in qq)
     fill_in_model(model, vv)
     window.setSourceModel(model)
     window.show()
