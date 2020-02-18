@@ -288,6 +288,21 @@ class Window(QWidget):
         for cc in curs:
             self.filterClass.addItem(cc[0])
 
+    def textFilterTypeChanged(self):
+        curs = self.conn.cursor()
+        self.filterClass.clear()
+        self.filterClass.addItem("All")
+        if self.filterType.currentText() == "All":
+            curs.execute(qsel3)
+        else:
+            curs.execute(
+                ("select distinct type from methods2 " "where type = ? order by type;"),
+                (memb_key[self.filterType.currentText()],),
+            )
+
+        for cc in curs:
+            self.filterType.addItem(memb_type[cc[0]])
+
     def menu_res_view(self, pos):
         """
         only copy to clipboard
