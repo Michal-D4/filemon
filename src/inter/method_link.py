@@ -48,6 +48,8 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, parent=None):
         super(MySortFilterProxyModel, self).__init__(parent)
 
+        self.type_filter = ""
+        self.type_all = True
         self.module_filter = ""
         self.module_all = True
         self.class_filter = ""
@@ -55,13 +57,17 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
         self.note_filter = True
 
     def filterAcceptsRow(self, sourceRow, sourceParent: QModelIndex):
-        index0 = self.sourceModel().index(sourceRow, 1, sourceParent)
-        index1 = self.sourceModel().index(sourceRow, 2, sourceParent)
+        index0 = self.sourceModel().index(sourceRow, 0, sourceParent)
+        index1 = self.sourceModel().index(sourceRow, 1, sourceParent)
+        index2 = self.sourceModel().index(sourceRow, 2, sourceParent)
         index3 = self.sourceModel().index(sourceRow, 4, sourceParent)
 
         return (
-            (self.module_all or self.sourceModel().data(index0) == self.module_filter)
-            and (self.class_all or self.sourceModel().data(index1) == self.class_filter)
+            (self.type_all or self.sourceModel().data(index0) == self.type_filter)
+            and (
+                self.module_all or self.sourceModel().data(index1) == self.module_filter
+            )
+            and (self.class_all or self.sourceModel().data(index2) == self.class_filter)
             and (self.note_filter or self.sourceModel().data(index3) != "")
         )
 
@@ -76,12 +82,14 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
         )
         # return False
 
-    def filter_changed(self, item1, item2, item3):
-        self.module_all = item1 == "All"
-        self.module_filter = "" if self.module_all else item1
-        self.class_all = item2 == "All"
-        self.class_filter = "" if self.class_all else item2
-        self.note_filter = item3 == "All"
+    def filter_changed(self, typ, mod_, cls, note):
+        self.type_all = typ == "All"
+        self.type_filter = typ
+        self.module_all = mod_ == "All"
+        self.module_filter = mod_
+        self.class_all = cls == "All"
+        self.class_filter = cls
+        self.note_filter = note == "All"
         self.invalidateFilter()
 
     def get_data(self, index, role=Qt.DisplayRole):
@@ -141,6 +149,7 @@ class Window(QWidget):
         self.proxyView.setModel(self.proxyModel)
         self.proxyView.customContextMenuRequested.connect(self.pop_menu)
 
+        self.filterType = QComboBox()
         self.filterModule = QComboBox()
         self.filterClass = QComboBox()
         self.filterNote = QComboBox()
@@ -205,6 +214,8 @@ class Window(QWidget):
         self.filterNote.addItem("All")
         self.filterNote.addItem("Not blank")
 
+        filterTypeLabel = QLabel("&Type Filter")
+        filterTypeLabel.setBuddy(self.filterType)
         filterModuleLabel = QLabel("&Module Filter")
         filterModuleLabel.setBuddy(self.filterModule)
         filterClassLabel = QLabel("&Class Filter")
@@ -213,20 +224,23 @@ class Window(QWidget):
         filterNoteLabel.setBuddy(self.filterNote)
 
         filter_box = QGridLayout()
-        filter_box.addWidget(filterModuleLabel, 0, 0)
-        filter_box.addWidget(filterClassLabel, 0, 1)
-        filter_box.addWidget(filterNoteLabel, 0, 2)
-        filter_box.addWidget(save_btn, 0, 3, 2, 1)
-        filter_box.addWidget(self.filterModule, 1, 0)
-        filter_box.addWidget(self.filterClass, 1, 1)
-        filter_box.addWidget(self.filterNote, 1, 2)
+        filter_box.addWidget(filterTypeLabel, 0, 0)
+        filter_box.addWidget(filterModuleLabel, 0, 1)
+        filter_box.addWidget(filterClassLabel, 0, 2)
+        filter_box.addWidget(filterNoteLabel, 0, 3)
+        filter_box.addWidget(save_btn, 0, 4, 2, 1)
+        filter_box.addWidget(self.filterType, 1, 0)
+        filter_box.addWidget(self.filterModule, 1, 1)
+        filter_box.addWidget(self.filterClass, 1, 2)
+        filter_box.addWidget(self.filterNote, 1, 3)
 
+        self.set_filters_combo()
+        self.textFilterChanged()
+
+        self.filterType.currentIndexChanged.connect(self.textFilterChanged)
         self.filterModule.currentIndexChanged.connect(self.textFilterModuleChanged)
         self.filterClass.currentIndexChanged.connect(self.textFilterChanged)
         self.filterNote.currentIndexChanged.connect(self.textFilterChanged)
-
-        self.textFilterChanged()
-        self.set_filters_combo()
 
         grp_box = QGroupBox()
         grp_box.setFlat(True)
@@ -234,10 +248,18 @@ class Window(QWidget):
         return grp_box
 
     def set_filters_combo(self):
+        curs = self.conn.cursor()
+
+        self.filterType.clear()
+        self.filterType.addItem("All")
+        curs.execute(qsel3)
+        for cc in curs:
+            logger.debug(f"{cc[0]},  {memb_type[cc[0]]}")
+            self.filterType.addItem(memb_type[cc[0]])
+
         self.filterModule.clear()
         self.filterModule.addItem("All")
         self.filterModule.addItem("")
-        curs = self.conn.cursor()
         curs.execute(qsel0)
         for cc in curs:
             self.filterModule.addItem(cc[0])
@@ -315,6 +337,7 @@ class Window(QWidget):
 
     def textFilterChanged(self):
         self.proxyModel.filter_changed(
+            self.filterType.currentText(),
             self.filterModule.currentText(),
             self.filterClass.currentText(),
             self.filterNote.currentText(),
@@ -963,6 +986,7 @@ sql_id2 = (
 )
 qsel0 = "select distinct module from methods2 where module != '' order by module;"
 qsel1 = "select distinct class from methods2 order by upper(class);"
+qsel3 = "select distinct type from methods2 order by upper(type);"
 qsel2 = (
     "select ID, type, module, class, method, CC, CC_old, "
     "COALESCE(length, ''), remark from methods2;"
