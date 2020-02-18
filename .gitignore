@@ -20,3 +20,4 @@ ui_*.py
 *_rc.py
 /src/call_chain.py
 /.vscode/
+filemon.code-workspace
