@@ -1001,7 +1001,7 @@ group_by = "group by a.type, a.module, a.class, a.method;"
 main_headers = "type,module,Class,method,cc,occ,length,remark"
 rep_headers = "time,What/From,All/Any,Type,module,Class,method,level"
 link_headers = "What/From,Type,module,Class,method"
-call_headers = "id,type,module,class,method,cc,lemgth,comment"
+call_headers = "id,type,module,class,method,cc,length,comment"
 save_links = (
     "select a.type type, a.module module, a.class class, a.method method, "
     "COALESCE(b.method,'') c_method, COALESCE(b.module,'') c_module, "
