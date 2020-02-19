@@ -84,11 +84,11 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
 
     def filter_changed(self, typ, mod_, cls, note):
         self.type_all = typ == "All"
-        self.type_filter = typ
+        self.type_filter = "" if self.type_all else typ
         self.module_all = mod_ == "All"
-        self.module_filter = mod_
+        self.module_filter = "" if self.module_all else mod_
         self.class_all = cls == "All"
-        self.class_filter = cls
+        self.class_filter = "" if self.class_all else cls
         self.note_filter = note == "All"
         self.invalidateFilter()
 
@@ -288,18 +288,6 @@ class Window(QWidget):
         for cc in curs:
             self.filterClass.addItem(cc[0])
 
-    def textFilterTypeChanged(self):
-        curs = self.conn.cursor()
-        self.filterClass.clear()
-        self.filterClass.addItem("All")
-        if self.filterType.currentText() == "All":
-            curs.execute(qsel3)
-        else:
-            curs.execute(
-                ("select distinct type from methods2 " "where type = ? order by type;"),
-                (memb_key[self.filterType.currentText()],),
-            )
-
         for cc in curs:
             self.filterType.addItem(memb_type[cc[0]])
 
@@ -455,22 +443,26 @@ class Window(QWidget):
     def append_row(self, index: QModelIndex):
         crs = conn.cursor()
         items = (
-            "",
+            memb_key[self.proxyModel.type_filter],
             self.proxyModel.module_filter,
             self.proxyModel.class_filter,
-            "",
+            "", "", "", "",
             self.query_time[0],
         )
         crs.execute(ins0, items)
         idn = crs.lastrowid
         conn.commit()
 
-        model = self.proxyModel.sourceModel()
-        parent = self.proxyModel.mapToSource(index.parent())
-
-        model.beginInsertRows(parent, 0, 0)
-        add_row(model, (idn, *items), True)
-        model.endInsertRows()
+        param = (
+            self.proxyModel.rowCount(),
+            (
+                idn,
+                self.proxyModel.type_filter,
+                *items[1:]
+            ),
+            True,
+        )
+        add_row(self.proxyModel, param) 
 
     def delete_selected_rows(self):
         idx_list = self.proxyView.selectionModel().selectedRows()
@@ -480,9 +472,7 @@ class Window(QWidget):
             if p_idx.isValid():
                 row = p_idx.row()
                 self.delete_from_db(p_idx)
-                self.proxyModel.beginRemoveRows(parent, row, row)
                 self.proxyModel.removeRows(row, 1)
-                self.proxyModel.endRemoveRows()
 
     def delete_from_db(self, index: QModelIndex):
         id_db = self.proxyModel.get_data(index, Qt.UserRole)
@@ -577,12 +567,10 @@ class Window(QWidget):
             row = self.proxyModel.get_data(idx)[:-1]
             to_insert.append([id, stat] + row)
 
-        if to_insert:
-            self.resModel.beginInsertRows(QModelIndex(), 0, 0)
-            model = self.resModel.sourceModel()
-            for row in to_insert:
-                add_row(model, row, True)
-            self.resModel.endInsertRows()
+        row_no = self.resModel.rowCount()
+        for row in to_insert:
+            add_row(self.resModel, (row_no, row[1:], False))
+            row_no += 1
 
     def minus_clicked(self):
         idx_sel = self.resView.selectionModel().selectedRows()
@@ -603,9 +591,7 @@ class Window(QWidget):
 
     def remove_row(self, index):
         row = index.row()
-        self.resModel.beginRemoveRows(QModelIndex(), row, row)
         self.resModel.removeRows(row, 1)
-        self.resModel.endRemoveRows()
 
     def get_selected_methods(self):
         """
@@ -984,8 +970,8 @@ memb_key.update(
 upd0 = "update methods2 set {}=? where id=?;"
 ins0 = (
     "insert into methods2 ("
-    "type, module, class, method, remark) "
-    "values (?, ?, ?, ?, ?);"
+    "type, module, class, method, CC, CC_old, length, remark) "
+    "values (?, ?, ?, ?, ?, ?, ?, ?);"
 )
 sql_links = (
     "select a.id, 'From', a.type, a.module, a.class, a.method "
@@ -1091,28 +1077,30 @@ def prep_sql(sql: str, mod: str, cls: str, lvl: int = 0) -> str:
     )
 
 
-def add_row(model: QStandardItemModel, row: Iterable, user_data: bool):
+def add_row(model: QStandardItemModel, param: Iterable):
     """
     @param: model
-    @param: row  - data 
-    @param: user_data - True when first item of row is user data
+    @param: param  
     """
-    model.insertRow(0)
+    row_num = param[0]
+    row = param[1]
+    user_data = param[2]
+    model.insertRow(row_num)
     if user_data:
-        model.setData(model.index(0, 0), row[0], Qt.UserRole)
+        model.setData(model.index(row_num, 0), row[0], Qt.UserRole)
         rr = row[1:]
     else:
         rr = row
 
     for k, item in enumerate(rr):
-        model.setData(model.index(0, k), item if item else "")
+        model.setData(model.index(row_num, k), item if item else "")
 
 
 def fill_in_model(
     model: QStandardItemModel, row_list: Iterable, user_data: bool = True
 ):
     for cc in row_list:
-        add_row(model, cc, user_data)
+        add_row(model, (0, cc, user_data))
 
 
 def set_headers(model, headers):
