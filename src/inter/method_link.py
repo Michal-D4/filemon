@@ -254,7 +254,6 @@ class Window(QWidget):
         self.filterType.addItem("All")
         curs.execute(qsel3)
         for cc in curs:
-            logger.debug(f"{cc[0]},  {memb_type[cc[0]]}")
             self.filterType.addItem(memb_type[cc[0]])
 
         self.filterModule.clear()
@@ -446,7 +445,10 @@ class Window(QWidget):
             memb_key[self.proxyModel.type_filter],
             self.proxyModel.module_filter,
             self.proxyModel.class_filter,
-            "", "", "", "",
+            "",
+            "",
+            "",
+            "",
             self.query_time[0],
         )
         crs.execute(ins0, items)
@@ -455,14 +457,10 @@ class Window(QWidget):
 
         param = (
             self.proxyModel.rowCount(),
-            (
-                idn,
-                self.proxyModel.type_filter,
-                *items[1:]
-            ),
+            (idn, self.proxyModel.type_filter, *items[1:]),
             True,
         )
-        add_row(self.proxyModel, param) 
+        add_row(self.proxyModel, param)
 
     def delete_selected_rows(self):
         idx_list = self.proxyView.selectionModel().selectedRows()
