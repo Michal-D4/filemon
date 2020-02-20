@@ -19,7 +19,7 @@ from src.core.table_model import TableModel, ProxyModel2
 from src.core.tree_model import TreeModel
 from src.core.edit_tree_model import EditTreeModel, EditTreeItem
 from src.core.file_info import FileInfo, LoadFiles
-from src.core.helper import Fields
+from src.core.helper import Fields, open_file_folder
 import src.core.utilities as ut
 from src.core.load_db_data import LoadDBData
 from src.core.input_date import DateInputDialog
@@ -84,7 +84,7 @@ def del_add_items(new_list: list, old_list: list) -> (list, list):
     2) items from new_list but not in old_list
     :@param new_list: type of items?
     :@param old_list: type of items?
-    :@return: to_del_ids: list, to_add: set
+    :@return: to_del_ids: list, to_add: list
     """
     old_words_set = set([item[0] for item in old_list])
     new_words_set = set(new_list)
@@ -647,15 +647,7 @@ class FilesCrt():
 
     def _open_folder(self):
         path, *_ = self._file_path()
-        self._open(''.join(('file://', path)))
-
-    def _open(self, path_: str):
-        try:
-            webbrowser.open(path_)
-        except webbrowser.Error:
-            self.app_window.show_message(f'Folder is inaccessible on "{path_}"')
-        else:
-            pass
+        open_file_folder(''.join(('file://', path)))
 
     def _double_click_file(self):
         f_idx = self.ui.filesList.currentIndex()
@@ -698,20 +690,22 @@ class FilesCrt():
         if os.path.isfile(full_file_name):
             try:
                 # os.startfile(full_file_name)    # FixMe Windows specific
-                self._open(full_file_name)
-                cur_date = QDateTime.currentDateTime().toString(Qt.ISODate)[
-                    :16]
-                cur_date = cur_date.replace('T', ' ')
-                ut.update_other('OPEN_DATE', (cur_date, file_id))
-                model = self.ui.filesList.model()
-                heads = model.get_headers()
-                if 'Opened' in heads:
-                    idx_s = model.sourceModel().createIndex(idx.row(), heads.index('Opened'))
-                    model.sourceModel().update(idx_s, cur_date)
+                if open_file_folder(full_file_name) == 0:
+                    self.update_opened(idx, file_id)
             except OSError:
                 self.app_window.show_message(f'Can\'t open file "{full_file_name}"')
         else:
             self.app_window.show_message(f'Can\'t find file "{full_file_name}"')
+
+    def update_opened(self, idx, file_id):
+        cur_date = QDateTime.currentDateTime().toString(Qt.ISODate)[:16]
+        cur_date = cur_date.replace('T', ' ')
+        ut.update_other('OPEN_DATE', (cur_date, file_id))
+        model = self.ui.filesList.model()
+        heads = model.get_headers()
+        if 'Opened' in heads:
+            idx_s = model.sourceModel().createIndex(idx.row(), heads.index('Opened'))
+            model.sourceModel().update(idx_s, cur_date)
 
     def _file_path(self) -> (str, str, int, int):
         """

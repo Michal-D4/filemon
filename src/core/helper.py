@@ -1,5 +1,6 @@
 # helper.py
 
+import os, sys, subprocess
 from collections import namedtuple
 
 Fields = namedtuple('Fields', 'fields headers indexes')
@@ -16,4 +17,14 @@ MimeTypes = ["application/x-folder-list",
 DROP_NO_ACTION, DROP_COPY_FOLDER, DROP_MOVE_FOLDER, DROP_COPY_FILE, DROP_MOVE_FILE = (0, 1, 2, 4, 8)
 
 
-
+def open_file_folder(path: str):
+    """
+    Open file with default programm 
+    or folder with default file manager
+    @param: path
+    """
+    if sys.platform == "win32":
+        return os.system(f'start {os.path.realpath(path)}')
+    else:
+        opener ="open" if sys.platform == "darwin" else "xdg-open"
+        return subprocess.call([opener, path])
