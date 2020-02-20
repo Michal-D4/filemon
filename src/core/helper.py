@@ -1,6 +1,6 @@
 # helper.py
 
-import os, sys, subprocess
+import sys, subprocess, webbrowser
 from collections import namedtuple
 
 Fields = namedtuple("Fields", "fields headers indexes")
@@ -16,13 +16,8 @@ MimeTypes = [
     "application/x-file-list/virtual",
 ]
 
-DROP_NO_ACTION, DROP_COPY_FOLDER, DROP_MOVE_FOLDER, DROP_COPY_FILE, DROP_MOVE_FILE = (
-    0,
-    1,
-    2,
-    4,
-    8,
-)
+DROP_NO_ACTION, DROP_COPY_FOLDER, DROP_MOVE_FOLDER, \
+    DROP_COPY_FILE, DROP_MOVE_FILE = (0, 1, 2, 4, 8,)
 
 
 def open_file_folder(path: str):
@@ -32,8 +27,7 @@ def open_file_folder(path: str):
     @param: path
     """
     if sys.platform == "win32":
-        pp = '"' + path + '"'
-        return os.system(f'start "{path}"') == 0
+        return webbrowser.open(path)
     else:
-        opener = "open" if sys.platform == "darwin" else "xdg-open"
+        opener ="open" if sys.platform == "darwin" else "xdg-open"
         return subprocess.call([opener, path]) == 0
