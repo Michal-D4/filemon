@@ -2,7 +2,8 @@
 
 import sqlite3
 
-from PyQt5.QtCore import QSortFilterProxyModel, Qt, QModelIndex, QPersistentModelIndex
+from PyQt5.QtCore import (QSortFilterProxyModel, Qt, QModelIndex, 
+    QPersistentModelIndex, QAbstractItemModel)
 from PyQt5.QtGui import QStandardItemModel
 from PyQt5.QtWidgets import (
     QApplication,
@@ -42,6 +43,184 @@ def my_exception_hook(exc_, value, traceback):
 
 sys.excepthook = my_exception_hook
 # ---------------------------------------------------------
+
+def insert_levels(cc: sqlite3.Cursor, dd: dict):
+    rr = []
+    for row in cc:
+        rr.append((*row[:-1], str(dd[int(row[-1])])))
+    return rr
+
+
+def recreate_links():
+    re_sql = (  # all levels link
+        "with recc (ID, call_ID, level) as ("
+        "select ID, call_ID, 1 from one_link "
+        "union select b.ID, a.call_ID, a.level+1 "
+        "from recc a join one_link b on b.call_ID = a.ID) "
+        "insert into links (ID, call_ID, level) "
+        "select ID, call_ID, min(level) from recc group by ID, call_ID;"
+    )
+    conn.execute("delete from links;")
+    conn.execute(re_sql)
+    conn.commit()
+
+
+def time_run():
+    tt = datetime.now()
+    return tt.strftime("%d-%m-%Y"), tt.strftime("%H:%M:%S")
+
+
+def prep_sql(sql: str, mod: str, cls: str, lvl: int = 0) -> str:
+    return (
+        sql
+        + ("" if mod == "All" else where_mod.format(mod))
+        + ("" if cls == "All" else where_cls.format(cls))
+        + (and_level if lvl else "")
+        + group_by
+    )
+
+
+def add_row(model: QAbstractItemModel, param: tuple):
+    """
+    @param: model
+    @param: param - tuple(row, model data, user data) 
+    """
+    row_num = param[0]
+    row = param[1]
+    user_data = param[2]
+    model.insertRow(row_num)
+    if user_data:
+        model.setData(model.index(row_num, 0), user_data, Qt.UserRole)
+
+    for k, item in enumerate(row):
+        model.setData(model.index(row_num, k), item if item else "")
+
+
+def fill_in_model(model: QAbstractItemModel, rows: Iterable, user_data: bool = True):
+    for cc in rows:
+        if user_data:
+            add_row(model, (0, cc[1:], cc[0]))
+        else:
+            add_row(model, (0, cc, ''))
+
+
+def set_headers(model, headers):
+    for i, header in enumerate(headers.split(",")):
+        model.setHeaderData(i, Qt.Horizontal, header)
+
+
+def set_columns_width(view, proportion=(4, 6, 8, 8, 2, 2, 3, 5)):
+    ss = sum(proportion)
+    model = view.model()
+    n = model.columnCount()
+    w = view.width()
+    for k in range(n):
+        view.setColumnWidth(k, w / ss * proportion[k])
+
+
+def save_init():
+    """
+    save content of methods2 & one_link tables in file
+    """
+    ts = datetime.now().strftime("_%d-%m-%Y_%H%M%S")
+    save_method_list(ts)
+    save_links_table(ts)
+
+
+def save_method_list(ts: str):
+    out_file = Path.cwd() / "".join(("tmp/xls/meth", ts, ".txt"))
+    outfile = open(out_file, "w", encoding="utf­8")
+    csr = conn.cursor()
+    sql = (
+        "select ID,type,module,class,method,COALESCE(CC,''),"
+        "COALESCE(CC_old,''),COALESCE(length,0),"
+        "COALESCE(remark,'') from methods2;"
+    )
+    csr.execute(sql)
+    for row in csr:
+        rr = (row[0], memb_key[memb_type[row[1]]], *row[2:])
+        outfile.write(",".join((*map(str, rr), "\n")))
+
+
+def save_links_table(ts: str):
+    out_file = Path.cwd() / "".join(("tmp/xls/link", ts, ".txt"))
+    outfile = open(out_file, "w", encoding="utf­8")
+    csr = conn.cursor()
+    csr.execute("select * from one_link;")
+    for row in csr:
+        outfile.write(",".join((*map(str, row), "\n")))
+
+
+def copy_to_clipboard():
+    """
+    copy current content of methods2 & one_link tables in clipboard
+    """
+    csr = conn.cursor()
+    csr.execute(save_links)
+    to_save = []
+    for row in csr:
+        to_save.append("\t".join(row))
+
+    QApplication.clipboard().setText("\n".join(to_save))
+
+
+def reload_data():
+    in_path = Path.cwd() / "tmp/xls"
+    sql1 = (
+        "delete from methods2;",
+        "insert into methods2  ("
+        "ID, type, module, class, method, CC, CC_old, length, remark) "
+        "values (?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    )
+    input_file = in_path / "methods.txt"
+    load_table(input_file, sql1)
+
+    sql2 = (
+        "delete from one_link;",
+        "insert into one_link (id, call_id) values (?, ?);",
+    )
+    input_file = in_path / "links.txt"
+    load_table(input_file, sql2)
+
+    curs = conn.cursor()
+    curs.execute("delete from links;")
+    conn.commit()
+    curs.execute(all_levels_link)
+    conn.commit()
+
+
+def load_table(input_file: str, sql: str):
+    curs = conn.cursor()
+    curs.execute(sql[0])
+    conn.commit()
+    with open(input_file) as fl:
+        for line in fl:
+            curs.execute(sql[1], line.split(",")[:-1])
+        conn.commit()
+
+
+def pre_report(list_of_dicts):
+    if not list_of_dicts:
+        return (), (), {}
+    rd = list_of_dicts[0]
+    all_ = set(rd.keys())
+    any_ = set(rd.keys())
+    for tpl in list_of_dicts[1:]:
+        rd.update(tpl)
+        tt = set(tpl.keys())
+        all_ = all_ & tt
+        any_ = any_ | tt
+
+    return all_, any_, rd
+
+
+def set_tree_view(view: QTreeView):
+    view.setRootIsDecorated(False)
+    view.setAlternatingRowColors(True)
+    view.setSortingEnabled(True)
+    view.sortByColumn(1, Qt.AscendingOrder)
+    view.setContextMenuPolicy(Qt.CustomContextMenu)
+    view.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
 
 class MySortFilterProxyModel(QSortFilterProxyModel):
@@ -457,8 +636,8 @@ class Window(QWidget):
 
         param = (
             self.proxyModel.rowCount(),
-            (idn, self.proxyModel.type_filter, *items[1:]),
-            True,
+            (self.proxyModel.type_filter, *items[1:]),
+            idn,
         )
         add_row(self.proxyModel, param)
 
@@ -567,7 +746,7 @@ class Window(QWidget):
 
         row_no = self.resModel.rowCount()
         for row in to_insert:
-            add_row(self.resModel, (row_no, row[1:], False))
+            add_row(self.resModel, (row_no, row[1:], ''))
             row_no += 1
 
     def minus_clicked(self):
@@ -830,111 +1009,14 @@ class Window(QWidget):
             report.append((*pre, *ll, *post))
 
 
-def save_init():
-    """
-    save content of methods2 & one_link tables in file
-    """
-    ts = datetime.now().strftime("_%d-%m-%Y_%H%M%S")
-    save_method_list(ts)
-    save_links_table(ts)
-
-
-def save_method_list(ts: str):
-    out_file = Path.cwd() / "".join(("tmp/xls/meth", ts, ".txt"))
-    outfile = open(out_file, "w", encoding="utf­8")
-    csr = conn.cursor()
-    sql = (
-        "select ID,type,module,class,method,COALESCE(CC,''),"
-        "COALESCE(CC_old,''),COALESCE(length,0),"
-        "COALESCE(remark,'') from methods2;"
-    )
-    csr.execute(sql)
-    for row in csr:
-        rr = (row[0], memb_key[memb_type[row[1]]], *row[2:])
-        outfile.write(",".join((*map(str, rr), "\n")))
-
-
-def save_links_table(ts: str):
-    out_file = Path.cwd() / "".join(("tmp/xls/link", ts, ".txt"))
-    outfile = open(out_file, "w", encoding="utf­8")
-    csr = conn.cursor()
-    csr.execute("select * from one_link;")
-    for row in csr:
-        outfile.write(",".join((*map(str, row), "\n")))
-
-
-def copy_to_clipboard():
-    """
-    copy current content of methods2 & one_link tables in clipboard
-    """
-    csr = conn.cursor()
-    csr.execute(save_links)
-    to_save = []
-    for row in csr:
-        to_save.append("\t".join(row))
-
-    QApplication.clipboard().setText("\n".join(to_save))
-
-
-def reload_data():
-    in_path = Path.cwd() / "tmp/xls"
-    sql1 = (
-        "delete from methods2;",
-        "insert into methods2  ("
-        "ID, type, module, class, method, CC, CC_old, length, remark) "
-        "values (?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    )
-    input_file = in_path / "methods.txt"
-    load_table(input_file, sql1)
-
-    sql2 = (
-        "delete from one_link;",
-        "insert into one_link (id, call_id) values (?, ?);",
-    )
-    input_file = in_path / "links.txt"
-    load_table(input_file, sql2)
-
-    curs = conn.cursor()
-    curs.execute("delete from links;")
-    conn.commit()
-    curs.execute(all_levels_link)
-    conn.commit()
-
-
-def load_table(input_file: str, sql: str):
-    curs = conn.cursor()
-    curs.execute(sql[0])
-    conn.commit()
-    with open(input_file) as fl:
-        for line in fl:
-            curs.execute(sql[1], line.split(",")[:-1])
-        conn.commit()
-
-
-def pre_report(list_of_dicts):
-    if not list_of_dicts:
-        return (), (), {}
-    rd = list_of_dicts[0]
-    all_ = set(rd.keys())
-    any_ = set(rd.keys())
-    for tpl in list_of_dicts[1:]:
-        rd.update(tpl)
-        tt = set(tpl.keys())
-        all_ = all_ & tt
-        any_ = any_ | tt
-
-    return all_, any_, rd
-
-
-def set_tree_view(view: QTreeView):
-    view.setRootIsDecorated(False)
-    view.setAlternatingRowColors(True)
-    view.setSortingEnabled(True)
-    view.sortByColumn(1, Qt.AscendingOrder)
-    view.setContextMenuPolicy(Qt.CustomContextMenu)
-    view.setSelectionMode(QAbstractItemView.ExtendedSelection)
-
-
+sort_keys = {
+    "by module": lambda row: "".join(row[1:4]),
+    "by level": lambda row: "".join((row[4].rjust(2), *row[1:4])),
+}
+main_headers = "type,module,Class,method,cc,occ,length,remark"
+rep_headers = "time,What/From,All/Any,Type,module,Class,method,level"
+link_headers = "What/From,Type,module,Class,method"
+call_headers = "id,type,module,class,method,cc,length,comment"
 memb_type = defaultdict(str)
 memb_type.update(
     {
@@ -1000,7 +1082,6 @@ not_called = (
 what_id = "select id idn, min(level) from links " "where call_id = ? {} group by idn;"
 # id-s of methods that call given method id
 from_id = "select call_id idn, min(level) from links " "where id = ? {} group by idn;"
-
 what_call_1 = (
     "select a.type, a.module, a.class, a.method, min(b.level) "
     "from links b join methods2 a on a.id = b.id "
@@ -1021,10 +1102,6 @@ where_mod = "and a.module = '{}' "
 where_cls = "and a.class = '{}' "
 and_level = "and b.level = 1 "
 group_by = "group by a.type, a.module, a.class, a.method;"
-main_headers = "type,module,Class,method,cc,occ,length,remark"
-rep_headers = "time,What/From,All/Any,Type,module,Class,method,level"
-link_headers = "What/From,Type,module,Class,method"
-call_headers = "id,type,module,class,method,cc,length,comment"
 save_links = (
     "select a.type type, a.module module, a.class class, a.method method, "
     "COALESCE(b.method,'') c_method, COALESCE(b.module,'') c_module, "
@@ -1033,86 +1110,6 @@ save_links = (
     "left join methods2 b on b.id = c.call_ID "
     "order by module, type, class, method, c_module, c_class, c_method;"
 )
-sort_keys = {
-    "by module": lambda row: "".join(row[1:4]),
-    "by level": lambda row: "".join((row[4].rjust(2), *row[1:4])),
-}
-
-
-def insert_levels(cc: sqlite3.Cursor, dd: dict):
-    rr = []
-    for row in cc:
-        rr.append((*row[:-1], str(dd[int(row[-1])])))
-    return rr
-
-
-def recreate_links():
-    re_sql = (  # all levels link
-        "with recc (ID, call_ID, level) as ("
-        "select ID, call_ID, 1 from one_link "
-        "union select b.ID, a.call_ID, a.level+1 "
-        "from recc a join one_link b on b.call_ID = a.ID) "
-        "insert into links (ID, call_ID, level) "
-        "select ID, call_ID, min(level) from recc group by ID, call_ID;"
-    )
-    conn.execute("delete from links;")
-    conn.execute(re_sql)
-    conn.commit()
-
-
-def time_run():
-    tt = datetime.now()
-    return tt.strftime("%d-%m-%Y"), tt.strftime("%H:%M:%S")
-
-
-def prep_sql(sql: str, mod: str, cls: str, lvl: int = 0) -> str:
-    return (
-        sql
-        + ("" if mod == "All" else where_mod.format(mod))
-        + ("" if cls == "All" else where_cls.format(cls))
-        + (and_level if lvl else "")
-        + group_by
-    )
-
-
-def add_row(model: QStandardItemModel, param: Iterable):
-    """
-    @param: model
-    @param: param  
-    """
-    row_num = param[0]
-    row = param[1]
-    user_data = param[2]
-    model.insertRow(row_num)
-    if user_data:
-        model.setData(model.index(row_num, 0), row[0], Qt.UserRole)
-        rr = row[1:]
-    else:
-        rr = row
-
-    for k, item in enumerate(rr):
-        model.setData(model.index(row_num, k), item if item else "")
-
-
-def fill_in_model(
-    model: QStandardItemModel, row_list: Iterable, user_data: bool = True
-):
-    for cc in row_list:
-        add_row(model, (0, cc, user_data))
-
-
-def set_headers(model, headers):
-    for i, header in enumerate(headers.split(",")):
-        model.setHeaderData(i, Qt.Horizontal, header)
-
-
-def set_columns_width(view, proportion=(4, 6, 8, 8, 2, 2, 3, 5)):
-    ss = sum(proportion)
-    model = view.model()
-    n = model.columnCount()
-    w = view.width()
-    for k in range(n):
-        view.setColumnWidth(k, w / ss * proportion[k])
 
 
 if __name__ == "__main__":
