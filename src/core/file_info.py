@@ -185,7 +185,7 @@ class FileInfo(QRunnable):
         with (open(file_, "rb")) as pdf_file:
             try:
                 fr = PyPDF2.PdfFileReader(pdf_file, strict=False)
-                fi = fr.documentInfo
+                fi = fr.documentInfo     # getDocumentInfo() 
                 self.file_info.append(fr.getNumPages())
             except (ValueError, PyPDF2.utils.PdfReadError,
                     PyPDF2.utils.PdfStreamError) as e:
