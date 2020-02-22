@@ -3,8 +3,6 @@ from pathlib import Path
 import sqlite3
 import datetime
 
-from loguru import logger
-
 from src.core.create_db import create_all_objects
 
 EXT_ID_INCREMENT = 100000
@@ -246,43 +244,31 @@ def dir_ids_select(dir_id, level):
 
 
 def select_other(sql, params=()):
-    logger.debug(sql)
-    logger.debug(params)
     return DB_setting['Conn'].cursor().execute(Selects[sql], params)
 
 
 def select_other2(sql, params=()):
-    logger.debug(sql)
-    logger.debug(params)
     return DB_setting['Conn'].cursor().execute(Selects[sql].format(*params))
 
 
 def insert_other(sql, data):
-    logger.debug(sql)
-    logger.debug(data)
     ss = DB_setting['Conn'].cursor().execute(Insert[sql], data)
     DB_setting['Conn'].commit()
     return ss.lastrowid
 
 
 def insert_other2(sql, data):
-    logger.debug(sql)
-    logger.debug(data)
     ss = DB_setting['Conn'].cursor().execute(Insert[sql].format(*data))
     DB_setting['Conn'].commit()
     return ss.lastrowid
 
 
 def update_other(sql, data):
-    logger.debug(sql)
-    logger.debug(data)
     DB_setting['Conn'].cursor().execute(Update[sql], data)
     DB_setting['Conn'].commit()
 
 
 def delete_other(sql, data):
-    logger.debug(sql)
-    logger.debug(data)
     try:
         DB_setting['Conn'].cursor().execute(Delete[sql], data)
     except sqlite3.IntegrityError:
@@ -292,14 +278,11 @@ def delete_other(sql, data):
 
 
 def delete_other2(sql, data):
-    logger.debug(sql)
-    logger.debug(data)
     DB_setting['Conn'].cursor().execute(Delete[sql].format(*data))
     DB_setting['Conn'].commit()
 
 
 def open_create_db(create, file_name, same_db) -> bool:
-    logger.debug(f'|--> file_name: {file_name}, to create: {create}, same DB: {same_db}')
     DB_setting['SameDB'] = same_db
     if create:
         conn = create_connection(file_name)
@@ -312,7 +295,6 @@ def open_create_db(create, file_name, same_db) -> bool:
 
     DB_setting['Path'] = file_name
     DB_setting['Conn'] = conn
-    logger.debug('|---> end')
     return True
 
 
