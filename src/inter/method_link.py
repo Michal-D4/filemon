@@ -35,6 +35,35 @@ def my_exception_hook(exc_, value, traceback):
 sys.excepthook = my_exception_hook
 # ---------------------------------------------------------
 
+def mark_deleted_methods(cc_report: list, module: str = ''):
+    """
+    mark rows in DB to be deleted if not present in cc-report
+    @param cc-report: list of tuples (CC, length, type(C/F/M), module, class, method)
+    @param module: module name
+    """
+    if module:
+        sql = (
+            "select type || module || class || method, ID from methods2 "
+            f"where type in ('C','F','M') and module={module};"
+        )
+    else:
+        sql = (
+            "select type || module || class || method, ID "
+            "from methods2 where type in ('C','F','M');"
+        )
+
+    qq = conn.cursor()
+    qq.execute(sql)
+    cc = dict(qq)
+
+    keys_in_cc = (''.join(x[2:]) for x in cc_report)
+    keys_not_in_cc = set(cc.keys()) - set(keys_in_cc)
+
+    for key in keys_not_in_cc:
+        qq.execute(f"update methods2 set remark = '@@deleted' where id = {cc[key]}")
+    conn.commit()
+
+
 def insert_levels(cc: sqlite3.Cursor, dd: dict):
     rr = []
     for row in cc:
@@ -553,15 +582,20 @@ class Window(QWidget):
             }[act](curr_idx)
 
     def recalc_complexity(self):
+        """
+        add radon cyclomatic complexity repor data
+        """
         mm = self.filterModule.currentText()
         module = "" if mm == "All" else mm
         cc_list = cc_report(module)
         for row in cc_list:
             self.update_cc(row)
+        
+        mark_deleted_methods(cc_list, module)
 
     def update_cc(self, row: Iterable):
         """
-        @param row: type(C/F/M), module, class, method, CC, length
+        @param row:  CC, length, type(C/F/M), module, class, method
         """
         sql_sel = (
             "select id from methods2 where "
@@ -747,19 +781,17 @@ class Window(QWidget):
         idx_sel.reverse()
         for idx in idx_sel:
             self.remove_in_new_links(idx)
-            self.remove_link(idx)
+            self.remove_in_model(idx)
 
     def remove_in_new_links(self, index: QModelIndex):
         link_type = self.resModel.data(index)
         id_db = self.resModel.data(index, Qt.UserRole)
         link = (
-            (id_db, self.curr_id_db)
-            if link_type == "What"
-            else (self.curr_id_db, id_db)
+            (id_db, self.curr_id_db) if link_type == "What" else (self.curr_id_db, id_db)
         )
         self.new_links.remove(link)
 
-    def remove_link(self, index):
+    def remove_in_model(self, index):
         row = index.row()
         self.resModel.removeRows(row, 1)
 

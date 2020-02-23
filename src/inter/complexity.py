@@ -3,6 +3,12 @@ from radon.cli.tools import iter_filenames
 from pathlib import Path
 
 def cc_report(module: str='') -> list:
+    """
+    radon CC complexity report for module "module"
+    
+    @param module: name of module to create report, if empty - all modules
+    @return list: radon cyclomatic complexity report
+    """
     lst = []
     for filename in iter_filenames(['.'], ignore="test,ui,tmp", exclude="*__init__.py"):
         modu_ = Path(filename).stem
@@ -14,6 +20,13 @@ def cc_report(module: str='') -> list:
 
 
 def in_cc_report(module: str, source: str) -> list:
+    """
+    cyclomatic complexity for module "module"
+
+    @param module: module name
+    @param source: source of module
+    @return list: of tuple (CC, length, type(C/F/M), module, class, method)
+    """
     res = []
     # get cc blocks
     blocks = cc_visit(source)
