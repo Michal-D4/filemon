@@ -185,20 +185,25 @@ class FileInfo(QRunnable):
         with (open(file_, "rb")) as pdf_file:
             try:
                 fr = PyPDF2.PdfFileReader(pdf_file, strict=False)
-                fi = fr.documentInfo     # getDocumentInfo() 
                 self.file_info.append(fr.getNumPages())
-            except (ValueError, PyPDF2.utils.PdfReadError,
-                    PyPDF2.utils.PdfStreamError) as e:
+                fi = fr.documentInfo     # == getDocumentInfo() 
+            except (ValueError, PyPDF2.utils.PdfReadError, PyPDF2.utils.PdfStreamError) as e:
                 logger.exception(e)
                 self.file_info += [0, '', '', '']
             else:
-                if fi is not None:
-                    cr_date = pdf_creation_date(fi.getText('/CreationDate'))
-                    self.file_info += [fi.getText('/Author'),
-                                       cr_date,
-                                       fi.getText('/Title')]
-                else:
-                    self.file_info += ['', '', '']
+                self.add_pdf_info(fi)
+
+    def add_pdf_info(self, fi: dict):
+        print(type(fi))
+        if fi is not None:
+            if "/CreationDate" in fi.keys():
+                print(type(fi["/CreationDate"]))
+            cr_date = pdf_creation_date(fi.getText('/CreationDate'))
+            self.file_info += [fi.getText('/Author'),
+                                cr_date,
+                                fi.getText('/Title')]
+        else:
+            self.file_info += ['', '', '']
 
     def update_file(self, file_):
         """

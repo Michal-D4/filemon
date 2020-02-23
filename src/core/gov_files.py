@@ -1144,7 +1144,7 @@ class FilesCrt:
                             ", ".join([author[0] for author in authors])
                         ),
                         '<p><a href="Edit title"4>Title</a>: {}</p>'.format(comment[1]),
-                        '<p><a href="Edit comment">Comment</a> {}</p></body></html>'.format(
+                        '<p><a href="Edit comment">Comment:</a> {}</p></body></html>'.format(
                             comment[0]
                         ),
                     )
