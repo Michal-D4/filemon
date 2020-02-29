@@ -1,7 +1,7 @@
 import sqlite3
 import pytest
 
-import src.inter.method_tree as mt
+import prj_info.method_tree as mt
 
 lines = (
     ",m1,c1,me2,me1,m1,c1,start",
