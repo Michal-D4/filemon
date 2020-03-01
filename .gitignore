@@ -21,3 +21,4 @@ ui_*.py
 /src/call_chain.py
 /.vscode/
 filemon.code-workspace
+filemon.egg-info
