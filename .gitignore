@@ -22,3 +22,4 @@ ui_*.py
 /.vscode/
 filemon.code-workspace
 filemon.egg-info
+prj_info/prj_info.ini
