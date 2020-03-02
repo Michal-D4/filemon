@@ -17,7 +17,7 @@ from collections import defaultdict
 from collections.abc import Iterable, Callable
 
 from complexity import cc_report
-from method_tree import all_levels_link
+from method_tree import all_levels_link, recreate_tables
 
 # ---------------------------------------------------------
 # doesn't catch exception without this code in Windows ! ! !
@@ -148,7 +148,7 @@ def save_init():
 
 
 def save_method_list(ts: str):
-    out_file = Path.cwd() / "".join(("tmp/xls/meth", ts, ".txt"))
+    out_file = prj_path / "tmp/xls/meth{:s}.txt".format(ts)
     outfile = open(out_file, "w", encoding="utf­8")
     csr = conn.cursor()
     sql = (
@@ -163,7 +163,7 @@ def save_method_list(ts: str):
 
 
 def save_links_table(ts: str):
-    out_file = Path.cwd() / "".join(("tmp/xls/link", ts, ".txt"))
+    out_file = prj_path / "tmp/xls/link{:s}.txt".format(ts)
     outfile = open(out_file, "w", encoding="utf­8")
     csr = conn.cursor()
     csr.execute("select * from one_link;")
@@ -182,31 +182,6 @@ def copy_to_clipboard():
         to_save.append("\t".join(row))
 
     QApplication.clipboard().setText("\n".join(to_save))
-
-
-def reload_data():
-    in_path = Path.cwd() / "tmp/xls"
-    sql1 = (
-        "delete from methods2;",
-        "insert into methods2  ("
-        "ID, type, module, class, method, CC, CC_old, length, remark) "
-        "values (?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    )
-    input_file = in_path / "methods.txt"
-    load_table(input_file, sql1)
-
-    sql2 = (
-        "delete from one_link;",
-        "insert into one_link (id, call_id) values (?, ?);",
-    )
-    input_file = in_path / "links.txt"
-    load_table(input_file, sql2)
-
-    curs = conn.cursor()
-    curs.execute("delete from links;")
-    conn.commit()
-    curs.execute(all_levels_link)
-    conn.commit()
 
 
 def load_table(input_file: str, sql: str):
@@ -509,14 +484,15 @@ class Window(QWidget):
 
     def pop_menu(self, pos):
         idx = self.proxyView.indexAt(pos)
+        menu = QMenu(self)
         if idx.isValid():
-            menu = QMenu(self)
             menu.addAction("First level only")
             menu.addSeparator()
             menu.addAction("sort by level")
             menu.addAction("sort by module")
             menu.addSeparator()
-            menu.addAction("append row")
+        menu.addAction("append row")
+        if idx.isValid():
             menu.addAction("delete rows")
             menu.addAction("edit links")
             menu.addSeparator()
@@ -524,12 +500,12 @@ class Window(QWidget):
             menu.addSeparator()
             menu.addAction("refresh")
             menu.addSeparator()
-            menu.addAction("reload")
-            menu.addSeparator()
             menu.addAction("complexity")
-            action = menu.exec_(self.proxyView.mapToGlobal(pos))
-            if action:
-                self.menu_action(action.text())
+        menu.addSeparator()
+        menu.addAction("reload")
+        action = menu.exec_(self.proxyView.mapToGlobal(pos))
+        if action:
+            self.menu_action(action.text())
 
     def setSourceModel(self, model: QStandardItemModel):
         self.proxyModel.setSourceModel(model)
@@ -572,7 +548,7 @@ class Window(QWidget):
                 menu_items[6]: self.refresh,
                 menu_items[7]: self.is_not_called,
                 menu_items[8]: self.recalc_complexity,
-                menu_items[9]: reload_data,
+                menu_items[9]: self.reload_data,
             }[act]()
         else:
             curr_idx = self.proxyView.currentIndex()
@@ -628,6 +604,31 @@ class Window(QWidget):
         self.resModel.setSourceModel(model)
         set_columns_width(self.resView, proportion=(2, 2, 5, 7, 7, 2, 3, 5))
         set_headers(self.resModel, call_headers)
+
+    def reload_data(self):
+        sql1 = (
+            "delete from methods2;",
+            "insert into methods2  ("
+            "ID, type, module, class, method, CC, CC_old, length, remark) "
+            "values (?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        )
+        input_file = prj_path / input_meth
+        load_table(input_file, sql1)
+
+        sql2 = (
+            "delete from one_link;",
+            "insert into one_link (id, call_id) values (?, ?);",
+        )
+        input_file = prj_path / input_link  
+        load_table(input_file, sql2)
+
+        curs = conn.cursor()
+        curs.execute("delete from links;")
+        conn.commit()
+        curs.execute(all_levels_link)
+        conn.commit()
+
+        self.refresh()
 
     def refresh(self):
         model = QStandardItemModel(0, len(main_headers.split(",")), self.proxyView)
@@ -1174,9 +1175,17 @@ if __name__ == "__main__":
     logger.add(sys.stderr, level="DEBUG", format=fmt, enqueue=True)
 
     app = QApplication(sys.argv)
-    DB = Path.cwd() / "prj.db"
+    prj_path = Path.cwd()
+    logger.debug(prj_path / 'prj_info/prj_info.ini')
+    with open(prj_path / 'prj_info/prj_info.ini') as pr_ini:
+        db_name, input_meth, input_link, new_db = pr_ini.read().split(';')
+        logger.debug(f"input files: {input_meth}, {input_link}; is new DB: {new_db}")
+    DB = prj_path / db_name
+
     logger.debug(DB)
     conn = sqlite3.connect(DB)
+    if new_db:
+        recreate_tables(conn)
 
     window = Window(conn)
     model = QStandardItemModel(0, len(main_headers.split(",")), window)
