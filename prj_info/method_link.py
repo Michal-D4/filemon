@@ -2,14 +2,14 @@
 
 import sqlite3
 
-from PyQt5.QtCore import (QSortFilterProxyModel, Qt, QModelIndex, 
-    QPersistentModelIndex, QAbstractItemModel,
-)
+from PyQt5.QtCore import (QSortFilterProxyModel, Qt, QModelIndex,
+                          QPersistentModelIndex, QAbstractItemModel,
+                          )
 from PyQt5.QtGui import QStandardItemModel
 from PyQt5.QtWidgets import (QApplication, QComboBox, QGridLayout,
-    QGroupBox, QMenu, QTextEdit, QLabel, QTreeView, QVBoxLayout,
-    QWidget, QAbstractItemView, QDialogButtonBox,
-)
+                             QGroupBox, QMenu, QTextEdit, QLabel, QTreeView, QVBoxLayout,
+                             QWidget, QAbstractItemView, QDialogButtonBox,
+                             )
 from pathlib import Path
 from loguru import logger
 from datetime import datetime
@@ -35,7 +35,8 @@ def my_exception_hook(exc_, value, traceback):
 sys.excepthook = my_exception_hook
 # ---------------------------------------------------------
 
-def mark_deleted_methods(cc_report: list, module: str = ''):
+
+def mark_deleted_methods(cc_report: list, module: str = ""):
     """
     mark rows in DB to be deleted if not present in cc-report
     @param cc-report: list of tuples (CC, length, type(C/F/M), module, class, method)
@@ -56,11 +57,12 @@ def mark_deleted_methods(cc_report: list, module: str = ''):
     qq.execute(sql)
     cc = dict(qq)
 
-    keys_in_cc = (''.join(x[2:]) for x in cc_report)
+    keys_in_cc = ("".join(x[2:]) for x in cc_report)
     keys_not_in_cc = set(cc.keys()) - set(keys_in_cc)
 
     for key in keys_not_in_cc:
-        qq.execute(f"update methods2 set remark = '@@deleted' where id = {cc[key]}")
+        qq.execute(
+            f"update methods2 set remark = '@@deleted' where id = {cc[key]}")
     conn.commit()
 
 
@@ -121,7 +123,7 @@ def fill_in_model(model: QAbstractItemModel, rows: Iterable, user_data: bool = T
         if user_data:
             add_row(model, (0, cc[1:], cc[0]))
         else:
-            add_row(model, (0, cc, ''))
+            add_row(model, (0, cc, ""))
 
 
 def set_headers(model, headers):
@@ -286,7 +288,8 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
     def setData(self, index, data, role=Qt.DisplayRole):
         if role == Qt.EditRole:
             col = index.column()
-            idn0 = self.mapToSource(self.index(index.row(), 0, self.parent(index)))
+            idn0 = self.mapToSource(self.index(
+                index.row(), 0, self.parent(index)))
             if col == 0:
                 data_0 = memb_type[data]
                 if data_0:
@@ -376,7 +379,7 @@ class Window(QWidget):
 
     def save_clicked(self, btn):
         {
-            "Save": save_init, 
+            "Save": save_init,
             "Copy to clipboard": copy_to_clipboard
         }[btn.text()]()
 
@@ -412,7 +415,8 @@ class Window(QWidget):
         self.textFilterChanged()
 
         self.filterType.currentIndexChanged.connect(self.textFilterChanged)
-        self.filterModule.currentIndexChanged.connect(self.textFilterModuleChanged)
+        self.filterModule.currentIndexChanged.connect(
+            self.textFilterModuleChanged)
         self.filterClass.currentIndexChanged.connect(self.textFilterChanged)
         self.filterNote.currentIndexChanged.connect(self.textFilterChanged)
 
@@ -553,7 +557,7 @@ class Window(QWidget):
         else:
             curr_idx = self.proxyView.currentIndex()
             {
-                menu_items[3]: self.append_row, 
+                menu_items[3]: self.append_row,
                 menu_items[4]: self.edit_links
             }[act](curr_idx)
 
@@ -566,7 +570,7 @@ class Window(QWidget):
         cc_list = cc_report(module)
         for row in cc_list:
             self.update_cc(row)
-        
+
         mark_deleted_methods(cc_list, module)
 
     def update_cc(self, row: Iterable):
@@ -599,7 +603,8 @@ class Window(QWidget):
         for row in qq:
             self.repo.append(row)
 
-        model = QStandardItemModel(0, len(call_headers.split(",")), self.resView)
+        model = QStandardItemModel(
+            0, len(call_headers.split(",")), self.resView)
         fill_in_model(model, self.repo, user_data=False)
         self.resModel.setSourceModel(model)
         set_columns_width(self.resView, proportion=(2, 2, 5, 7, 7, 2, 3, 5))
@@ -619,7 +624,7 @@ class Window(QWidget):
             "delete from one_link;",
             "insert into one_link (id, call_id) values (?, ?);",
         )
-        input_file = prj_path / input_link  
+        input_file = prj_path / input_link
         load_table(input_file, sql2)
 
         curs = conn.cursor()
@@ -631,21 +636,24 @@ class Window(QWidget):
         self.refresh()
 
     def refresh(self):
-        model = QStandardItemModel(0, len(main_headers.split(",")), self.proxyView)
+        model = QStandardItemModel(
+            0, len(main_headers.split(",")), self.proxyView)
         qq = conn.cursor()
         qq.execute(qsel2)
-        vv = ((x[0], memb_type[x[1]], *x[2:-2], x[-2].rjust(4), x[-1]) for x in qq)
+        vv = ((x[0], memb_type[x[1]], *x[2:-2], x[-2].rjust(4), x[-1])
+              for x in qq)
         fill_in_model(model, vv)
         self.setSourceModel(model)
 
     def clear_report_view(self):
         self.repo.clear()
 
-        model = QStandardItemModel(0, len(rep_headers.split(",")), self.resView)
+        model = QStandardItemModel(
+            0, len(rep_headers.split(",")), self.resView)
         self.resModel.setSourceModel(model)
         set_columns_width(self.resView, proportion=(3, 2, 2, 2, 7, 7, 7, 1))
         set_headers(self.resModel, rep_headers)
-        
+
         self.query_time = time_run()
 
     def append_row(self, index: QModelIndex):
@@ -654,7 +662,7 @@ class Window(QWidget):
             memb_key[self.proxyModel.type_filter],
             self.proxyModel.module_filter,
             self.proxyModel.class_filter,
-            "", "", "", "", 
+            "", "", "", "",
             self.query_time[0],
         )
         crs.execute(ins0, items)
@@ -692,7 +700,8 @@ class Window(QWidget):
         qq = conn.cursor()
         qq.execute(sql_links.format(id_db, id_db))
 
-        model = QStandardItemModel(0, len(link_headers.split(",")), self.resView)
+        model = QStandardItemModel(
+            0, len(link_headers.split(",")), self.resView)
         fill_in_model(model, qq)
         self.resModel.setSourceModel(model)
         set_columns_width(self.resView, proportion=(3, 2, 8, 8, 8))
@@ -709,7 +718,8 @@ class Window(QWidget):
         f_type.setBuddy(self.link_type)
 
         ok_btn = QDialogButtonBox()
-        ok_btn.setStandardButtons(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        ok_btn.setStandardButtons(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         ok_btn.addButton("+", QDialogButtonBox.ActionRole)
         ok_btn.addButton("-", QDialogButtonBox.ActionRole)
         ok_btn.clicked.connect(self.btn_clicked)
@@ -743,10 +753,12 @@ class Window(QWidget):
         removed = s_old - s_new
         if removed:
             for link in removed:
-                conn.execute("delete from one_link where id=? and call_id=?;", link)
+                conn.execute(
+                    "delete from one_link where id=? and call_id=?;", link)
         if added:
             for link in added:
-                conn.execute("insert into one_link (id, call_id) values (?, ?);", link)
+                conn.execute(
+                    "insert into one_link (id, call_id) values (?, ?);", link)
         conn.commit()
         self.resModel.sourceModel().clear()
         self.link_box.hide()
@@ -765,7 +777,8 @@ class Window(QWidget):
         to_insert = []
         for idx in idx_col0:
             id = self.proxyModel.get_data(idx, Qt.UserRole)
-            link = (id, self.curr_id_db) if stat == "What" else (self.curr_id_db, id)
+            link = (id, self.curr_id_db) if stat == "What" else (
+                self.curr_id_db, id)
             if link in self.new_links or link[::-1] in self.new_links:
                 continue
             self.new_links.append(link)
@@ -774,7 +787,7 @@ class Window(QWidget):
 
         row_no = self.resModel.rowCount()
         for row in to_insert:
-            add_row(self.resModel, (row_no, row[1:], ''))
+            add_row(self.resModel, (row_no, row[1:], ""))
             row_no += 1
 
     def minus_clicked(self):
@@ -788,7 +801,9 @@ class Window(QWidget):
         link_type = self.resModel.data(index)
         id_db = self.resModel.data(index, Qt.UserRole)
         link = (
-            (id_db, self.curr_id_db) if link_type == "What" else (self.curr_id_db, id_db)
+            (id_db, self.curr_id_db)
+            if link_type == "What"
+            else (self.curr_id_db, id_db)
         )
         self.new_links.remove(link)
 
@@ -822,8 +837,8 @@ class Window(QWidget):
         self.sort_key = sort_keys["by module"]
         opt = len(ids) if len(ids) < 3 else "more than 2"
         {
-            1: self.first_1, 
-            2: self.first_2, 
+            1: self.first_1,
+            2: self.first_2,
             "more than 2": self.first_more_than_2
         }[opt](ids, names)
 
@@ -889,7 +904,7 @@ class Window(QWidget):
         pre = (self.query_time[1], "Sel")
         n_names = [("A", *names[0]), ("B", *names[1])]
         self.sorted_report(self.repo, (pre, n_names, ""))
-        
+
         what_sql = prep_sql(
             what_call_1,
             self.filterModule.currentText(),
@@ -915,33 +930,33 @@ class Window(QWidget):
         self.sorted_report(
             self.repo,
             (
-                (self.query_time[1], what, "A | B"), 
-                list(set(lst_a) | set(lst_b)), 
-                "")
+                (self.query_time[1], what, "A | B"),
+                list(set(lst_a) | set(lst_b)),
+                ""),
         )
 
         self.sorted_report(
             self.repo,
             (
-                (self.query_time[1], what, "A - B"), 
-                list(set(lst_a) - set(lst_b)), 
-                "")
+                (self.query_time[1], what, "A - B"),
+                list(set(lst_a) - set(lst_b)),
+                ""),
         )
 
         self.sorted_report(
             self.repo,
             (
-                (self.query_time[1], what, "B - A"), 
-                list(set(lst_b) - set(lst_a)), 
-                "")
+                (self.query_time[1], what, "B - A"),
+                list(set(lst_b) - set(lst_a)),
+                ""),
         )
 
         self.sorted_report(
             self.repo,
             (
-                (self.query_time[1], what, "A & B"), 
-                list(set(lst_a) & set(lst_b)), 
-                "")
+                (self.query_time[1], what, "A & B"),
+                list(set(lst_a) & set(lst_b)),
+                ""),
         )
 
     def first_more_than_2(self, ids, names):
@@ -957,10 +972,10 @@ class Window(QWidget):
 
     def report_23(self, ids, param, lvl):
         opt = {
-            "What": (what_id, what_call_3), 
+            "What": (what_id, what_call_3),
             "From": (from_id, called_from_3)
         }[param]
-        
+
         links = self.exec_sql_2(ids, lvl, opt[0])
         rep_prep = pre_report(links)
 
@@ -1015,8 +1030,8 @@ class Window(QWidget):
         """
         opt = len(ids) if len(ids) < 3 else "more than 2"
         {
-            1: self.do_1, 
-            2: self.do_2, 
+            1: self.do_1,
+            2: self.do_2,
             "more than 2": self.do_more_than_2
         }[opt](ids, names)
 
@@ -1176,15 +1191,13 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     prj_path = Path.cwd()
-    logger.debug(prj_path / 'prj_info/prj_info.ini')
-    with open(prj_path / 'prj_info/prj_info.ini') as pr_ini:
-        db_name, input_meth, input_link, new_db = pr_ini.read().split(';')
-        logger.debug(f"input files: {input_meth}, {input_link}; is new DB: {new_db}")
+    with open(prj_path / "prj_info/prj_info.ini") as pr_ini:
+        db_name, input_meth, input_link, new_db = pr_ini.readline().split(";")
     DB = prj_path / db_name
 
     logger.debug(DB)
     conn = sqlite3.connect(DB)
-    if new_db:
+    if new_db == "Y":
         recreate_tables(conn)
 
     window = Window(conn)
