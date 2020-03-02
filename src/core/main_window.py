@@ -2,34 +2,19 @@
 
 from loguru import logger
 
-from PyQt5.QtCore import (
-    pyqtSignal,
-    QSettings,
-    QVariant,
-    QSize,
-    Qt,
-    QUrl,
-    QEvent,
-    QMimeData,
-)
+from PyQt5.QtCore import (pyqtSignal, QSettings, QVariant, QSize,
+                          Qt, QUrl, QEvent, QMimeData, QPoint, QModelIndex
+                          )
 from PyQt5.QtGui import QResizeEvent, QDrag, QPixmap, QDropEvent, QDragMoveEvent
 from PyQt5.QtWidgets import QMainWindow, QMenu, QWidget
 
 from src.core.utilities import open_create_db
 
 from src.ui.ui_main_window import Ui_MainWindow
-from src.core.helper import (
-    REAL_FOLDER,
-    VIRTUAL_FOLDER,
-    REAL_FILE,
-    VIRTUAL_FILE,
-    MimeTypes,
-    DROP_NO_ACTION,
-    DROP_COPY_FOLDER,
-    DROP_MOVE_FOLDER,
-    DROP_COPY_FILE,
-    DROP_MOVE_FILE,
-)
+from src.core.helper import (REAL_FOLDER, VIRTUAL_FOLDER, REAL_FILE, VIRTUAL_FILE,
+                             MimeTypes, DROP_NO_ACTION, DROP_COPY_FOLDER, DROP_MOVE_FOLDER, DROP_COPY_FILE,
+                             DROP_MOVE_FILE,
+                             )
 from src.core.db_choice import DBChoice
 
 
@@ -63,22 +48,22 @@ class AppWindow(QMainWindow):
     def show_message(self, message, time=3000):
         self.ui.statusbar.showMessage(message, time)
 
-    def set_actions(self):
+    def set_actions(self) -> None:
         """
         Connect handlers to tool bar actions and widgets' events
-        :return:
+        :@return: None
         """
         # toolbar buttons actions
-        self.ui.actionOpenDB.triggered.connect(lambda: self.open_dialog.exec_())
-        self.ui.actionScanFiles.triggered.connect(lambda: self.scan_files_signal.emit())
+        self.ui.actionOpenDB.triggered.connect(
+            lambda: self.open_dialog.exec_())
+        self.ui.actionScanFiles.triggered.connect(
+            lambda: self.scan_files_signal.emit())
         self.ui.actionFileFilter.triggered.connect(
-            lambda: self.change_data_signal.emit("Select files")
-        )
+            lambda: self.change_data_signal.emit("Select files"))
 
         self.ui.commentField.anchorClicked.connect(self.ref_clicked)
         self.ui.filesList.doubleClicked.connect(
-            lambda: self.change_data_signal.emit("File_doubleClicked")
-        )
+            lambda: self.change_data_signal.emit("File_doubleClicked"))
 
         self.ui.dirTree.startDrag = self._start_drag
         self.ui.dirTree.dropEvent = self._drop_event
@@ -110,7 +95,7 @@ class AppWindow(QMainWindow):
         else:
             event.ignore()
 
-    def _set_action(self, index, mime_data, pos):
+    def _set_action(self, index: QModelIndex, mime_data: QMimeData, pos: QPoint):
         """
         index: in dirTree at drop position
         mime_data:
@@ -202,7 +187,8 @@ class AppWindow(QMainWindow):
         change_font.triggered.connect(
             lambda: self.change_data_signal.emit("change_font")
         )
-        set_fields.triggered.connect(lambda: self.change_data_signal.emit("Set fields"))
+        set_fields.triggered.connect(
+            lambda: self.change_data_signal.emit("Set fields"))
 
         menu2 = QMenu(self)
         sel_opt = menu2.addAction("Selection options")
@@ -346,7 +332,8 @@ class AppWindow(QMainWindow):
                 if self.old_size:
                     settings.setValue("MainFlow/Size", QVariant(self.old_size))
                 if self.old_pos:
-                    settings.setValue("MainFlow/Position", QVariant(self.old_pos))
+                    settings.setValue("MainFlow/Position",
+                                      QVariant(self.old_pos))
         else:
             super().changeEvent(event)
 
@@ -376,9 +363,12 @@ class AppWindow(QMainWindow):
             position = settings.value("MainFlow/Position")
             self.move(position)
             restore_obj_state(self, settings.value("MainFlow/State"))
-            restore_obj_state(self.ui.splitter_files, settings.value("FilesSplitter"))
-            restore_obj_state(self.ui.opt_splitter, settings.value("OptSplitter"))
-            restore_obj_state(self.ui.main_splitter, settings.value("MainSplitter"))
+            restore_obj_state(self.ui.splitter_files,
+                              settings.value("FilesSplitter"))
+            restore_obj_state(self.ui.opt_splitter,
+                              settings.value("OptSplitter"))
+            restore_obj_state(self.ui.main_splitter,
+                              settings.value("MainSplitter"))
         else:
             self.ui.main_splitter.setStretchFactor(0, 2)
             self.ui.main_splitter.setStretchFactor(1, 5)
@@ -389,9 +379,12 @@ class AppWindow(QMainWindow):
     def closeEvent(self, event):
         settings = QSettings()
         settings.setValue("MainFlow/State", QVariant(self.saveState()))
-        settings.setValue("FilesSplitter", QVariant(self.ui.splitter_files.saveState()))
-        settings.setValue("OptSplitter", QVariant(self.ui.opt_splitter.saveState()))
-        settings.setValue("MainSplitter", QVariant(self.ui.main_splitter.saveState()))
+        settings.setValue("FilesSplitter", QVariant(
+            self.ui.splitter_files.saveState()))
+        settings.setValue("OptSplitter", QVariant(
+            self.ui.opt_splitter.saveState()))
+        settings.setValue("MainSplitter", QVariant(
+            self.ui.main_splitter.saveState()))
         super(AppWindow, self).closeEvent(event)
 
     def on_db_connection(self, file_name: str, create: bool, same_db: bool) -> None:
@@ -406,4 +399,3 @@ class AppWindow(QMainWindow):
             self.change_data_signal.emit("start app")
         else:
             self.show_message("Data base does not exist")
-

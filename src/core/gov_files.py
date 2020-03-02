@@ -7,27 +7,13 @@ import sqlite3
 import webbrowser
 from collections import namedtuple
 
-from PyQt5.QtCore import (
-    Qt,
-    QModelIndex,
-    QItemSelectionModel,
-    QSettings,
-    QDate,
-    QDateTime,
-    QItemSelection,
-    QVariant,
-    QThreadPool,
-    QPersistentModelIndex,
-)
-from PyQt5.QtWidgets import (
-    QInputDialog,
-    QLineEdit,
-    QFileDialog,
-    QLabel,
-    QFontDialog,
-    QApplication,
-    QAbstractItemView,
-)
+from PyQt5.QtCore import (Qt, QModelIndex, QItemSelectionModel,
+                          QSettings, QDate, QDateTime, QItemSelection, QVariant,
+                          QThreadPool, QPersistentModelIndex,
+                          )
+from PyQt5.QtWidgets import (QInputDialog, QLineEdit, QFileDialog,
+                             QLabel, QFontDialog, QApplication, QAbstractItemView,
+                             )
 from PyQt5.QtGui import QFontDatabase
 
 from src.core.main_window import AppWindow
@@ -140,7 +126,7 @@ def get_dirs():
     dir_tree = ut.dir_tree_select(dir_id=0, level=0)
 
     for rr in dir_tree:
-        dirs.append((os.path.split(rr[0])[1], *rr[1 : len(rr) - 1], rr[0]))
+        dirs.append((os.path.split(rr[0])[1], *rr[1: len(rr) - 1], rr[0]))
     return dirs
 
 
@@ -282,7 +268,8 @@ class FilesCrt:
             parent_id = 0
         dir_id = ut.insert_other("DIR", (folder_name, parent_id, 2))
 
-        item = EditTreeItem((folder_name,), (dir_id, parent_id, 2, folder_name))
+        item = EditTreeItem(
+            (folder_name,), (dir_id, parent_id, 2, folder_name))
 
         self.ui.dirTree.model().append_child(item, parent)
 
@@ -336,11 +323,13 @@ class FilesCrt:
             if idx.column() == 0:
                 file_name = model.data(idx)
                 u_dat = model.data(idx, Qt.UserRole)
-                logger.debug(f"model.data(idx, Qt.UserRole) type: {type(u_dat)}")
+                logger.debug(
+                    f"model.data(idx, Qt.UserRole) type: {type(u_dat)}")
                 logger.debug(u_dat)
                 file_path = ut.select_other("PATH", (u_dat.dir_id,)).fetchone()
                 file_data = file_._make(
-                    (idx, os.path.join(file_path[0], file_name), u_dat, file_name)
+                    (idx, os.path.join(
+                        file_path[0], file_name), u_dat, file_name)
                 )
                 files.append(file_data)
         return files
@@ -354,7 +343,8 @@ class FilesCrt:
             self.ui.filesList.model().sourceModel().delete_row(file[0])
         except IOError:
             self.app_window.show_message(
-                'Can\'t move file "{}" into folder "{}"'.format(file[3], to_path), 5000
+                'Can\'t move file "{}" into folder "{}"'.format(
+                    file[3], to_path), 5000
             )
 
     def _copy_file_to(self, dir_id, to_path, file_):
@@ -363,7 +353,8 @@ class FilesCrt:
 
         try:
             shutil.copy2(file_.name_with_path, to_path)
-            file_id = ut.select_other2("FILE_IN_DIR", (dir_id, file_.name)).fetchone()
+            file_id = ut.select_other2(
+                "FILE_IN_DIR", (dir_id, file_.name)).fetchone()
             if file_id:
                 new_file_id = file_id[0]
             else:
@@ -375,7 +366,8 @@ class FilesCrt:
             ut.insert_other2("COPY_AUTHORS", (new_file_id, file_.user_data[0]))
         except IOError:
             self.app_window.show_message(
-                'Can\'t copy file "{}" into folder "{}"'.format(file_[3], to_path), 5000
+                'Can\'t copy file "{}" into folder "{}"'.format(
+                    file_[3], to_path), 5000
             )
 
     def _get_dir_id(self, to_path: str) -> (int, bool):
@@ -413,7 +405,8 @@ class FilesCrt:
             _delete_from_db(file_[2])
             self.ui.filesList.model().sourceModel().delete_row(file_[0])
         except FileNotFoundError:
-            self.app_window.show_message('File "{}" not found'.format(file_[1]))
+            self.app_window.show_message(
+                'File "{}" not found'.format(file_[1]))
 
     def _remove_files(self):
         selected_files = self._selected_files()
@@ -443,7 +436,8 @@ class FilesCrt:
         )
         if ok_:
             self.ui.filesList.model().sourceModel().update(idx, new_name)
-            os.rename(os.path.join(path, file_name), os.path.join(path, new_name))
+            os.rename(os.path.join(path, file_name),
+                      os.path.join(path, new_name))
             ut.update_other("FILE_NAME", (new_name, file_id))
 
     def _restore_fields(self):
@@ -610,7 +604,8 @@ class FilesCrt:
         self._populate_directory_tree()
         self._populate_ext_list()
 
-        files_ = FileInfo(updated_dirs, ut.create_connection(ut.DB_setting["Path"]))
+        files_ = FileInfo(
+            updated_dirs, ut.create_connection(ut.DB_setting["Path"]))
         files_.signal.finished.connect(self._dir_update_finish)
         self.thread_pool.start(files_)
 
@@ -661,7 +656,8 @@ class FilesCrt:
             settings = QSettings()
             settings.setValue("FILE_LIST_SOURCE", self.file_list_source)
         else:
-            self.app_window.show_message("Nothing found. Change your choice.", 5000)
+            self.app_window.show_message(
+                "Nothing found. Change your choice.", 5000)
 
     def _delete_files(self) -> None:
         indexes = persistent_row_indexes(self.ui.filesList)
@@ -670,7 +666,8 @@ class FilesCrt:
             if f_idx.isValid():
                 u_data = model.data(f_idx, Qt.UserRole)
                 if u_data.source > 0:  # file is from virtual folder
-                    ut.delete_other("FILE_VIRT", (u_data.source, u_data.file_id))
+                    ut.delete_other(
+                        "FILE_VIRT", (u_data.source, u_data.file_id))
                 elif u_data.source == 0:  # file is from real folder
                     _delete_from_db(u_data)
                 else:  # -1   - advanced file list = do nothing
@@ -729,9 +726,11 @@ class FilesCrt:
                 if open_file_folder(full_file_name):
                     self.update_opened(idx, file_id)
             except OSError:
-                self.app_window.show_message(f'Can\'t open file "{full_file_name}"')
+                self.app_window.show_message(
+                    f'Can\'t open file "{full_file_name}"')
         else:
-            self.app_window.show_message(f'Can\'t find file "{full_file_name}"')
+            self.app_window.show_message(
+                f'Can\'t find file "{full_file_name}"')
 
     def update_opened(self, idx, file_id):
         cur_date = QDateTime.currentDateTime().toString(Qt.ISODate)[:16]
@@ -765,7 +764,8 @@ class FilesCrt:
         curr_idx = self.ui.filesList.currentIndex()
         u_data = self.ui.filesList.model().data(curr_idx, Qt.UserRole)
 
-        titles = ("Enter new tags", "Select tags from list", "Apply key words / tags")
+        titles = ("Enter new tags", "Select tags from list",
+                  "Apply key words / tags")
         tag_list = ut.select_other("TAGS").fetchall()
         sel_tags = ut.select_other("FILE_TAGS", (u_data.file_id,)).fetchall()
 
@@ -779,7 +779,8 @@ class FilesCrt:
             to_del, to_add = del_add_items(res, sel_tags)
 
             self._del_item_links(
-                to_del, file_id=u_data.file_id, sqls=("TAG_FILE", "TAG_FILES", "TAG")
+                to_del, file_id=u_data.file_id, sqls=(
+                    "TAG_FILE", "TAG_FILES", "TAG")
             )
             self._add_item_links(
                 to_add,
@@ -798,7 +799,8 @@ class FilesCrt:
                 ut.delete_other(sqls[2], (item,))
 
     def _add_item_links(self, items2add, file_id, sqls):
-        add_ids = ut.select_other2(sqls[0], ('","'.join(items2add),)).fetchall()
+        add_ids = ut.select_other2(
+            sqls[0], ('","'.join(items2add),)).fetchall()
         sel_items = [item[0] for item in add_ids]
         not_in_ids = [item for item in items2add if not item in sel_items]
 
@@ -822,10 +824,12 @@ class FilesCrt:
             "Apply authors",
         )
         authors = ut.select_other("AUTHORS").fetchall()
-        sel_authors = ut.select_other("FILE_AUTHORS", (u_data.file_id,)).fetchall()
+        sel_authors = ut.select_other(
+            "FILE_AUTHORS", (u_data.file_id,)).fetchall()
 
         edit_authors = ItemEdit(
-            titles, [tag[0] for tag in authors], [tag[0] for tag in sel_authors]
+            titles, [tag[0] for tag in authors], [tag[0]
+                                                  for tag in sel_authors]
         )
 
         if edit_authors.exec_():
@@ -858,8 +862,10 @@ class FilesCrt:
         )
         curr_idx = self.ui.filesList.currentIndex()
         user_data = self.ui.filesList.model().data(curr_idx, Qt.UserRole)
-        comment = ut.select_other("FILE_COMMENT", (user_data.comment_id,)).fetchone()
-        res = file_comment._make(user_data[:3] + (comment if comment else ("", "")))
+        comment = ut.select_other(
+            "FILE_COMMENT", (user_data.comment_id,)).fetchone()
+        res = file_comment._make(
+            user_data[:3] + (comment if comment else ("", "")))
         if not comment:
             comment = ("", "")
             comment_id = ut.insert_other("COMMENT", comment)
@@ -957,7 +963,8 @@ class FilesCrt:
                 sel = QItemSelection(
                     model.index(0, 0, id_),
                     model.index(
-                        model.rowCount(id_) - 1, model.columnCount(id_) - 1, id_
+                        model.rowCount(id_) -
+                        1, model.columnCount(id_) - 1, id_
                     ),
                 )
                 self.ui.extList.selectionModel().select(sel, QItemSelectionModel.Select)
@@ -1130,7 +1137,8 @@ class FilesCrt:
             authors = ut.select_other("FILE_AUTHORS", (file_id,)).fetchall()
 
             if comment_id:
-                comment = ut.select_other("FILE_COMMENT", (comment_id,)).fetchone()
+                comment = ut.select_other(
+                    "FILE_COMMENT", (comment_id,)).fetchone()
             else:
                 comment = ("", "")
 
@@ -1143,7 +1151,8 @@ class FilesCrt:
                         '<p><a href="Edit authors">Authors</a>: {}</p>'.format(
                             ", ".join([author[0] for author in authors])
                         ),
-                        '<p><a href="Edit title"4>Title</a>: {}</p>'.format(comment[1]),
+                        '<p><a href="Edit title"4>Title</a>: {}</p>'.format(
+                            comment[1]),
                         '<p><a href="Edit comment">Comment:</a> {}</p></body></html>'.format(
                             comment[0]
                         ),
@@ -1299,7 +1308,8 @@ class FilesCrt:
         self._load_files(path_, ext_)
 
     def _load_files(self, path_: str, ext_):
-        load_ = LoadFiles(path_, ext_, ut.create_connection(ut.DB_setting["Path"]))
+        load_ = LoadFiles(
+            path_, ext_, ut.create_connection(ut.DB_setting["Path"]))
         load_.signal.finished.connect(self._dir_update)
         self.thread_pool.start(load_)
 
@@ -1365,6 +1375,6 @@ class FilesCrt:
         if len(heads) > 1:
             for head in heads[1:]:
                 ind = SetFields.Heads.index(head)
-                width.append(font_metrics.boundingRect(SetFields.Masks[ind]).width())
+                width.append(font_metrics.boundingRect(
+                    SetFields.Masks[ind]).width())
         return width
-
