@@ -322,20 +322,26 @@ class AppWindow(QMainWindow):
         """
         if event.type() == QEvent.WindowStateChange:
             settings = QSettings()
-            if event.oldState() == Qt.WindowMaximized:
-                settings.setValue("MainFlow/isFullScreen", QVariant(False))
-            elif (
-                event.oldState() == Qt.WindowNoState
-                and self.windowState() == Qt.WindowMaximized
-            ):
-                settings.setValue("MainFlow/isFullScreen", QVariant(True))
-                if self.old_size:
-                    settings.setValue("MainFlow/Size", QVariant(self.old_size))
-                if self.old_pos:
-                    settings.setValue("MainFlow/Position",
-                                      QVariant(self.old_pos))
+            se = self.size_position_setting(event)
+            for si in se:
+                settings.setValue(*si)
         else:
             super().changeEvent(event)
+
+    def size_position_setting(self, event):
+        if event.oldState() == Qt.WindowMaximized:
+            return [("MainFlow/isFullScreen", QVariant(False))]
+        elif (
+            # WindowNoState -- window is normal, i.e. neither maximized, minimized, nor fullscreen
+            event.oldState() == Qt.WindowNoState
+            and self.windowState() == Qt.WindowMaximized
+        ):
+            ss = [("MainFlow/isFullScreen", QVariant(True))]
+            if self.old_size:
+                ss.append(("MainFlow/Size", QVariant(self.old_size)))
+            if self.old_pos:
+                ss.append(("MainFlow/Position", QVariant(self.old_pos)))
+            return ss
 
     def moveEvent(self, event):
         """
