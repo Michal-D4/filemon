@@ -45,7 +45,7 @@ def mark_deleted_methods(cc_report: list, module: str = ""):
     if module:
         sql = (
             "select type || module || class || method, ID from methods2 "
-            f"where type in ('C','F','M') and module={module};"
+            f"where type in ('C','F','M') and module='{module}';"
         )
     else:
         sql = (
@@ -54,6 +54,7 @@ def mark_deleted_methods(cc_report: list, module: str = ""):
         )
 
     qq = conn.cursor()
+    print(sql)
     qq.execute(sql)
     cc = dict(qq)
 
