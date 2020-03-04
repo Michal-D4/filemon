@@ -95,7 +95,7 @@ class AppWindow(QMainWindow):
         else:
             event.ignore()
 
-    def _set_action(self, index: QModelIndex, mime_data: QMimeData, pos: QPoint):
+    def _set_action(self, index: QModelIndex, mime_data: QMimeData, pos: QPoint) -> int:
         """
         index: in dirTree at drop position
         mime_data:
@@ -332,7 +332,9 @@ class AppWindow(QMainWindow):
         if event.oldState() == Qt.WindowMaximized:
             return [("MainFlow/isFullScreen", QVariant(False))]
         elif (
-            # WindowNoState -- window is normal, i.e. neither maximized, minimized, nor fullscreen
+            # WindowNoState -- window is normal, i.e. neither maximized, minimized,
+            # nor fullscreen; This checks if window state changed from normal to
+            # maximized
             event.oldState() == Qt.WindowNoState
             and self.windowState() == Qt.WindowMaximized
         ):
