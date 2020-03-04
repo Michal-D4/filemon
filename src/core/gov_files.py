@@ -21,7 +21,7 @@ from src.core.table_model import TableModel, ProxyModel2
 from src.core.tree_model import TreeModel
 from src.core.edit_tree_model import EditTreeModel, EditTreeItem
 from src.core.file_info import FileInfo, LoadFiles
-from src.core.helper import Fields, open_file_folder
+from src.core.helper import Fields, open_file_or_folder
 import src.core.utilities as ut
 from src.core.load_db_data import LoadDBData
 from src.core.input_date import DateInputDialog
@@ -677,7 +677,7 @@ class FilesCrt:
 
     def _open_folder(self):
         path, *_ = self._file_path()
-        open_file_folder("".join(("file://", path)))
+        open_file_or_folder("".join(("file://", path)))
 
     def _double_click_file(self):
         f_idx = self.ui.filesList.currentIndex()
@@ -723,7 +723,7 @@ class FilesCrt:
         logger.debug(full_file_name)
         if os.path.isfile(full_file_name):
             try:
-                if open_file_folder(full_file_name):
+                if open_file_or_folder(full_file_name):
                     self.update_opened(idx, file_id)
             except OSError:
                 self.app_window.show_message(
