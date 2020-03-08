@@ -63,34 +63,41 @@ class ItemEdit(QDialog):
     def selection_changed(self, selected, deselected):
         """
         Changed selection in self.view.table_items
-        :param selected:   QList<QModelIndex>
-        :param deselected: QList<QModelIndex>
+        :param selected:   QItemSelection 
+        :param deselected: QItemSelection 
         :return: None
         """
         txt = self.view.in_field.toPlainText()
         id2 = deselected.indexes()
-        if id2:
-            for jj in id2:
-                tt = self.view.items.model().data(jj)
+        txt = self.remove_from_selection(txt, id2)
+
+        idx = selected.indexes()
+        txt = self.add_to_selection(txt, idx)
+
+        txt = re.sub(', ,', ',', txt)
+
+        self.view.in_field.setText(txt)
+
+    def remove_from_selection(self, txt: str, ids) -> str:
+        if ids:
+            for id in ids:
+                tt = self.view.items.model().data(id)
                 if tt:
                     txt = re.sub(tt, '', txt)
                     self.sel_indexes.remove(self.list_items.index(tt))
             if set(txt).issubset(' ,'):
-                txt = ''
-            else:
-                txt = txt.strip(' ,')
+                return ''
+        
+        return txt.strip(' ,')
 
-        idx = selected.indexes()
-        if idx:
-            for jj in idx:
-                tt = self.view.items.model().data(jj)
+    def add_to_selection(self, txt, ids) -> str:
+        if ids:
+            for id in ids:
+                tt = self.view.items.model().data(id)
                 if tt:
                     txt = ', '.join((txt, tt)) if txt else tt
                     self.sel_indexes.append(self.list_items.index(tt))
-
-        txt = re.sub(',,', ',', txt)
-
-        self.view.in_field.setText(txt)
+        return txt
 
     def _setup_model(self, col_no):
         row_no = len(self.list_items) // col_no + 1
@@ -126,7 +133,18 @@ class ItemEdit(QDialog):
 
 if __name__ == "__main__":
     import sys
+    from loguru import logger
     from PyQt5.QtWidgets import QApplication
+
+    logger.remove()
+    fmt = '<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | ' \
+          '<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> '   \
+          '- <level>{message}</level>'
+    logger.add(sys.stderr, level="DEBUG", format=fmt, enqueue=True)
+    # logger.add("cucu_{time:MMM-DD_HH-mm}.log", format=fmt, enqueue=True)
+
+    # logger.info("logger INFO add")
+    logger.debug("logger DEBUG add")
 
     app = QApplication(sys.argv)
     labels = ['label1', 'label2', 'Window title']
