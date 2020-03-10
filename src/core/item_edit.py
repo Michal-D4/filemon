@@ -47,8 +47,8 @@ class ItemEdit(QDialog):
 
     def get_result(self):
         if self.pattern:
-            return re.findall(r"([\w]*\w)", self.view.in_field.toPlainText())
-        return [str.lstrip(item) for item in self.view.in_field.toPlainText().split(',')]
+            return re.findall(r"([\w]*\w)", self.view.selected_items.toPlainText())
+        return [str.lstrip(item) for item in self.view.selected_items.toPlainText().split(',')]
 
     def resize_event(self, event):
         w = event.size().width()
@@ -60,44 +60,19 @@ class ItemEdit(QDialog):
         if col_no != self.view.items.model().columnCount():
             self._setup_model(col_no)
 
-    def selection_changed(self, selected, deselected):
+    def selection_changed(self):
         """
         Changed selection in self.view.table_items
-        :param selected:   QItemSelection 
-        :param deselected: QItemSelection 
+        should be reflected in elf.view.selected_items
         :return: None
         """
-        txt = self.view.in_field.toPlainText()
-        id2 = deselected.indexes()
-        txt = self.remove_from_selection(txt, id2)
-
-        idx = selected.indexes()
-        txt = self.add_to_selection(txt, idx)
-
-        txt = re.sub(', ,', ',', txt)
-
-        self.view.in_field.setText(txt)
-
-    def remove_from_selection(self, txt: str, ids) -> str:
-        if ids:
-            for id in ids:
-                tt = self.view.items.model().data(id)
-                if tt:
-                    txt = re.sub(tt, '', txt)
-                    self.sel_indexes.remove(self.list_items.index(tt))
-            if set(txt).issubset(' ,'):
-                return ''
-        
-        return txt.strip(' ,')
-
-    def add_to_selection(self, txt, ids) -> str:
-        if ids:
-            for id in ids:
-                tt = self.view.items.model().data(id)
-                if tt:
-                    txt = ', '.join((txt, tt)) if txt else tt
-                    self.sel_indexes.append(self.list_items.index(tt))
-        return txt
+        txt = []
+        sel_idxs = self.view.items.selectedIndexes()
+        for id in sel_idxs:
+            tt = self.view.items.model().data(id)
+            txt.append(tt)
+        txt.sort()
+        self.view.selected_items.setText(', '.join(txt))
 
     def _setup_model(self, col_no):
         row_no = len(self.list_items) // col_no + 1
@@ -121,7 +96,7 @@ class ItemEdit(QDialog):
 
     def set_selection(self, col_no):
         self.view.items.selectionModel().clearSelection()
-        self.view.in_field.setText('')
+        self.view.selected_items.setText('')
         model = self.view.items.model()
         tmp = self.sel_indexes.copy()
         self.sel_indexes.clear()
