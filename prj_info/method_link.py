@@ -132,7 +132,7 @@ def set_headers(model, headers):
         model.setHeaderData(i, Qt.Horizontal, header)
 
 
-def set_columns_width(view, proportion=(4, 6, 8, 8, 2, 2, 3, 5)):
+def set_columns_width(view, proportion=(4, 6, 8, 8, 2, 3, 5)):
     ss = sum(proportion)
     model = view.model()
     n = model.columnCount()
@@ -155,9 +155,8 @@ def save_method_list(ts: str):
     outfile = open(out_file, "w", encoding="utf­8")
     csr = conn.cursor()
     sql = (
-        "select ID,type,module,class,method,COALESCE(CC,''),"
-        "COALESCE(CC_old,''),COALESCE(length,0),"
-        "COALESCE(remark,'') from methods2;"
+        "select ID, type, module, class, method, COALESCE(CC,''),"
+        "COALESCE(length,0), COALESCE(remark,'') from methods2;"
     )
     csr.execute(sql)
     for row in csr:
@@ -582,7 +581,7 @@ class Window(QWidget):
             "select id from methods2 where "
             "type = ? and module = ? and class = ? and method = ?"
         )
-        sql_upd = "update methods2 set cc_old = cc, cc = ?, length = ? " "where id = ?"
+        sql_upd = "update methods2 set cc = ?, length = ? " "where id = ?"
         sql_ins = (
             "insert into methods2 (CC, length, type, module, "
             "Class, method, remark) values(?,?,?,?,?,?,?);"
@@ -615,7 +614,7 @@ class Window(QWidget):
         sql1 = (
             "delete from methods2;",
             "insert into methods2  ("
-            "ID, type, module, class, method, CC, CC_old, length, remark) "
+            "ID, type, module, class, method, CC, length, remark) "
             "values (?, ?, ?, ?, ?, ?, ?, ?, ?);",
         )
         input_file = prj_path / input_meth
@@ -652,7 +651,8 @@ class Window(QWidget):
         model = QStandardItemModel(
             0, len(rep_headers.split(",")), self.resView)
         self.resModel.setSourceModel(model)
-        set_columns_width(self.resView, proportion=(3, 2, 2, 2, 7, 7, 7, 1))
+        set_columns_width(self.resView,
+                          proportion=(3, 2, 2, 2, 7, 7, 7, 2, 2, 1))
         set_headers(self.resModel, rep_headers)
 
         self.query_time = time_run()
@@ -1084,8 +1084,10 @@ sort_keys = {
     "by module": lambda row: "".join(row[1:4]),
     "by level": lambda row: "".join((row[4].rjust(2), *row[1:4])),
 }
-main_headers = "type,module,Class,method,cc,occ,length,remark"
-rep_headers = "time,What/From,All/Any,Type,module,Class,method,level"
+main_headers = "type,module,Class,method,cc,length,remark"
+rep_headers = (
+    "time,What/From,All/Any,Type,module,Class,method,CC,length,level"
+    )
 link_headers = "What/From,Type,module,Class,method"
 call_headers = "id,type,module,class,method,cc,length,comment"
 memb_type = defaultdict(str)
@@ -1121,8 +1123,8 @@ memb_key.update(
 upd0 = "update methods2 set {}=? where id=?;"
 ins0 = (
     "insert into methods2 ("
-    "type, module, class, method, CC, CC_old, length, remark) "
-    "values (?, ?, ?, ?, ?, ?, ?, ?);"
+    "type, module, class, method, CC, length, remark) "
+    "values (?, ?, ?, ?, ?, ?, ?);"
 )
 sql_links = (
     "select a.id, 'From', a.type, a.module, a.class, a.method "
@@ -1140,7 +1142,7 @@ qsel0 = "select distinct module from methods2 where module != '' order by module
 qsel1 = "select distinct class from methods2 order by upper(class);"
 qsel3 = "select distinct type from methods2 order by upper(type);"
 qsel2 = (
-    "select ID, type, module, class, method, CC, CC_old, "
+    "select ID, type, module, class, method, CC, "
     "COALESCE(length, ''), remark from methods2;"
 )
 not_called = (
@@ -1154,14 +1156,14 @@ what_id = "select id idn, min(level) from links where call_id = ? {} group by id
 # id-s of methods that call given method id
 from_id = "select call_id idn, min(level) from links where id = ? {} group by idn;"
 what_call_1 = (
-    "select a.type, a.module, a.class, a.method, min(b.level) "
-    "from links b join methods2 a on a.id = b.id "
-    "where b.call_id = ? "
+    "select a.type, a.module, a.class, a.method, "
+    "CC, COALESCE(length, ''), min(b.level) from links b "
+    "join methods2 a on a.id = b.id where b.call_id = ? "
 )
 called_from_1 = (
-    "select a.type, a.module, a.class, a.method, min(b.level) "
-    "from links b join methods2 a on a.id = b.call_id "
-    "where b.id = ? "
+    "select a.type, a.module, a.class, a.method, "
+    "CC, COALESCE(length, ''), min(b.level) from links b "
+    "join methods2 a on a.id = b.call_id where b.id = ? "
 )
 what_call_3 = "select type, module, class, method, id from methods2 where id in ({})"
 called_from_3 = "select type, module, class, method, id from methods2 where id in ({}) "

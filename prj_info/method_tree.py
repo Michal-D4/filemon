@@ -41,7 +41,6 @@ methods2 = (
     "class text, "
     "method text, "
     "CC text, "
-    "CC_old text, "
     "length text, "
     "remark text);"
 )
