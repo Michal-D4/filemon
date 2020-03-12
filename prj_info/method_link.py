@@ -970,23 +970,26 @@ class Window(QWidget):
         self.report_23(ids, "What", lvl)
 
         self.report_23(ids, "From", lvl)
-
-    def report_23(self, ids, param, lvl):
-        opt = {
-            "What": (what_id, what_call_3),
-            "From": (from_id, called_from_3)
-        }[param]
-
-        links = self.exec_sql_2(ids, lvl, opt[0])
-        rep_prep = pre_report(links)
-
-        self.methods_by_id_list(opt[1], rep_prep[0:3:2], param, "ALL")
-
-        self.methods_by_id_list(opt[1], rep_prep[1:], param, "ANY")
-
         fill_in_model(self.resModel.sourceModel(), self.repo, user_data=False)
 
-    def exec_sql_2(self, ids, lvl, sql):
+    def report_23(self, ids, param, lvl):
+        opt = {"What": what_id, "From": from_id}[param]
+
+        links = self.exec_sql_2(ids, lvl, opt)
+        rep_prep = pre_report(links)
+
+        self.methods_by_id_list(three_or_more, rep_prep[0:3:2], param, "ALL")
+
+        self.methods_by_id_list(three_or_more, rep_prep[1:], param, "ANY")
+
+    def exec_sql_2(self, ids, lvl, sql) -> list:
+        """
+        @param: ids - list of id of selected rows
+        @param: lvl - level of call: all or only first
+        @param: sql - select methods by type of link: "call What"
+                      or "called From"
+        @return: list of tuples (method_id, level of call)
+        """
         res = []
         curs = self.conn.cursor()
         loc_sql = sql.format("and level=1" if lvl else "")
@@ -1165,8 +1168,10 @@ called_from_1 = (
     "CC, COALESCE(length, ''), min(b.level) from links b "
     "join methods2 a on a.id = b.call_id where b.id = ? "
 )
-what_call_3 = "select type, module, class, method, id from methods2 where id in ({})"
-called_from_3 = "select type, module, class, method, id from methods2 where id in ({}) "
+three_or_more = (
+    "select type, module, class, method, CC, COALESCE(length, ''), id "
+    "from methods2 where id in ({})"
+)
 where_mod = "and a.module = '{}' "
 where_cls = "and a.class = '{}' "
 and_level = "and b.level = 1 "
