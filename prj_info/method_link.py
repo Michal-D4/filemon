@@ -615,7 +615,7 @@ class Window(QWidget):
             "delete from methods2;",
             "insert into methods2  ("
             "ID, type, module, class, method, CC, length, remark) "
-            "values (?, ?, ?, ?, ?, ?, ?, ?, ?);",
+            "values (?, ?, ?, ?, ?, ?, ?, ?);",
         )
         input_file = prj_path / input_meth
         load_table(input_file, sql1)
