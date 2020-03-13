@@ -1085,7 +1085,7 @@ class Window(QWidget):
 
 sort_keys = {
     "by module": lambda row: "".join(row[1:4]),
-    "by level": lambda row: "".join((row[4].rjust(2), *row[1:4])),
+    "by level": lambda row: "".join((row[-1].rjust(2), *row[1:4])),
 }
 main_headers = "type,module,Class,method,cc,length,remark"
 rep_headers = (
