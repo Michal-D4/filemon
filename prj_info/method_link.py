@@ -500,13 +500,15 @@ class Window(QWidget):
             menu.addAction("delete rows")
             menu.addAction("edit links")
             menu.addSeparator()
+            menu.addAction("copy records")
+            menu.addSeparator()
             menu.addAction("not called")
             menu.addSeparator()
-            menu.addAction("refresh")
+            menu.addAction("refresh list")
             menu.addSeparator()
             menu.addAction("complexity")
         menu.addSeparator()
-        menu.addAction("reload")
+        menu.addAction("reload DB")
         action = menu.exec_(self.proxyView.mapToGlobal(pos))
         if action:
             self.menu_action(action.text())
@@ -532,10 +534,11 @@ class Window(QWidget):
             "append row",
             "edit links",
             "delete rows",
-            "refresh",
+            "refresh list",
             "not called",
             "complexity",
-            "reload",
+            "reload DB",
+            "copy line(s)",
         )
 
         if act in menu_items[:3]:
@@ -553,6 +556,7 @@ class Window(QWidget):
                 menu_items[7]: self.is_not_called,
                 menu_items[8]: self.recalc_complexity,
                 menu_items[9]: self.reload_data,
+                menu_items[10]: self.copy_lines,
             }[act]()
         else:
             curr_idx = self.proxyView.currentIndex()
@@ -560,6 +564,9 @@ class Window(QWidget):
                 menu_items[3]: self.append_row,
                 menu_items[4]: self.edit_links
             }[act](curr_idx)
+
+    def copy_lines(self):
+        pass
 
     def recalc_complexity(self):
         """
@@ -815,7 +822,7 @@ class Window(QWidget):
     def get_selected_methods(self):
         """
         Returns two lists for rows selected in the proxyView:
-        1) ids - id-s of selected methods
+        1) ids - DB id-s of selected methods
         2) methods - full names of selected methods, ie. (module, class, method)
         @return: ids, methods
         """
@@ -832,8 +839,9 @@ class Window(QWidget):
         """
         Show lists of methods that is immediate child / parent
         ie. only from first level
-        @param ids: indexes of selected methods
-        @return:
+        @param ids: DB id-s of selected methods/lines
+        @param names: full selected line(s)
+        @return: None
         """
         self.sort_key = sort_keys["by module"]
         opt = len(ids) if len(ids) < 3 else "more than 2"
@@ -1090,7 +1098,7 @@ sort_keys = {
 main_headers = "type,module,Class,method,cc,length,remark"
 rep_headers = (
     "time,What/From,All/Any,Type,module,Class,method,CC,length,level"
-    )
+)
 link_headers = "What/From,Type,module,Class,method"
 call_headers = "id,type,module,class,method,cc,length,comment"
 memb_type = defaultdict(str)
