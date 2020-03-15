@@ -93,16 +93,6 @@ def time_run():
     return tt.strftime("%d-%m-%Y"), tt.strftime("%H:%M:%S")
 
 
-def prep_sql(sql: str, mod: str, cls: str, lvl: int = 0) -> str:
-    return (
-        sql
-        + ("" if mod == "All" else where_mod.format(mod))
-        + ("" if cls == "All" else where_cls.format(cls))
-        + (and_level if lvl else "")
-        + group_by
-    )
-
-
 def add_row(model: QAbstractItemModel, param: tuple):
     """
     @param: model
@@ -525,41 +515,18 @@ class Window(QWidget):
         )
 
     def menu_action(self, act: str):
-        menu_items = (
-            "First level only",
-            "sort by level",
-            "sort by module",
-            "append row",
-            "edit links",
-            "delete rows",
-            "refresh",
-            "not called",
-            "complexity",
-            "reload",
-        )
-
-        if act in menu_items[:3]:
-            self.clear_report_view()
-            method_ids, method_names = self.get_selected_methods()
-            {
-                menu_items[0]: self.first_level_only,
-                menu_items[1]: self.sort_by_level,
-                menu_items[2]: self.sort_by_module,
-            }[act](method_ids, method_names)
-        elif act in menu_items[5:]:
-            {
-                menu_items[5]: self.delete_selected_rows,
-                menu_items[6]: self.refresh,
-                menu_items[7]: self.is_not_called,
-                menu_items[8]: self.recalc_complexity,
-                menu_items[9]: self.reload_data,
-            }[act]()
-        else:
-            curr_idx = self.proxyView.currentIndex()
-            {
-                menu_items[3]: self.append_row,
-                menu_items[4]: self.edit_links
-            }[act](curr_idx)
+        menu_items = {
+            "First level only": self.first_level_only,
+            "sort by level": self.sort_by_level,
+            "sort by module": self.sort_by_module,
+            "append row": self.append_row,
+            "refresh": self.refresh, 
+            "not called": self.is_not_called,
+            "complexity": self.recalc_complexity,
+            "reload": self.reload_data,
+            "edit links": self.edit_links,
+            "delete rows": self.delete_selected_rows,
+        }[act]()
 
     def recalc_complexity(self):
         """
@@ -657,7 +624,7 @@ class Window(QWidget):
 
         self.query_time = time_run()
 
-    def append_row(self, index: QModelIndex):
+    def append_row(self):
         crs = conn.cursor()
         items = (
             memb_key[self.proxyModel.type_filter],
@@ -692,7 +659,8 @@ class Window(QWidget):
         conn.execute("delete from methods2 where id=?;", (id_db,))
         conn.commit()
 
-    def edit_links(self, index: QModelIndex):
+    def edit_links(self):
+        index = self.proxyView.currentIndex()
         ss = self.proxyModel.get_data(index)
         id_db = self.proxyModel.get_data(index, Qt.UserRole)
         self.infLabel.setText("{:04d}: {}".format(id_db, ".".join(ss[1:4])))
@@ -814,95 +782,75 @@ class Window(QWidget):
 
     def get_selected_methods(self):
         """
-        Returns two lists for rows selected in the proxyView:
-        1) ids - id-s of selected methods
-        2) methods - full names of selected methods, ie. (module, class, method)
-        @return: ids, methods
+        Returns lists of rows selected in the proxyView:
+        @return: list of selected methods 
         """
         indexes = self.proxyView.selectionModel().selectedRows()
         methods = []
-        ids = []
         for idx in indexes:
-            ids.append(self.proxyModel.get_data(idx, Qt.UserRole))
             methods.append(self.proxyModel.get_data(idx))
 
-        return ids, methods
+        return methods
 
-    def first_level_only(self, ids, names):
+    def first_level_only(self):
         """
         Show lists of methods that is immediate child / parent
         ie. only from first level
         @param ids: indexes of selected methods
         @return:
         """
+        self.clear_report_view()
         self.sort_key = sort_keys["by module"]
+        ids = self.proxyView.selectionModel().selectedRows()
         opt = len(ids) if len(ids) < 3 else "more than 2"
         {
-            1: self.first_1,
-            2: self.first_2,
-            "more than 2": self.first_more_than_2
-        }[opt](ids, names)
+            1: self.selected_only_one,
+            2: self.selected_exactly_two,
+            "more than 2": self.selected_more_than_two
+        }[opt](1)
 
-    def first_1(self, ids, names):
-        """
-        Only one method selected
-        @param ids: - index of method - tuple of length 1
-        @param names: - list of (module, class, method)
-        @return: None
-        """
-        self.selected_only_one(ids, names, 1)
+    def prep_sql(self, sql: str, lvl: int = 0) -> str:
+        mod = self.filterModule.currentText()
+        cls = self.filterClass.currentText()
+        return (
+            sql
+            + ("" if mod == "All" else where_mod.format(mod))
+            + ("" if cls == "All" else where_cls.format(cls))
+            + (and_level if lvl else "")
+            + group_by
+        )
 
-    def selected_only_one(self, ids, names, lvl):
+    def selected_only_one(self, lvl):
         pre = (self.query_time[1], "Sel", "")
+        names = self.get_selected_methods()
         self.sorted_report(self.repo, (pre, names, ""))
 
-        what_sql = prep_sql(
-            what_call_1,
-            self.filterModule.currentText(),
-            self.filterClass.currentText(),
-            lvl,
-        )
-        lst = self.first_1_part(ids, what_sql)
+        lst = self.first_1_part(what_call_1, lvl)
         pre = (self.query_time[1], "What", "")
         self.sorted_report(self.repo, (pre, lst, ""))
 
-        from_sql = prep_sql(
-            called_from_1,
-            self.filterModule.currentText(),
-            self.filterClass.currentText(),
-            lvl,
-        )
-        lst = self.first_1_part(ids, from_sql)
+        lst = self.first_1_part(called_from_1, lvl)
         pre = (self.query_time[1], "From", "")
         self.sorted_report(self.repo, (pre, lst, ""))
 
         fill_in_model(self.resModel.sourceModel(), self.repo, user_data=False)
 
-    def first_1_part(self, ids, sql):
-        lst = self.exec_sql_b(sql, ids)
+    def first_1_part(self, sql: str, lvl: int):
+        p_sql = self.prep_sql(sql, lvl)
+        ids = self.get_db_ids()
+        lst = self.exec_sql_b(p_sql, ids)
         return [(*map(str, x),) for x in lst]
 
-    def first_2(self, ids, names):
-        """
-        Two methods selected.
-        Show 9 lists -
-        0) two selected methods
-        1) called from any of both methods
-        2) called from first method but not from second
-        3) called from second method but not from first
-        4) called from first and from second methods
-        5) call any of first and second method
-        6) call only first method but not second
-        7) call only second method but not first
-        8) call both first and second methods
-        (time, {what|from}, {A | B, A - B, B - A, A & B}, module, class, method
-        @param ids: indexes of two methods
-        @return: None
-        """
-        self.selected_exactly_two(ids, names, 1)
+    def get_db_ids(self):
+        ids = []
+        indexes = self.proxyView.selectionModel().selectedRows()
+        for idx in indexes:
+            ids.append(self.proxyModel.get_data(idx, Qt.UserRole))
+        return ids
 
-    def selected_exactly_two(self, ids, names, lvl):
+    def selected_exactly_two(self, lvl):
         pre = (self.query_time[1], "Sel")
+        names = self.get_selected_methods()
         n_names = [("A", *names[0]), ("B", *names[1])]
         self.sorted_report(self.repo, (pre, n_names, ""))
 
@@ -912,7 +860,7 @@ class Window(QWidget):
             self.filterClass.currentText(),
             lvl,
         )
-        self.report_four(ids, what_sql, "What")
+        self.report_four("What", lvl)
 
         from_sql = prep_sql(
             called_from_1,
@@ -924,58 +872,53 @@ class Window(QWidget):
 
         fill_in_model(self.resModel.sourceModel(), self.repo, user_data=False)
 
-    def report_four(self, ids, sql, what):
-        lst_a = self.first_1_part((ids[0],), sql)
-        lst_b = self.first_1_part((ids[1],), sql)
+    def report_four(self, what, lvl):
+        sql = {"What": what_call_1, "From": called_from_1}[what]
+        p_sql = self.prep_sql(sql, lvl)
+        ids = self.get_db_ids()
+        lst_a = self.first_2_part((ids[0],), sql)
+        lst_b = self.first_2_part((ids[1],), sql)
 
         self.sorted_report(
-            self.repo,
-            (
-                (self.query_time[1], what, "A | B"),
-                list(set(lst_a) | set(lst_b)),
-                ""),
+            self.repo, ((self.query_time[1], what, "A | B"),
+                        list(set(lst_a) | set(lst_b)), "",)
         )
 
         self.sorted_report(
-            self.repo,
-            (
-                (self.query_time[1], what, "A - B"),
-                list(set(lst_a) - set(lst_b)),
-                ""),
+            self.repo, ((self.query_time[1], what, "A - B"),
+                        list(set(lst_a) - set(lst_b)), "",)
         )
 
         self.sorted_report(
-            self.repo,
-            (
-                (self.query_time[1], what, "B - A"),
-                list(set(lst_b) - set(lst_a)),
-                ""),
+            self.repo, ((self.query_time[1], what, "B - A"),
+                        list(set(lst_b) - set(lst_a)), "",)
         )
 
         self.sorted_report(
-            self.repo,
-            (
-                (self.query_time[1], what, "A & B"),
-                list(set(lst_a) & set(lst_b)),
-                ""),
+            self.repo, ((self.query_time[1], what, "A & B"),
+                        list(set(lst_a) & set(lst_b)), "",)
         )
 
-    def first_more_than_2(self, ids, names):
-        self.selected_more_than_two(ids, names, 1)
+    def first_2_part(self, ids: Iterable, sql: str) -> list:
+        lst = self.exec_sql_b(sql, ids)
+        return [(*map(str, x),) for x in lst]
 
-    def selected_more_than_two(self, ids, names, lvl):
+    def selected_more_than_two(self, lvl):
         pre = (self.query_time[1], "Sel", "")
+        names = self.get_selected_methods()
         self.sorted_report(self.repo, (pre, names, ""))
 
-        self.report_23(ids, "What", lvl)
+        self.report_23("What", lvl)
 
-        self.report_23(ids, "From", lvl)
+        self.report_23("From", lvl)
+
         fill_in_model(self.resModel.sourceModel(), self.repo, user_data=False)
 
-    def report_23(self, ids, param, lvl):
-        opt = {"What": what_id, "From": from_id}[param]
+    def report_23(self, param, lvl):
+        sql = {"What": what_id, "From": from_id}[param]
+        ids = self.get_db_ids()
 
-        links = self.exec_sql_2(ids, lvl, opt)
+        links = self.exec_sql_2(ids, lvl, sql)
         rep_prep = pre_report(links)
 
         self.methods_by_id_list(three_or_more, rep_prep[0:3:2], param, "ALL")
@@ -986,8 +929,7 @@ class Window(QWidget):
         """
         @param: ids - list of id of selected rows
         @param: lvl - level of call: all or only first
-        @param: sql - select methods by type of link: "call What"
-                      or "called From"
+        @param: sql - select methods by type of link: "call What"/"called From"
         @return: list of tuples (method_id, level of call)
         """
         res = []
@@ -1005,54 +947,40 @@ class Window(QWidget):
             vv = insert_levels(cc, ids[1])
             self.sorted_report(self.repo, (pre, vv, ""))
 
-    def sort_by_level(self, ids, names):
+    def sort_by_level(self):
         """
         Show lists of methods sorted by level
         @param ids: indexes of selected methods
         @param names: selected methods as (module, class, method) list
         @return: None
         """
+        self.clear_report_view()
         self.sort_key = sort_keys["by level"]
-        self.sel_count_handle(ids, names)
+        self.sel_count_handle()
 
-    def sort_by_module(self, ids, names):
+    def sort_by_module(self):
         """
         Show lists of methods sorted by module name
         @param ids: indexes of selected methods
         @param names: selected methods as (module, class, method) list
         @return: None
         """
+        self.clear_report_view()
         self.sort_key = sort_keys["by module"]
-        self.sel_count_handle(ids, names)
+        self.sel_count_handle()
 
-    def sel_count_handle(self, ids, names):
+    def sel_count_handle(self):
         """
         This method does the same as the "first_only" method
-        @param ids: db id-s of selected methods
-        @param names: selected methods as (module, class, method) list
-        @return:
-        """
-        opt = len(ids) if len(ids) < 3 else "more than 2"
-        {
-            1: self.do_1,
-            2: self.do_2,
-            "more than 2": self.do_more_than_2
-        }[opt](ids, names)
-
-    def do_1(self, ids, names):
-        """
-        Only one method selected
-        @param ids: - index of method - tuple of length 1
-        @param names: - list of (module, class, method)
         @return: None
         """
-        self.selected_only_one(ids, names, 0)
-
-    def do_2(self, ids, names):
-        self.selected_exactly_two(ids, names, 0)
-
-    def do_more_than_2(self, ids, names):
-        self.selected_more_than_two(ids, names, 0)
+        ids = self.proxyView.selectionModel().selectedRows()
+        opt = len(ids) if len(ids) < 3 else "more than 2"
+        {
+            1: self.selected_only_one,
+            2: self.selected_exactly_two,
+            "more than 2": self.selected_more_than_two
+        }[opt](0)
 
     def exec_sql_b(self, sql: str, sql_par: tuple):
         """
