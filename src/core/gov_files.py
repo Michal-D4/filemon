@@ -828,8 +828,9 @@ class FilesCrt:
             "FILE_AUTHORS", (u_data.file_id,)).fetchall()
 
         edit_authors = ItemEdit(
-            titles, [tag[0] for tag in authors], [tag[0]
-                                                  for tag in sel_authors]
+            titles,
+            [tag[0] for tag in authors],
+            [tag[0] for tag in sel_authors]
         )
 
         if edit_authors.exec_():
@@ -1129,10 +1130,6 @@ class FilesCrt:
         file_id = user_data.file_id
         comment_id = user_data.comment_id
         if file_id:
-            assert isinstance(
-                file_id, int
-            ), "the type of file_id is {} instead of int".format(type(file_id))
-
             tags = ut.select_other("FILE_TAGS", (file_id,)).fetchall()
             authors = ut.select_other("FILE_AUTHORS", (file_id,)).fetchall()
 
