@@ -739,7 +739,23 @@ class Window(QWidget):
         self.link_box.hide()
 
     def plus_clicked(self):
-        # 1. add to resModel
+        """
+        add link to resModel
+        """
+        to_insert = self.collect_links_with_selected()
+
+        row_no = self.resModel.rowCount()
+        for row in to_insert:
+            add_row(self.resModel, (row_no, row[1:], ""))
+            row_no += 1
+
+    def collect_links_with_selected(self):
+        """
+        creation links according to selected rows in proxyView
+        and direction of linc selected in self.link_type:
+          self.curr_id_db - DB id of edited method (object)
+          link is a pair of ids (what called, called from)
+        """
         stat = self.link_type.currentText()
         idx_sel = self.proxyView.selectedIndexes()
         idx_col0 = [ix for ix in idx_sel if ix.column() == 0]
@@ -753,11 +769,8 @@ class Window(QWidget):
             self.new_links.append(link)
             row = self.proxyModel.get_data(idx)[:-1]
             to_insert.append([id, stat] + row)
+        return to_insert
 
-        row_no = self.resModel.rowCount()
-        for row in to_insert:
-            add_row(self.resModel, (row_no, row[1:], ""))
-            row_no += 1
 
     def minus_clicked(self):
         idx_sel = self.resView.selectionModel().selectedRows()
