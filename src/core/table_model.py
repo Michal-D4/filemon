@@ -42,7 +42,8 @@ class ProxyModel2(ProxyModel):
         super().__init__(parent)
 
     def in_real_folder(self, index):
-        return self.sourceModel().in_real_folder(self.mapToSource(index))
+        return self.sourceModel().data(self.mapToSource(index), role=Qt.UserRole)[-1] == 0
+        # return self.sourceModel().in_real_folder(self.mapToSource(index))
 
     def lessThan(self, left, right):
         s_model = self.sourceModel()
@@ -79,7 +80,8 @@ class ProxyModel2(ProxyModel):
             data_stream.writeInt(tmp.file_id)    # file ID
             # may need, in case of copy/move for real folder using mimeData
             data_stream.writeInt(tmp.dir_id)
-            data_stream.writeInt(tmp.source)   # > 0 - virtual folder, 0 - real, -1 - adv.
+            # > 0 - virtual folder, 0 - real, -1 - adv.
+            data_stream.writeInt(tmp.source)
 
         mime_data = QMimeData()
         if tmp.source > 0:         # files are from virtual folder
@@ -108,8 +110,8 @@ class TableModel(QAbstractTableModel):
     def columnCount(self, parent=None):
         return self.column_count
 
-    def in_real_folder(self, index):
-        return (self.__user_data[index.row()][-1] == 0)
+    # def in_real_folder(self, index):
+    #     return (self.__user_data[index.row()][-1] == 0)
 
     def data(self, index, role=Qt.DisplayRole):
         if index.isValid():
@@ -132,9 +134,10 @@ class TableModel(QAbstractTableModel):
                     i = index.column()
                     if i + 1 < len(self.__data[index.row()]):
                         self.__data[index.row()] = self.__data[index.row()][:i] + \
-                                                   (data,) + self.__data[index.row()][(i+1):]
+                            (data,) + self.__data[index.row()][(i+1):]
                     else:
-                        self.__data[index.row()] = self.__data[index.row()][:-1] + (data,)
+                        self.__data[index.row()] = self.__data[index.row()
+                                                               ][:-1] + (data,)
             elif role == Qt.UserRole:
                 self.__user_data[index.row()] = data
 
@@ -167,7 +170,8 @@ class TableModel(QAbstractTableModel):
             self.__data.insert(row, row_data)
             self.__user_data.insert(row, user_data)
         else:
-            self.beginInsertRows(QModelIndex(), self.rowCount(), self.rowCount())
+            self.beginInsertRows(
+                QModelIndex(), self.rowCount(), self.rowCount())
             self.__data.append(row_data)
             self.__user_data.append(user_data)
         self.endInsertRows()
@@ -217,6 +221,7 @@ class TableModel2(TableModel):
     for edit tags / authors assigned to file
     Show data with custom alignment
     """
+
     def __init__(self, parent=None, *args):
         super().__init__(parent, *args)
 
