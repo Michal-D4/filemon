@@ -490,11 +490,7 @@ class Window(QWidget):
             menu.addAction("delete rows")
             menu.addAction("edit links")
             menu.addSeparator()
-            menu.addAction("copy records")
-            menu.addSeparator()
             menu.addAction("not called")
-            menu.addSeparator()
-            menu.addAction("refresh list")
             menu.addSeparator()
             menu.addAction("complexity")
         menu.addSeparator()
@@ -517,7 +513,7 @@ class Window(QWidget):
         )
 
     def menu_action(self, act: str):
-        menu_items = {
+        {
             "First level only": self.first_level_only,
             "sort by level": self.sort_by_level,
             "sort by module": self.sort_by_module,
@@ -529,9 +525,6 @@ class Window(QWidget):
             "edit links": self.edit_links,
             "delete rows": self.delete_selected_rows,
         }[act]()
-
-    def copy_lines(self):
-        pass
 
     def recalc_complexity(self):
         """
@@ -571,14 +564,7 @@ class Window(QWidget):
     def is_not_called(self):
         qq = self.conn.cursor()
         qq.execute(not_called)
-        self.repo.clear()
-        for row in qq:
-            self.repo.append(row)
-
-        model = QStandardItemModel(
-            0, len(call_headers.split(",")), self.resView)
-        fill_in_model(model, self.repo, user_data=False)
-        self.resModel.setSourceModel(model)
+        self.set_res_model(qq, call_headers, False)
         set_columns_width(self.resView, proportion=(2, 2, 5, 7, 7, 2, 3, 5))
         set_headers(self.resModel, call_headers)
 
@@ -672,17 +658,25 @@ class Window(QWidget):
 
         qq = conn.cursor()
         qq.execute(sql_links.format(id_db, id_db))
+        self.set_res_model(qq, link_headers, True)
+        self.repo.append((id_db, 'Sel', *ss[:4]))
 
-        model = QStandardItemModel(
-            0, len(link_headers.split(",")), self.resView)
-        fill_in_model(model, qq)
-        self.resModel.setSourceModel(model)
         set_columns_width(self.resView, proportion=(3, 2, 8, 8, 8))
         set_headers(self.resModel, link_headers)
 
         self.old_links = qq.execute(sql_id2.format(id_db, id_db)).fetchall()
         self.new_links = self.old_links[:]
         self.curr_id_db = id_db
+
+    def set_res_model(self, qq: Iterable, headers: str, user_data: bool):
+        self.repo.clear()
+        for row in qq:
+            self.repo.append(row)
+
+        model = QStandardItemModel(
+            0, len(headers.split(",")), self.resView)
+        fill_in_model(model, self.repo, user_data)
+        self.resModel.setSourceModel(model)
 
     def set_link_box(self):
         self.link_type.addItem("What")
@@ -756,7 +750,7 @@ class Window(QWidget):
     def collect_links_with_selected(self):
         """
         creation links according to selected rows in proxyView
-        and direction of linc selected in self.link_type:
+        and direction of link selected in self.link_type:
           self.curr_id_db - DB id of edited method (object)
           link is a pair of ids (what called, called from)
         """
