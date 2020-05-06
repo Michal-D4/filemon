@@ -521,7 +521,7 @@ class Window(QWidget):
             "refresh": self.refresh,
             "not called": self.is_not_called,
             "complexity": self.recalc_complexity,
-            "reload": self.reload_data,
+            "reload DB": self.reload_data,
             "edit links": self.edit_links,
             "delete rows": self.delete_selected_rows,
         }[act]()
