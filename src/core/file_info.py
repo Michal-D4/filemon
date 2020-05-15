@@ -80,7 +80,6 @@ class LoadFiles(QRunnable):
 
     def __init__(self, path_: str, ext_: str, conn: sqlite3.Connection):
         super(LoadFiles, self).__init__()
-        logger.debug(' '.join((path_, '|', ext_, '|')))
         self.conn = conn
         self.path_ = path_
         self.ext_ = ext_translate(ext_)
@@ -92,7 +91,6 @@ class LoadFiles(QRunnable):
         Load files using LoadDBData class
         """
         files = LoadDBData(self.conn)
-        logger.debug(f' {self.path_} | {self.ext_}')
         files.load_data(self.path_, self.ext_)
         self.signal.finished.emit(files.get_updated_dirs())
 
@@ -107,13 +105,11 @@ class FileInfo(QRunnable):
 
     @pyqtSlot()
     def run(self):
-        logger.debug('--> FileInfo.run')
         self.update_files()
         self.signal.finished.emit()
 
     def __init__(self, updated_dirs: set, conn: sqlite3.Connection):
         super(FileInfo, self).__init__()
-        logger.debug('--> FileInfo.__init__')
         self.upd_dirs = updated_dirs
         self.conn = conn
         self.cursor = self.conn.cursor()
@@ -153,7 +149,8 @@ class FileInfo(QRunnable):
                 issue_date = self.file_info[4]
                 book_title = self.file_info[5]
             except IndexError:
-                logger.exception(' IndexError: {len(self.file_info)}, must be >= 6')
+                logger.exception(
+                    ' IndexError: {len(self.file_info)}, must be >= 6')
             else:
                 self.cursor.execute(INSERT_COMMENT, (book_title, ''))
                 self.conn.commit()
@@ -186,7 +183,7 @@ class FileInfo(QRunnable):
             try:
                 fr = PyPDF2.PdfFileReader(pdf_file, strict=False)
                 self.file_info.append(fr.getNumPages())
-                fi = fr.documentInfo     # == getDocumentInfo() 
+                fi = fr.documentInfo     # == getDocumentInfo()
             except (ValueError, PyPDF2.utils.PdfReadError, PyPDF2.utils.PdfStreamError) as e:
                 logger.exception(e)
                 self.file_info += [0, '', '', '']
@@ -200,8 +197,8 @@ class FileInfo(QRunnable):
                 print(type(fi["/CreationDate"]))
             cr_date = pdf_creation_date(fi.getText('/CreationDate'))
             self.file_info += [fi.getText('/Author'),
-                                cr_date,
-                                fi.getText('/Title')]
+                               cr_date,
+                               fi.getText('/Title')]
         else:
             self.file_info += ['', '', '']
 
@@ -231,18 +228,17 @@ class FileInfo(QRunnable):
             self.insert_authors(file_.file_id, authors)
 
     def update_files(self):
-        logger.debug("<- start")
         db_file_info = namedtuple('db_file_info',
                                   'file_id full_name comment_id issue_date pages')
         # file_id: int, full_name: str, comment_id: int issue_date: date, pages: int
 
         # list of dir_id
         dir_ids = ','.join(self.upd_dirs)
-        file_list = self.cursor.execute(FILES_TO_UPDATE.format(dir_ids)).fetchall()
+        file_list = self.cursor.execute(
+            FILES_TO_UPDATE.format(dir_ids)).fetchall()
         # not iterate all rows in cursor - so used fetchall(), why ???
         for file_descr in file_list:
             file_name = Path(file_descr[2]).joinpath(file_descr[1])
-            file_ = db_file_info._make((file_descr[0], file_name) + file_descr[-3:])
+            file_ = db_file_info._make(
+                (file_descr[0], file_name) + file_descr[-3:])
             self.update_file(file_)
-
-        logger.debug("<- finish")

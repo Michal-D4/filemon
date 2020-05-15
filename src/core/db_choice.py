@@ -1,6 +1,5 @@
 # db_choice.py
 
-from loguru import logger
 from PyQt5.QtCore import pyqtSignal, QSettings, QCoreApplication
 from PyQt5.QtWidgets import QDialog, QFileDialog, QListWidgetItem
 
@@ -48,7 +47,8 @@ class DBChoice(QDialog):
         """
         options = QFileDialog.Options(QFileDialog.HideNameFilterDetails |
                                       QFileDialog.DontConfirmOverwrite)
-        file_name, _ = QFileDialog.getOpenFileName(self, "Create DB", "", options=options)
+        file_name, _ = QFileDialog.getOpenFileName(
+            self, "Create DB", "", options=options)
         if file_name:
             self.create_new_db(file_name)
 
@@ -60,7 +60,6 @@ class DBChoice(QDialog):
             self.init_data[1].remove(self.init_data[1][i])
 
     def accept(self):
-        logger.trace('|---> start')
         self.emit_open_dialog()
         self._save_settings()
         super(DBChoice, self).accept()
@@ -77,18 +76,19 @@ class DBChoice(QDialog):
                                                    options=options)
         if file_name:
             if (self.init_data[1]) or (file_name not in self.init_data[1]):
-                logger.debug(' | '.join(('--> new_db', file_name)))
                 self.create_db_(file_name)
                 self.DB_connect_signal.emit(file_name, True, False)
                 super(DBChoice, self).accept()
             else:
-                self.ui_db_choice.listOfBDs.setCurrentRow(self.init_data[1].index(file_name))
+                self.ui_db_choice.listOfBDs.setCurrentRow(
+                    self.init_data[1].index(file_name))
 
     def create_new_db(self, file_name):
         if not file_name in self.init_data[1]:
             self.create_db_(file_name)
         else:
-            self.ui_db_choice.listOfBDs.setCurrentRow(self.init_data[1].index(file_name))
+            self.ui_db_choice.listOfBDs.setCurrentRow(
+                self.init_data[1].index(file_name))
 
     def create_db_(self, file_name):
         self.init_data[1].append(file_name)
@@ -98,13 +98,12 @@ class DBChoice(QDialog):
         self.ui_db_choice.okButton.setDisabled(False)
 
     def emit_open_dialog(self):
-        logger.trace('|--> start')
         if self.ui_db_choice.listOfBDs.currentIndex().isValid():
             file_name = self.ui_db_choice.listOfBDs.currentItem().text()
             # todo - if self.last_db_no == self.init_data[1]: not create new connection -
             # the last param not need
-            self.DB_connect_signal.emit(file_name, False, self.last_db_no == self.init_data[0])
-        logger.trace('|--> end')
+            self.DB_connect_signal.emit(
+                file_name, False, self.last_db_no == self.init_data[0])
 
     def initiate_window(self):
         '''
@@ -114,10 +113,8 @@ class DBChoice(QDialog):
             1 - list of DBs
         :return: None
         '''
-        logger.trace('|---> start')
         if self.init_data:
             db_index = self.init_data[0]
-            logger.trace(f'db idx.: {db_index}')
             if self.init_data[1]:
                 self.ui_db_choice.listOfBDs.clear()
                 for db in self.init_data[1]:
@@ -125,20 +122,16 @@ class DBChoice(QDialog):
                 self.ui_db_choice.listOfBDs.setCurrentRow(db_index)
             if self.ui_db_choice.listOfBDs.count() == 0:
                 self.ui_db_choice.okButton.setDisabled(True)
-        logger.trace('|---> end')
 
     def restore_settings(self):
         setting = QSettings()
         _data = [setting.value('DB/current_index', 0, type=int),
                  setting.value('DB/list_of_DB', [], type=list)]
-        logger.trace(f'{_data}')
         self.last_db_no = _data[0]
         self.init_data = _data
         self.initiate_window()
 
     def _save_settings(self):
         setting = QSettings()
-        logger.trace(f'{self.init_data}')
         setting.setValue('DB/current_index', self.init_data[0])
         setting.setValue('DB/list_of_DB', self.init_data[1])
-

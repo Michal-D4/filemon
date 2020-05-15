@@ -1,6 +1,5 @@
 # edit_tree_model.py
 
-from loguru import logger
 import copy
 from collections import namedtuple, defaultdict
 
@@ -37,14 +36,11 @@ class EditTreeItem(object):
         return 0
 
     def removeChildren(self, position, count):
-        logger.debug(f'children count: {len(self.children)}, userData: {self.userData}')
         if position < 0 or position + count > len(self.children):
             return False
 
         for _ in range(count):
-            logger.debug(f'userData: {self.children[position].userData}')
             self.children.pop(position)
-        logger.debug(f'childCount: {self.childCount()}, {len(self.children)}')
 
         return True
 
@@ -79,9 +75,7 @@ class EditTreeItem(object):
 
     def appendChild(self, item):
         item.parent_ = self
-        logger.debug(f'to: {self.userData}')
         item.userData = item.userData._replace(parent_id=self.userData.dir_id)
-        logger.debug('Child: {item.userData}')
         ALL_ITEMS[item.userData.dir_id].append(item)
         self.children.append(item)
 
@@ -136,7 +130,7 @@ class EditTreeModel(QAbstractItemModel):
 
         # return Qt.ItemIsEnabled | Qt.ItemIsSelectable
         return Qt.ItemIsEnabled | Qt.ItemIsSelectable | \
-               Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled
+            Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled
 
     def getItem(self, index):
         if index.isValid():
@@ -198,10 +192,12 @@ class EditTreeModel(QAbstractItemModel):
                                         new_parent_data[1]))
         for idx in idx_list:
             item = copy.deepcopy(QModelIndex(idx).internalPointer())
-            item.userData = item.userData._replace(parent_id=new_parent_data[2])
-            ut.update_other('DIR_PARENT', (new_parent_data[0], item.userData.dir_id))
+            item.userData = item.userData._replace(
+                parent_id=new_parent_data[2])
+            ut.update_other(
+                'DIR_PARENT', (new_parent_data[0], item.userData.dir_id))
             new_parent_item.appendChild(item)
-        
+
         curr_idx.internalPointer().parent().appendChild(new_parent_item)
 
         for idx in idx_list:
@@ -217,38 +213,31 @@ class EditTreeModel(QAbstractItemModel):
         """
         parentItem = self.getItem(parent)
 
-        self.beginRemoveRows(parent, row, row + count - 1)
+        # self.beginRemoveRows(parent, row, row + count - 1)
         success = parentItem.removeChildren(row, count)
         self.endRemoveRows()
 
         return success
 
     def remove_row(self, index):
-        logger.debug(f'row: {self.data(index, Qt.UserRole)}')
-        logger.debug(f'parent: {self.getItem(index).parent().itemData}')
         return self.removeRows(index.row(), 1, self.parent(index))
 
     def remove_all_copies(self, index):
         """
         removes all copy of virtual folder when initial folder deleted
         :param  index
-        :return None 
+        :return None
         """
         dir_id = index.internalPointer().userData.dir_id
         items = ALL_ITEMS[dir_id]
-        logger.debug(f'dir_id: {dir_id}, len: {len(items)}')
         idx_list = []
         for item in items:
-            logger.debug(f'userData: {item.userData}, item_row: {item.row()}')
             idx = self.createIndex(item.row(), 0, item)
             idx_list.append(QPersistentModelIndex(idx))
 
         for idx in idx_list:
-            logger.debug(f'data: self.data(QModelIndex(idx), Qt.UserRole), '
-                         f'row: {QModelIndex(idx).row()}')
             res = self.remove_row(QModelIndex(idx))
-            logger.debug(f'res= {res}')
-            
+
         ALL_ITEMS.pop(dir_id)
 
     def rowCount(self, parent=QModelIndex()):
@@ -263,7 +252,8 @@ class EditTreeModel(QAbstractItemModel):
 
     def append_child(self, item: EditTreeItem, parent):
         parentItem: EditTreeItem = self.getItem(parent)
-        item.userData = item.userData._replace(parent_id=parentItem.userData.dir_id)
+        item.userData = item.userData._replace(
+            parent_id=parentItem.userData.dir_id)
         position = parentItem.childCount()
 
         self.beginInsertRows(parent, position, position)
@@ -294,12 +284,14 @@ class EditTreeModel(QAbstractItemModel):
         for row in rows:
             if not isinstance(row[0], tuple):
                 row = ((row[0],),) + tuple(row[1:])
-            items_dict[row[1]] = EditTreeItem(data_=row[0], user_data=(row[1:]))
+            items_dict[row[1]] = EditTreeItem(
+                data_=row[0], user_data=(row[1:]))
             id_list.append((row[1:]))
 
         for id_ in id_list:
             if id_[1] in items_dict:
-                items_dict[id_[1]].appendChild(copy.deepcopy(items_dict[id_[0]]))
+                items_dict[id_[1]].appendChild(
+                    copy.deepcopy(items_dict[id_[0]]))
 
     def supportedDropActions(self):
         return Qt.CopyAction | Qt.MoveAction
@@ -337,9 +329,6 @@ class EditTreeModel(QAbstractItemModel):
         :param parent: where mime_data is dragged
         :return: True if dropped
         """
-        logger.debug({0: 'DROP_NO_ACTION', 1: 'DROP_COPY_FOLDER',
-                      2: 'DROP_MOVE_FOLDER', 4: 'DROP_COPY_FILE',
-                      8: 'DROP_MOVE_FILE'}[action])
         if action & (DROP_MOVE_FOLDER | DROP_COPY_FOLDER):
             return self._drop_folders(action, mime_data, parent)
 
@@ -368,13 +357,10 @@ class EditTreeModel(QAbstractItemModel):
         :param: parent - virtual folder where to drop
         :return:
         """
-        # TODO check how assign the folder_type and what means "folder_type != -1"
         parent_dir_id = self.data(parent, role=Qt.UserRole).dir_id
-        logger.debug(f'parent_dir_id: {parent_dir_id}')
 
         mime_format = mime_data.formats()
         # ('REAL_FOLDER', 'VIRTUAL_FOLDER', 'REAL_FILE', 'VIRTUAL_FILE')
-        logger.debug(f"mime_format: {mime_format[0]}")
         drop_data = mime_data.data(mime_format[0])
         stream = QDataStream(drop_data, QIODevice.ReadOnly)
 
@@ -382,14 +368,12 @@ class EditTreeModel(QAbstractItemModel):
         folder_type = 0
         for _ in range(count):
             file_id = stream.readInt()
-            dir_id = stream.readInt()
             folder_type = stream.readInt()
-            logger.debug(f'file_id: {file_id}, dir_id: {dir_id}, folder_type: {folder_type}')
             if action == DROP_COPY_FILE:
                 ut.insert_other('VIRTUAL_FILE', (parent_dir_id, file_id))
-            else:        # DROP_MOVE_FILE
-                if folder_type > 0:
-                    ut.update_other('VIRTUAL_FILE_MOVE', (parent_dir_id, folder_type, file_id))
+            elif folder_type > 0:        # DROP_MOVE_FILE
+                ut.update_other('VIRTUAL_FILE_MOVE',
+                                (parent_dir_id, folder_type, file_id))
 
         if action == DROP_MOVE_FILE:          # update file list after moving files
             self.caller.files_virtual_folder(folder_type)

@@ -1,7 +1,6 @@
 # load_db_data.py
 
 from typing import Set
-from loguru import logger
 import pathlib
 
 
@@ -9,9 +8,9 @@ FIND_PART_PATH = 'select ParentID from Dirs where Path like :newPath;'
 
 FIND_EXACT_PATH = 'select DirID from Dirs where Path = :newPath;'
 
-CHANGE_PARENT_ID = ('update Dirs set ParentID = :newId where ParentID = :currId' 
+CHANGE_PARENT_ID = ('update Dirs set ParentID = :newId where ParentID = :currId'
                     ' and Path like :newPath and DirID != :newId;'
-                   )
+                    )
 
 FIND_FILE = 'select * from Files where DirID = :dir_id and FileName = :file;'
 
@@ -47,6 +46,7 @@ class LoadDBData:
     """
     class LoadDBData
     """
+
     def __init__(self, conn):
         """
         class LoadDBData
@@ -65,10 +65,8 @@ class LoadDBData:
         :param data: - iterable lines of file names with full path
         :return: None
         """
-        logger.debug(f'{path_} | {ext_}')
         files = yield_files(path_, ext_)
         for line in files:
-            logger.debug(line)
             file = pathlib.Path(line)
             file_path = file.parent
             idx, _ = self.insert_dir(file_path)
@@ -76,7 +74,6 @@ class LoadDBData:
                 self.updated_dirs.add(str(idx))
                 self.insert_file(idx, file)
         self.conn.commit()
-        logger.debug(f'end | {len(self.updated_dirs)}')
 
     def insert_file(self, dir_id: int, full_file_name: pathlib.Path):
         """
@@ -85,12 +82,9 @@ class LoadDBData:
         :param full_file_name:
         :return: None
         """
-        logger.debug(f'{dir_id} | {full_file_name}')
         file_ = full_file_name.name
-
-        logger.debug(file_)
-
-        item = self.cursor.execute(FIND_FILE, {'dir_id': dir_id, 'file': file_}).fetchone()
+        item = self.cursor.execute(
+            FIND_FILE, {'dir_id': dir_id, 'file': file_}).fetchone()
         if not item:
             ext_id = self.insert_extension(full_file_name)
             self.cursor.execute(INSERT_FILE, {'dir_id': dir_id,
@@ -149,7 +143,8 @@ class LoadDBData:
         :param path:
         :return: current parent Id of first found child, -1 if no children
         """
-        item = self.cursor.execute(FIND_PART_PATH, {'newPath': str(path) + '%'}).fetchone()
+        item = self.cursor.execute(
+            FIND_PART_PATH, {'newPath': str(path) + '%'}).fetchone()
         if item:
             return item[0]
 
@@ -159,13 +154,14 @@ class LoadDBData:
         """
         Search parent directory in DB
         :param new_path:  new file path
-        :return: parent_id: int, parent_path: pathlib.PurePath;  
+        :return: parent_id: int, parent_path: pathlib.PurePath;
              or  0,              None
         """
         # WORKAROUND: the dummy path "path / '@'", that is path is a parent for it.
         # So parents includes the path itself
         for path_ in (new_path / '@').parents:
-            parent_id = self.cursor.execute(FIND_EXACT_PATH, (str(path_),)).fetchone()
+            parent_id = self.cursor.execute(
+                FIND_EXACT_PATH, (str(path_),)).fetchone()
             if parent_id:
                 return parent_id[0], path_
 

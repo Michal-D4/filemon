@@ -1,7 +1,6 @@
 # sel_opt.py
 
 from collections import namedtuple
-from loguru import logger
 
 from PyQt5.QtCore import Qt, QSettings
 from PyQt5.QtWidgets import QDialog, QAbstractItemView
@@ -36,7 +35,6 @@ def get_selected_items(view: QAbstractItemView) -> str:
 
 class SelOpt(QDialog):
 
-
     def __init__(self, controller, parent=None):
         super(SelOpt, self).__init__(parent)
         self.ui = Ui_SelOpt()
@@ -64,7 +62,6 @@ class SelOpt(QDialog):
         try:
             self._set_state(_state)
         except TypeError:
-            logger.debug('TypeError')
             _state = (False, False, False, True, False, True, '5', True)
             self._set_state(_state)
 
@@ -85,7 +82,8 @@ class SelOpt(QDialog):
 
     def author_toggle(self, author_list):
         if self.ui.chAuthor.isChecked():
-            self.ui.eAuthors.setText(get_selected_items(self.ctrl.ui.authorsList))
+            self.ui.eAuthors.setText(
+                get_selected_items(self.ctrl.ui.authorsList))
         else:
             self.ui.eAuthors.setText('')
 
@@ -161,7 +159,6 @@ class SelOpt(QDialog):
                            self.ui.chDate.isChecked(),
                            self.ui.eDate.text(),
                            self.ui.dateFile.isChecked()))
-        logger.debug('---')
 
     def _get_file_id(self) -> str:
         """
@@ -189,9 +186,11 @@ class SelOpt(QDialog):
         if self.ui.chDirs.isChecked():
             lvl = 0
             idx = self.ctrl.ui.dirTree.currentIndex()
-            root_id = int(self.ctrl.ui.dirTree.model().data(idx, Qt.UserRole)[0])
+            root_id = int(self.ctrl.ui.dirTree.model().data(
+                idx, Qt.UserRole)[0])
 
-            ids = ','.join([str(id_[0]) for id_ in ut.dir_ids_select(root_id, lvl)])
+            ids = ','.join([str(id_[0])
+                            for id_ in ut.dir_ids_select(root_id, lvl)])
             return ids
         return ''
 
@@ -236,7 +235,8 @@ class SelOpt(QDialog):
         if tags:
             if self.ui.tagAll.isChecked():
                 num = len(tags.split(','))
-                res = ut.select_other2('FILE_IDS_ALL_TAG', (tags, num)).fetchall()
+                res = ut.select_other2(
+                    'FILE_IDS_ALL_TAG', (tags, num)).fetchall()
             else:
                 res = ut.select_other2('FILE_IDS_ANY_TAG', (tags,)).fetchall()
             return res
@@ -251,4 +251,3 @@ class SelOpt(QDialog):
 
 if __name__ == "__main__":
     pass
-

@@ -1,7 +1,6 @@
 # create_db.py
 
 import sqlite3
-from loguru import logger
 
 OBJ_DEFS = (
     '''
@@ -101,7 +100,7 @@ def create_all_objects(connection):
         try:
             cursor.execute(obj)
         except sqlite3.Error as err:
-            logger.error(err.args[0])
+            pass
 
     initiate_db(connection)
 
@@ -109,9 +108,9 @@ def create_all_objects(connection):
 def initiate_db(connection):
     cursor = connection.cursor()
     try:
-        cursor.execute('insert into Dirs (DirID) values (0);')  # common root - without parent
+        # common root - without parent
+        cursor.execute('insert into Dirs (DirID) values (0);')
     except sqlite3.Error as err:
-        logger.error(err.args[0])
+        pass
 
     connection.commit()
-

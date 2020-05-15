@@ -1,6 +1,5 @@
 # gov_files.py
 
-from loguru import logger
 import os
 import re
 import sqlite3
@@ -217,7 +216,6 @@ class FilesCrt:
         new_name, ok_ = QInputDialog.getText(
             self.ui.dirTree, "Input folder name", "", QLineEdit.Normal, folder_name
         )
-        logger.debug(f"group name: {new_name}, ok: {ok_}")
         if ok_:
             curr_idx = self.ui.dirTree.currentIndex()
             idx_list = self._selected_dirs(curr_idx)
@@ -282,17 +280,14 @@ class FilesCrt:
             else self.ui.dirTree.model().data(parent, role=Qt.UserRole).dir_id
         )
         dir_id = self.ui.dirTree.model().data(cur_idx, role=Qt.UserRole).dir_id
-        logger.debug(f"parent_id: {parent_id}, dir_id: {dir_id}")
 
         if _exist_in_virt_dirs(dir_id, parent_id):
             ut.delete_other("FROM_VIRT_DIRS", (parent_id, dir_id))
             self.ui.dirTree.model().remove_row(cur_idx)
-            logger.debug("***     exist")
         else:
             ut.delete_other("VIRT_FROM_DIRS", (dir_id,))
             ut.delete_other("VIRT_DIR_ID", (dir_id,))
             self.ui.dirTree.model().remove_all_copies(cur_idx)
-            logger.debug("*** not exist")
 
     def _rename_folder(self):
         cur_idx = self.ui.dirTree.currentIndex()
@@ -323,9 +318,6 @@ class FilesCrt:
             if idx.column() == 0:
                 file_name = model.data(idx)
                 u_dat = model.data(idx, Qt.UserRole)
-                logger.debug(
-                    f"model.data(idx, Qt.UserRole) type: {type(u_dat)}")
-                logger.debug(u_dat)
                 file_path = ut.select_other("PATH", (u_dat.dir_id,)).fetchone()
                 file_data = file_._make(
                     (idx, os.path.join(
@@ -720,7 +712,6 @@ class FilesCrt:
     def _open_file(self):
         path, file_name, file_id, idx = self._file_path()
         full_file_name = os.path.join(path, file_name)
-        logger.debug(full_file_name)
         if os.path.isfile(full_file_name):
             try:
                 if open_file_or_folder(full_file_name):
@@ -748,7 +739,6 @@ class FilesCrt:
         :return:  path, file_name, file_id - DB id, file_idx - model index
         """
         f_idx = self.ui.filesList.currentIndex()
-        logger.debug(f"f_idx.isValid: {f_idx.isValid()}")
         if f_idx.isValid():
             model = self.ui.filesList.model()
             f_idx = model.mapToSource(f_idx)
@@ -1095,7 +1085,7 @@ class FilesCrt:
     def show_files(self, files, source):
         """
         populate file's model
-        :@param files 
+        :@param files
         :@param source -  0 - if file from real folder,
                          -1 - if custom list of files
                          >0 - it is dir_id of virtual folder
@@ -1247,7 +1237,6 @@ class FilesCrt:
         restore expand state and current index of dirTree
         :return: current index
         """
-        logger.debug(f"same_db: {ut.DB_setting['SameDB']}")
         model = self.ui.dirTree.model()
         parent = QModelIndex()
         if ut.DB_setting[
@@ -1322,7 +1311,6 @@ class FilesCrt:
         ext_, ok_pressed = QInputDialog.getText(
             self.ui.extList, "Input extensions", "", QLineEdit.Normal, ext_
         )
-        logger.debug(ext_, ok_pressed)
         if ok_pressed:
             root: str = QFileDialog().getExistingDirectory(
                 self.ui.extList, "Select root folder"
