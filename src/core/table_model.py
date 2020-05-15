@@ -115,11 +115,8 @@ class TableModel(QAbstractTableModel):
 
     def data(self, index, role=Qt.DisplayRole):
         if index.isValid():
-            if role == Qt.DisplayRole:   # it is what shown on listview widget
-                # row length > current column ==> to return full row, not separate cells
-                if len(self.__data[index.row()]) > index.column():
-                    return self.__data[index.row()][index.column()]
-                return None
+            if role == Qt.DisplayRole:
+                return self.__data[index.row()][index.column()]
             elif role == Qt.UserRole:
                 return self.__user_data[index.row()]
             elif role == Qt.TextAlignmentRole:
@@ -130,14 +127,13 @@ class TableModel(QAbstractTableModel):
     def update(self, index, data, role=Qt.DisplayRole):
         if index.isValid():
             if role == Qt.DisplayRole:
-                if len(self.__data[index.row()]) > index.column():
-                    i = index.column()
-                    if i + 1 < len(self.__data[index.row()]):
-                        self.__data[index.row()] = self.__data[index.row()][:i] + \
-                            (data,) + self.__data[index.row()][(i+1):]
-                    else:
-                        self.__data[index.row()] = self.__data[index.row()
-                                                               ][:-1] + (data,)
+                i = index.column()
+                if i + 1 < len(self.__data[index.row()]):
+                    self.__data[index.row()] = self.__data[index.row()][:i] + \
+                        (data,) + self.__data[index.row()][(i+1):]
+                else:
+                    self.__data[index.row()] = self.__data[index.row()
+                                                           ][:-1] + (data,)
             elif role == Qt.UserRole:
                 self.__user_data[index.row()] = data
 
