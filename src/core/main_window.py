@@ -1,7 +1,5 @@
 # main_window.py
 
-from loguru import logger
-
 from PyQt5.QtCore import (pyqtSignal, QSettings, QVariant, QSize,
                           Qt, QUrl, QEvent, QMimeData, QPoint, QModelIndex
                           )
@@ -43,7 +41,6 @@ class AppWindow(QMainWindow):
         self.setup_context_menu()
 
         self.open_dialog = None
-        logger.debug("finish")
 
     def show_message(self, message, time=3000):
         self.ui.statusbar.showMessage(message, time)
@@ -103,18 +100,24 @@ class AppWindow(QMainWindow):
         return: DROP_NO_ACTION, DROP_COPY_FOLDER, DROP_MOVE_FOLDER, DROP_COPY_FILE, DROP_MOVE_FILE
         """
         if mime_data.hasFormat(MimeTypes[REAL_FOLDER]):
-            if self.ui.dirTree.model().is_virtual(index):
-                return DROP_COPY_FOLDER
-            return DROP_NO_ACTION
+            return self.real_folder_action(index)
         if mime_data.hasFormat(MimeTypes[REAL_FILE]):
-            if self.ui.dirTree.model().is_virtual(index):
-                return DROP_COPY_FILE
-            return self._ask_action_file(pos)
+            return self.real_file_action(index, pos)
         if mime_data.hasFormat(MimeTypes[VIRTUAL_FILE]):
             return self._ask_action_file(pos)
         if mime_data.hasFormat(MimeTypes[VIRTUAL_FOLDER]):
             return self._ask_action_folder(pos)
         return DROP_NO_ACTION
+
+    def real_folder_action(self, index: QModelIndex) -> int:
+        if self.ui.dirTree.model().is_virtual(index):
+            return DROP_COPY_FOLDER
+        return DROP_NO_ACTION
+
+    def real_file_action(self, index: QModelIndex, pos: QPoint) -> int:
+        if self.ui.dirTree.model().is_virtual(index):
+            return DROP_COPY_FILE
+        return self._ask_action_file(pos)
 
     def _ask_action_file(self, pos):
         """
@@ -206,7 +209,8 @@ class AppWindow(QMainWindow):
         self.ui.filesList.customContextMenuRequested.connect(self._file_menu)
         self.ui.extList.customContextMenuRequested.connect(self._ext_menu)
         self.ui.tagsList.customContextMenuRequested.connect(self._tag_menu)
-        self.ui.authorsList.customContextMenuRequested.connect(self._author_menu)
+        self.ui.authorsList.customContextMenuRequested.connect(
+            self._author_menu)
 
     def _file_menu(self, pos):
         idx = self.ui.filesList.indexAt(pos)
