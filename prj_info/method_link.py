@@ -36,10 +36,10 @@ sys.excepthook = my_exception_hook
 # ---------------------------------------------------------
 
 
-def mark_deleted_methods(cc_report: list, module: str = ""):
+def mark_deleted_methods(cc_list: list, module: str = ""):
     """
-    mark rows in DB to be deleted if not present in cc-report
-    @param cc-report: list of tuples (CC, length, type(C/F/M), module, class, method)
+    mark rows in DB to be deleted if not present in cc-list
+    @param cc-list: list of tuples (CC, length, type(C/F/M), module, class, method)
     @param module: module name
     """
     if module:
@@ -58,7 +58,7 @@ def mark_deleted_methods(cc_report: list, module: str = ""):
     qq.execute(sql)
     cc = dict(qq)
 
-    keys_in_cc = ("".join(x[2:]) for x in cc_report)
+    keys_in_cc = ("".join(x[2:]) for x in cc_list)
     keys_not_in_cc = set(cc.keys()) - set(keys_in_cc)
 
     for key in keys_not_in_cc:
