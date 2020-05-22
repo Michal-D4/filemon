@@ -327,6 +327,8 @@ class AppWindow(QMainWindow):
         if event.type() == QEvent.WindowStateChange:
             settings = QSettings()
             se = self.size_position_setting(event)
+            if not se:
+                return
             for si in se:
                 settings.setValue(*si)
         else:

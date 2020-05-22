@@ -64,21 +64,23 @@ class SelOpt(QDialog):
         except TypeError:
             _state = (False, False, False, True, False, True, '5', True)
             self._set_state(_state)
+        except (AttributeError, IndexError)
+        print("!!! Something is wrong")
 
-    def _set_state(self, rest):
-        self.ui.chDirs.setChecked(rest[0])
-        self.ui.chExt.setChecked(rest[1])
-        self.ui.chTags.setChecked(rest[2])
-        self.ui.tagAll.setChecked(rest[3])
-        self.ui.chAuthor.setChecked(rest[4])
-        self.ui.chDate.setChecked(rest[5])
-        if rest[6]:
-            self.not_older = int(rest[6])
+    def _set_state(self, saved_state):
+        self.ui.chDirs.setChecked(saved_state[0])
+        self.ui.chExt.setChecked(saved_state[1])
+        self.ui.chTags.setChecked(saved_state[2])
+        self.ui.tagAll.setChecked(saved_state[3])
+        self.ui.chAuthor.setChecked(saved_state[4])
+        self.ui.chDate.setChecked(saved_state[5])
+        if saved_state[6]:
+            self.not_older = int(saved_state[6])
         else:
             self.not_older = 5
         self.ui.eDate.setText(str(self.not_older))
-        self.ui.eDate.setEnabled(rest[5])
-        self.ui.dateFile.setChecked(rest[7])
+        self.ui.eDate.setEnabled(saved_state[5])
+        self.ui.dateFile.setChecked(saved_state[7])
 
     def author_toggle(self, author_list):
         if self.ui.chAuthor.isChecked():
