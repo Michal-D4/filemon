@@ -152,6 +152,7 @@ def save_method_list(ts: str):
     for row in csr:
         rr = (row[0], memb_key[memb_type[row[1]]], *row[2:])
         outfile.write(",".join((*map(str, rr), "\n")))
+    outfile.close()
 
 
 def save_links_table(ts: str):
@@ -161,6 +162,8 @@ def save_links_table(ts: str):
     csr.execute("select * from one_link;")
     for row in csr:
         outfile.write(",".join((*map(str, row), "\n")))
+
+    outfile.close()
 
 
 def copy_to_clipboard():
