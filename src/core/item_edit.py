@@ -22,7 +22,8 @@ class ItemEdit(QDialog):
         self.setWindowTitle(titles[2])
 
         self.list_items = items
-        self.sel_indexes = [self.list_items.index(item) for item in selected_items]
+        self.sel_indexes = [self.list_items.index(
+            item) for item in selected_items]
 
         model = TableModel2(parent=self.view.items)
         self.view.items.setModel(model)
@@ -41,7 +42,7 @@ class ItemEdit(QDialog):
                     i_max = i
 
             self.max_width = self.view.items.fontMetrics(). \
-                                 boundingRect(self.list_items[i_max]).width() + 20
+                boundingRect(self.list_items[i_max]).width() + 20
         else:
             self.max_width = 20
 
@@ -131,5 +132,3 @@ if __name__ == "__main__":
 
     ItemChoice.show()
     sys.exit(app.exec_())
-
-

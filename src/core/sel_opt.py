@@ -64,8 +64,8 @@ class SelOpt(QDialog):
         except TypeError:
             _state = (False, False, False, True, False, True, '5', True)
             self._set_state(_state)
-        except (AttributeError, IndexError)
-        print("!!! Something is wrong")
+        except (AttributeError, IndexError):
+            print("!!! Something is wrong")
 
     def _set_state(self, saved_state):
         self.ui.chDirs.setChecked(saved_state[0])
