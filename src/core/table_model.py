@@ -116,7 +116,10 @@ class TableModel(QAbstractTableModel):
     def data(self, index, role=Qt.DisplayRole):
         if index.isValid():
             if role == Qt.DisplayRole:
-                return self.__data[index.row()][index.column()]
+                # row length > current column
+                if len(self.__data[index.row()]) > index.column():
+                    return self.__data[index.row()][index.column()]
+                return None
             elif role == Qt.UserRole:
                 return self.__user_data[index.row()]
             elif role == Qt.TextAlignmentRole:
