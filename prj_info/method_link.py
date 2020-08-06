@@ -497,6 +497,7 @@ class Window(QWidget):
             menu.addSeparator()
             menu.addAction("complexity")
         menu.addSeparator()
+        menu.addAction("refresh")
         menu.addAction("reload DB")
         action = menu.exec_(self.proxyView.mapToGlobal(pos))
         if action:
