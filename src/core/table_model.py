@@ -43,7 +43,6 @@ class ProxyModel2(ProxyModel):
 
     def in_real_folder(self, index):
         return self.sourceModel().data(self.mapToSource(index), role=Qt.UserRole)[-1] == 0
-        # return self.sourceModel().in_real_folder(self.mapToSource(index))
 
     def lessThan(self, left, right):
         s_model = self.sourceModel()
@@ -109,9 +108,6 @@ class TableModel(QAbstractTableModel):
 
     def columnCount(self, parent=None):
         return self.column_count
-
-    # def in_real_folder(self, index):
-    #     return (self.__user_data[index.row()][-1] == 0)
 
     def data(self, index, role=Qt.DisplayRole):
         if index.isValid():
