@@ -467,6 +467,7 @@ class Window(QWidget):
         """
         menu = QMenu(self)
         menu.addAction("clipboard")
+        # menu.addAction("refresh")
         action = menu.exec_(self.resView.mapToGlobal(pos))
         if action:
             self._to_clipboard()
@@ -748,7 +749,7 @@ class Window(QWidget):
 
         row_no = self.resModel.rowCount()
         for row in to_insert:
-            add_row(self.resModel, (row_no, row[1:], ""))
+            add_row(self.resModel, (row_no, row[1:], row[0]))
             row_no += 1
 
     def collect_links_with_selected(self):
