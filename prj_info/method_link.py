@@ -868,21 +868,9 @@ class Window(QWidget):
         n_names = [("A", *names[0]), ("B", *names[1])]
         self.sorted_report(self.repo, (pre, n_names, ""))
 
-        what_sql = prep_sql(
-            what_call_1,
-            self.filterModule.currentText(),
-            self.filterClass.currentText(),
-            lvl,
-        )
         self.report_four("What", lvl)
 
-        from_sql = prep_sql(
-            called_from_1,
-            self.filterModule.currentText(),
-            self.filterClass.currentText(),
-            lvl,
-        )
-        self.report_four(ids, from_sql, "From")
+        self.report_four("From", lvl)
 
         fill_in_model(self.resModel.sourceModel(), self.repo, user_data=False)
 
