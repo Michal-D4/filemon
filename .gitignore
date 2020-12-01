@@ -18,8 +18,10 @@ __pycache__/
 *.zip
 ui_*.py
 *_rc.py
-/src/call_chain.py
 /.vscode/
 filemon.code-workspace
 filemon.egg-info
 prj_info/prj_info.ini
+/Lib/
+/Scripts/
+pyvenv.cfg
