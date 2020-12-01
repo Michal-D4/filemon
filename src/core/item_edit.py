@@ -109,18 +109,7 @@ class ItemEdit(QDialog):
 
 if __name__ == "__main__":
     import sys
-    from loguru import logger
     from PyQt5.QtWidgets import QApplication
-
-    logger.remove()
-    fmt = '<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | ' \
-          '<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> '   \
-          '- <level>{message}</level>'
-    logger.add(sys.stderr, level="DEBUG", format=fmt, enqueue=True)
-    # logger.add("cucu_{time:MMM-DD_HH-mm}.log", format=fmt, enqueue=True)
-
-    # logger.info("logger INFO add")
-    logger.debug("logger DEBUG add")
 
     app = QApplication(sys.argv)
     labels = ['label1', 'label2', 'Window title']

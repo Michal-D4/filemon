@@ -1,7 +1,6 @@
 import pytest
 from pathlib import Path
 import sqlite3
-from loguru import logger
 
 from conftest import DETECT_TYPES
 
@@ -15,7 +14,7 @@ fmt = (
     "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> "
     "- <level>{message}</level>"
 )
-# logger.add(sys.stderr, format=fmt, level='INFO')
+
 FILE_LIST = [
     "test_data/.gitignore",
     "test_data/.dir3/.dir.1.2/dir.1.2.3/file2.py",

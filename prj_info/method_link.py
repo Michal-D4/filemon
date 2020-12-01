@@ -11,7 +11,6 @@ from PyQt5.QtWidgets import (QApplication, QComboBox, QGridLayout,
                              QWidget, QAbstractItemView, QDialogButtonBox,
                              )
 from pathlib import Path
-from loguru import logger
 from datetime import datetime
 from collections import defaultdict
 from collections.abc import Iterable, Callable
@@ -496,7 +495,7 @@ class Window(QWidget):
             menu.addSeparator()
             menu.addAction("not called")
             menu.addSeparator()
-            menu.addAction("complexity")
+        menu.addAction("complexity")
         menu.addSeparator()
         menu.addAction("refresh")
         menu.addAction("reload DB")
@@ -1131,22 +1130,14 @@ save_links = (
 if __name__ == "__main__":
     import sys
 
-    logger.remove()
-    fmt = (
-        "<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | "
-        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> "
-        "- <level>{message}</level>"
-    )
-    logger.add(sys.stderr, level="DEBUG", format=fmt, enqueue=True)
-
     app = QApplication(sys.argv)
     prj_path = Path.cwd()
     with open(prj_path / "prj_info/prj_info.ini") as pr_ini:
-        db_name, input_meth, input_link, new_db = pr_ini.readline().split(";")
+        db_name, input_meth, input_link, new_db, *_ = pr_ini.readline().split(";")
     DB = prj_path / db_name
 
-    logger.debug(DB)
     conn = sqlite3.connect(DB)
+
     if new_db == "Y":
         recreate_tables(conn)
 
