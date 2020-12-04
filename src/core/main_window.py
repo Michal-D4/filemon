@@ -6,14 +6,13 @@ from PyQt5.QtCore import (pyqtSignal, QSettings, QVariant, QSize,
 from PyQt5.QtGui import QResizeEvent, QDrag, QPixmap, QDropEvent, QDragMoveEvent
 from PyQt5.QtWidgets import QMainWindow, QMenu, QWidget
 
-from src.core.utilities import open_create_db
+import src.core.helper as hlp
+
+from .utilities import open_create_db
+
+from .db_choice import DBChoice
 
 from src.ui.ui_main_window import Ui_MainWindow
-from src.core.helper import (REAL_FOLDER, VIRTUAL_FOLDER, REAL_FILE, VIRTUAL_FILE,
-                             MimeTypes, DROP_NO_ACTION, DROP_COPY_FOLDER, DROP_MOVE_FOLDER, DROP_COPY_FILE,
-                             DROP_MOVE_FILE,
-                             )
-from src.core.db_choice import DBChoice
 
 
 def restore_obj_state(obj: QWidget, settings_value: QVariant):
@@ -72,7 +71,7 @@ class AppWindow(QMainWindow):
     def _drag_move_event(self, event: QDragMoveEvent):
         index = self.ui.dirTree.indexAt(event.pos())
         mime_data = event.mimeData()
-        if mime_data.hasFormat(MimeTypes[REAL_FOLDER]):
+        if mime_data.hasFormat(hlp.MimeTypes[hlp.REAL_FOLDER]):
             if not self.ui.dirTree.model().is_virtual(index):
                 event.ignore()
             else:
@@ -99,24 +98,24 @@ class AppWindow(QMainWindow):
         pos: position where menu to be shown
         return: DROP_NO_ACTION, DROP_COPY_FOLDER, DROP_MOVE_FOLDER, DROP_COPY_FILE, DROP_MOVE_FILE
         """
-        if mime_data.hasFormat(MimeTypes[REAL_FOLDER]):
+        if mime_data.hasFormat(hlp.MimeTypes[hlp.REAL_FOLDER]):
             return self.real_folder_action(index)
-        if mime_data.hasFormat(MimeTypes[REAL_FILE]):
+        if mime_data.hasFormat(hlp.MimeTypes[hlp.REAL_FILE]):
             return self.real_file_action(index, pos)
-        if mime_data.hasFormat(MimeTypes[VIRTUAL_FILE]):
+        if mime_data.hasFormat(hlp.MimeTypes[hlp.VIRTUAL_FILE]):
             return self._ask_action_file(pos)
-        if mime_data.hasFormat(MimeTypes[VIRTUAL_FOLDER]):
+        if mime_data.hasFormat(hlp.MimeTypes[hlp.VIRTUAL_FOLDER]):
             return self._ask_action_folder(pos)
-        return DROP_NO_ACTION
+        return hlp.DROP_NO_ACTION
 
     def real_folder_action(self, index: QModelIndex) -> int:
         if self.ui.dirTree.model().is_virtual(index):
-            return DROP_COPY_FOLDER
-        return DROP_NO_ACTION
+            return hlp.DROP_COPY_FOLDER
+        return hlp.DROP_NO_ACTION
 
     def real_file_action(self, index: QModelIndex, pos: QPoint) -> int:
         if self.ui.dirTree.model().is_virtual(index):
-            return DROP_COPY_FILE
+            return hlp.DROP_COPY_FILE
         return self._ask_action_file(pos)
 
     def _ask_action_file(self, pos):
@@ -129,9 +128,9 @@ class AppWindow(QMainWindow):
         menu = self.set_ask_action_menu()
         action = menu.exec_(self.ui.dirTree.mapToGlobal(pos))
         return {
-            "Copy": DROP_COPY_FILE,
-            "Move": DROP_MOVE_FILE,
-            "Cancel": DROP_NO_ACTION,
+            "Copy": hlp.DROP_COPY_FILE,
+            "Move": hlp.DROP_MOVE_FILE,
+            "Cancel": hlp.DROP_NO_ACTION,
         }[action]
 
     def _ask_action_folder(self, pos):
@@ -144,9 +143,9 @@ class AppWindow(QMainWindow):
         menu = self.set_ask_action_menu()
         action = menu.exec_(self.ui.dirTree.mapToGlobal(pos))
         return {
-            "Copy": DROP_COPY_FOLDER,
-            "Move": DROP_MOVE_FOLDER,
-            "Cancel": DROP_NO_ACTION,
+            "Copy": hlp.DROP_COPY_FOLDER,
+            "Move": hlp.DROP_MOVE_FOLDER,
+            "Cancel": hlp.DROP_NO_ACTION,
         }[action]
 
     def set_ask_action_menu(self) -> QMenu:
@@ -171,9 +170,9 @@ class AppWindow(QMainWindow):
         indexes = self.ui.dirTree.selectionModel().selectedRows()
         mime_data = self.ui.dirTree.model().mimeData(indexes)
         drag.setMimeData(mime_data)
-        if mime_data.hasFormat(MimeTypes[REAL_FOLDER]):
+        if mime_data.hasFormat(hlp.MimeTypes[hlp.REAL_FOLDER]):
             drag.exec_(Qt.CopyAction)
-        elif mime_data.hasFormat(MimeTypes[VIRTUAL_FOLDER]):
+        elif mime_data.hasFormat(hlp.MimeTypes[hlp.VIRTUAL_FOLDER]):
             drag.exec_(Qt.MoveAction)
 
     def set_menus(self):

@@ -3,7 +3,8 @@ from pathlib import Path
 import sqlite3
 import datetime
 
-from src.core.create_db import create_all_objects
+from .create_db import create_all_objects
+import src.core.helper as hlp
 
 EXT_ID_INCREMENT = 100000
 DETECT_TYPES = sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
@@ -155,12 +156,6 @@ Delete = {'EXT': 'delete from Extensions where ExtID = ?;',
           }
 
 
-DB_setting = {'Path': '',
-              'Conn': None,
-              'SameDB' : False,   # TODO save/restore setting with DB, then 'SameDB' won't need
-              }
-
-
 def generate_adv_sql(param: dict) -> str:
     """
     Generate SQL from tuple "Selects['ADV_SELECT']" of length 6
@@ -195,13 +190,13 @@ def generate_adv_sql(param: dict) -> str:
 
 
 def advanced_selection(param):
-    if not DB_setting['Conn']:
+    if not hlp.DB_setting['Conn']:
         return ()
 
     sql = generate_adv_sql(param)
 
     if sql:
-        return DB_setting['Conn'].execute(sql)
+        return hlp.DB_setting['Conn'].execute(sql)
     return ()
 
 
@@ -228,7 +223,7 @@ def dir_tree_select(dir_id, level):
     """
     sql = generate_sql(dir_id, level)
 
-    return DB_setting['Conn'].cursor().execute(sql)
+    return hlp.DB_setting['Conn'].cursor().execute(sql)
 
 
 def dir_ids_select(dir_id, level):
@@ -240,50 +235,50 @@ def dir_ids_select(dir_id, level):
     """
     sql = generate_sql(dir_id, level, sql='DIR_IDS')
 
-    return DB_setting['Conn'].cursor().execute(sql)
+    return hlp.DB_setting['Conn'].cursor().execute(sql)
 
 
 def select_other(sql, params=()):
-    return DB_setting['Conn'].cursor().execute(Selects[sql], params)
+    return hlp.DB_setting['Conn'].cursor().execute(Selects[sql], params)
 
 
 def select_other2(sql, params=()):
-    return DB_setting['Conn'].cursor().execute(Selects[sql].format(*params))
+    return hlp.DB_setting['Conn'].cursor().execute(Selects[sql].format(*params))
 
 
 def insert_other(sql, data):
-    ss = DB_setting['Conn'].cursor().execute(Insert[sql], data)
-    DB_setting['Conn'].commit()
+    ss = hlp.DB_setting['Conn'].cursor().execute(Insert[sql], data)
+    hlp.DB_setting['Conn'].commit()
     return ss.lastrowid
 
 
 def insert_other2(sql, data):
-    ss = DB_setting['Conn'].cursor().execute(Insert[sql].format(*data))
-    DB_setting['Conn'].commit()
+    ss = hlp.DB_setting['Conn'].cursor().execute(Insert[sql].format(*data))
+    hlp.DB_setting['Conn'].commit()
     return ss.lastrowid
 
 
 def update_other(sql, data):
-    DB_setting['Conn'].cursor().execute(Update[sql], data)
-    DB_setting['Conn'].commit()
+    hlp.DB_setting['Conn'].cursor().execute(Update[sql], data)
+    hlp.DB_setting['Conn'].commit()
 
 
 def delete_other(sql, data):
     try:
-        DB_setting['Conn'].cursor().execute(Delete[sql], data)
+        hlp.DB_setting['Conn'].cursor().execute(Delete[sql], data)
     except sqlite3.IntegrityError:
         pass
     else:
-        DB_setting['Conn'].commit()
+        hlp.DB_setting['Conn'].commit()
 
 
 def delete_other2(sql, data):
-    DB_setting['Conn'].cursor().execute(Delete[sql].format(*data))
-    DB_setting['Conn'].commit()
+    hlp.DB_setting['Conn'].cursor().execute(Delete[sql].format(*data))
+    hlp.DB_setting['Conn'].commit()
 
 
 def open_create_db(create, file_name, same_db) -> bool:
-    DB_setting['SameDB'] = same_db
+    hlp.DB_setting['SameDB'] = same_db
     if create:
         conn = create_connection(file_name)
         create_all_objects(conn)
@@ -293,16 +288,18 @@ def open_create_db(create, file_name, same_db) -> bool:
         else:
             return False
 
-    DB_setting['Path'] = file_name
-    DB_setting['Conn'] = conn
     return True
 
 
 def create_connection(name: str = None) -> sqlite3.Connection:
     if name is None:
-        return DB_setting['Conn']
+        return hlp.DB_setting['Conn']
 
     conn = sqlite3.connect(name, check_same_thread=False,
                            detect_types=DETECT_TYPES)
     conn.cursor().execute('PRAGMA foreign_keys = ON;')
+
+    hlp.DB_setting['Path'] = name
+    hlp.DB_setting['Conn'] = conn
+
     return conn
