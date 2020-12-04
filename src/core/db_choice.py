@@ -78,7 +78,7 @@ class DBChoice(QDialog):
             if (self.init_data[1]) or (file_name not in self.init_data[1]):
                 self.create_db_(file_name)
                 self.DB_connect_signal.emit(file_name, True, False)
-                super(DBChoice, self).accept()
+                self.accept()
             else:
                 self.ui_db_choice.listOfBDs.setCurrentRow(
                     self.init_data[1].index(file_name))
