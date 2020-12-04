@@ -127,7 +127,7 @@ def set_columns_width(view, proportion=(4, 6, 8, 8, 2, 3, 5)):
     n = model.columnCount()
     w = view.width()
     for k in range(n):
-        view.setColumnWidth(k, w / ss * proportion[k])
+        view.setColumnWidth(k, int(w / ss * proportion[k]))
 
 
 def save_init():
@@ -225,10 +225,10 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
         self.note_filter = True
 
     def filterAcceptsRow(self, sourceRow, sourceParent: QModelIndex):
-        index0 = self.sourceModel().index(sourceRow, 0, sourceParent)
-        index1 = self.sourceModel().index(sourceRow, 1, sourceParent)
-        index2 = self.sourceModel().index(sourceRow, 2, sourceParent)
-        index3 = self.sourceModel().index(sourceRow, 4, sourceParent)
+        index0 = self.sourceModel().index(sourceRow, 0, sourceParent) # type
+        index1 = self.sourceModel().index(sourceRow, 1, sourceParent) # module
+        index2 = self.sourceModel().index(sourceRow, 2, sourceParent) # class
+        index3 = self.sourceModel().index(sourceRow, 6, sourceParent) # remark
 
         return (
             (self.type_all or self.sourceModel().data(index0) == self.type_filter)
