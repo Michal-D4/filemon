@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from PyQt5.QtCore import (QAbstractTableModel, QModelIndex, Qt, QMimeData, QByteArray,
                           QDataStream, QIODevice, QSortFilterProxyModel)
 
-from src.core.helper import MimeTypes, VIRTUAL_FILE, REAL_FILE
+from .helper import MimeTypes, VIRTUAL_FILE, REAL_FILE
 
 
 class ProxyModel(QSortFilterProxyModel):

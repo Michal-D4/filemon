@@ -7,8 +7,8 @@ import sys
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QCoreApplication
 
-from src.core.gov_files import FilesCrt
-from src.core.main_window import AppWindow
+from core.gov_files import FilesCrt
+from core.main_window import AppWindow
 
 
 APP_NAME = 'File manager'
