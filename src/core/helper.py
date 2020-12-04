@@ -5,13 +5,6 @@ import subprocess
 import webbrowser
 from collections import namedtuple
 
-DB_setting = {
-        'Path': 'empty',
-        'Conn': None,
-        'SameDB': False,   # TODO save/restore setting within DB, then 'SameDB' won't need
-    }
-print(f"importing DB_setting from helper {DB_setting['Path']}")
-
 
 Fields = namedtuple("Fields", "fields headers indexes")
 # fields: str  - tuple of fields (in table Files) to be displayed in the view filesList
