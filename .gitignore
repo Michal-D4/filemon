@@ -20,7 +20,6 @@ filemon.egg-info
 *.log
 *.db
 *.zip
-prj_info/prj_info.ini
 # /test_data/
 # /tools/
 # /inspection/
