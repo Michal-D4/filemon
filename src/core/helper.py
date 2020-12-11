@@ -5,6 +5,7 @@ import subprocess
 import webbrowser
 from collections import namedtuple
 
+
 Fields = namedtuple("Fields", "fields headers indexes")
 # fields: str  - tuple of fields (in table Files) to be displayed in the view filesList
 # headers: str - tuple of headers in the view filesList

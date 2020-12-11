@@ -8,9 +8,9 @@ from PyQt5.QtCore import (QAbstractItemModel, QModelIndex, Qt, QMimeData, QByteA
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QFont
 
-from src.core.helper import (REAL_FOLDER, VIRTUAL_FOLDER,
-                             MimeTypes, DROP_COPY_FOLDER, DROP_MOVE_FOLDER,
-                             DROP_COPY_FILE, DROP_MOVE_FILE)
+from .helper import (REAL_FOLDER, VIRTUAL_FOLDER,
+                     MimeTypes, DROP_COPY_FOLDER, DROP_MOVE_FOLDER,
+                     DROP_COPY_FILE, DROP_MOVE_FILE)
 import src.core.utilities as ut
 
 DirData = namedtuple('DirData', 'dir_id parent_id is_virtual path')

@@ -15,18 +15,18 @@ from PyQt5.QtWidgets import (QInputDialog, QLineEdit, QFileDialog,
                              )
 from PyQt5.QtGui import QFontDatabase
 
-from src.core.main_window import AppWindow
-from src.core.table_model import TableModel, ProxyModel2
-from src.core.tree_model import TreeModel
-from src.core.edit_tree_model import EditTreeModel, EditTreeItem
-from src.core.file_info import FileInfo, LoadFiles
-from src.core.helper import Fields, open_file_or_folder
+from .main_window import AppWindow
+from .table_model import TableModel, ProxyModel2
+from .tree_model import TreeModel
+from .edit_tree_model import EditTreeModel, EditTreeItem
+from .file_info import FileInfo, LoadFiles
+from .helper import Fields, open_file_or_folder
+from .load_db_data import LoadDBData
+from .input_date import DateInputDialog
+from .item_edit import ItemEdit
+from .sel_opt import SelOpt
+from .set_fields import SetFields
 import src.core.utilities as ut
-from src.core.load_db_data import LoadDBData
-from src.core.input_date import DateInputDialog
-from src.core.item_edit import ItemEdit
-from src.core.sel_opt import SelOpt
-from src.core.set_fields import SetFields
 
 DefFont = QFontDatabase.systemFont(QFontDatabase.GeneralFont)
 FileData = namedtuple("FileData", "file_id dir_id comment_id ext_id source")
@@ -871,9 +871,8 @@ class FilesCrt:
     def get_list_source(self, curr_dir_idx):
         if not curr_dir_idx.isValid():
             curr_dir_idx = self.ui.dirTree.model().index(0, 0)
-        if ut.DB_setting[
-            "SameDB"
-        ]:  # TODO save/restore setting with DB, then if won't need
+        if ut.DB_setting["SameDB"]:  
+            # TODO save/restore setting within DB, then if won't need
             settings = QSettings()
             self.file_list_source = settings.value("FILE_LIST_SOURCE", FOLDER)
             row = settings.value("FILE_IDX", 0)
@@ -998,9 +997,8 @@ class FilesCrt:
         settings.setValue("TAG_SEL_LIST", sel)
 
     def _restore_tag_selection(self):
-        if ut.DB_setting[
-            "SameDB"
-        ]:  # TODO save/restore setting with DB, then if won't need
+        if ut.DB_setting["SameDB"]:  
+            # TODO save/restore setting within DB, then if won't need
             settings = QSettings()
             sel = settings.value("TAG_SEL_LIST", [])
             model = self.ui.tagsList.model()
@@ -1031,9 +1029,8 @@ class FilesCrt:
         settings.setValue("AUTHOR_SEL_LIST", sel)
 
     def _restore_author_selection(self):
-        if ut.DB_setting[
-            "SameDB"
-        ]:  # TODO save/restore setting with DB, then if won't need
+        if ut.DB_setting["SameDB"]:  
+            # TODO save/restore setting within DB, then if won't need
             settings = QSettings()
             sel = settings.value("AUTHOR_SEL_LIST", [])
             model = self.ui.authorsList.model()
@@ -1175,9 +1172,8 @@ class FilesCrt:
         self._populate_directory_tree()
 
     def _restore_ext_selection(self):
-        if ut.DB_setting[
-            "SameDB"
-        ]:  # TODO save/restore setting with DB, then if won't need
+        if ut.DB_setting["SameDB"]:  
+            # TODO save/restore setting within DB, then if won't need
             settings = QSettings()
             sel = settings.value("EXT_SEL_LIST", [])
             model = self.ui.extList.model()
@@ -1239,9 +1235,8 @@ class FilesCrt:
         """
         model = self.ui.dirTree.model()
         parent = QModelIndex()
-        if ut.DB_setting[
-            "SameDB"
-        ]:  # TODO save/restore setting with DB, then if won't need
+        if ut.DB_setting["SameDB"]:  
+            # TODO save/restore setting within DB, then if won't need
             settings = QSettings()
             aux = settings.value("TREE_SEL_IDX", [0])
             for id_ in aux:

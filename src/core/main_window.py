@@ -6,14 +6,16 @@ from PyQt5.QtCore import (pyqtSignal, QSettings, QVariant, QSize,
 from PyQt5.QtGui import QResizeEvent, QDrag, QPixmap, QDropEvent, QDragMoveEvent
 from PyQt5.QtWidgets import QMainWindow, QMenu, QWidget
 
-from src.core.utilities import open_create_db
+from .helper import (REAL_FOLDER, VIRTUAL_FOLDER, REAL_FILE, VIRTUAL_FILE,
+                     MimeTypes, DROP_NO_ACTION, DROP_COPY_FOLDER, DROP_MOVE_FOLDER, 
+                     DROP_COPY_FILE, DROP_MOVE_FILE,
+                    )
 
-from src.ui.ui_main_window import Ui_MainWindow
-from src.core.helper import (REAL_FOLDER, VIRTUAL_FOLDER, REAL_FILE, VIRTUAL_FILE,
-                             MimeTypes, DROP_NO_ACTION, DROP_COPY_FOLDER, DROP_MOVE_FOLDER, DROP_COPY_FILE,
-                             DROP_MOVE_FILE,
-                             )
-from src.core.db_choice import DBChoice
+import src.core.utilities as ut
+
+from .db_choice import DBChoice
+
+from ui.ui_main_window import Ui_MainWindow
 
 
 def restore_obj_state(obj: QWidget, settings_value: QVariant):
@@ -409,7 +411,7 @@ class AppWindow(QMainWindow):
         :param same_db: bool  True if last used db is opening
         :return: None
         """
-        if open_create_db(create, file_name, same_db):
+        if ut.open_create_db(create, file_name, same_db):
             self.change_data_signal.emit("start app")
         else:
             self.show_message("Data base does not exist")

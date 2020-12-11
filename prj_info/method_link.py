@@ -11,7 +11,6 @@ from PyQt5.QtWidgets import (QApplication, QComboBox, QGridLayout,
                              QWidget, QAbstractItemView, QDialogButtonBox,
                              )
 from pathlib import Path
-from loguru import logger
 from datetime import datetime
 from collections import defaultdict
 from collections.abc import Iterable, Callable
@@ -128,7 +127,7 @@ def set_columns_width(view, proportion=(4, 6, 8, 8, 2, 3, 5)):
     n = model.columnCount()
     w = view.width()
     for k in range(n):
-        view.setColumnWidth(k, w / ss * proportion[k])
+        view.setColumnWidth(k, int(w / ss * proportion[k]))
 
 
 def save_init():
@@ -226,10 +225,10 @@ class MySortFilterProxyModel(QSortFilterProxyModel):
         self.note_filter = True
 
     def filterAcceptsRow(self, sourceRow, sourceParent: QModelIndex):
-        index0 = self.sourceModel().index(sourceRow, 0, sourceParent)
-        index1 = self.sourceModel().index(sourceRow, 1, sourceParent)
-        index2 = self.sourceModel().index(sourceRow, 2, sourceParent)
-        index3 = self.sourceModel().index(sourceRow, 4, sourceParent)
+        index0 = self.sourceModel().index(sourceRow, 0, sourceParent) # type
+        index1 = self.sourceModel().index(sourceRow, 1, sourceParent) # module
+        index2 = self.sourceModel().index(sourceRow, 2, sourceParent) # class
+        index3 = self.sourceModel().index(sourceRow, 6, sourceParent) # remark
 
         return (
             (self.type_all or self.sourceModel().data(index0) == self.type_filter)
@@ -496,7 +495,7 @@ class Window(QWidget):
             menu.addSeparator()
             menu.addAction("not called")
             menu.addSeparator()
-            menu.addAction("complexity")
+        menu.addAction("complexity")
         menu.addSeparator()
         menu.addAction("refresh")
         menu.addAction("reload DB")
@@ -1119,22 +1118,14 @@ save_links = (
 if __name__ == "__main__":
     import sys
 
-    logger.remove()
-    fmt = (
-        "<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | "
-        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> "
-        "- <level>{message}</level>"
-    )
-    logger.add(sys.stderr, level="DEBUG", format=fmt, enqueue=True)
-
     app = QApplication(sys.argv)
     prj_path = Path.cwd()
     with open(prj_path / "prj_info/prj_info.ini") as pr_ini:
-        db_name, input_meth, input_link, new_db = pr_ini.readline().split(";")
+        db_name, input_meth, input_link, new_db, *_ = pr_ini.readline().split(";")
     DB = prj_path / db_name
 
-    logger.debug(DB)
     conn = sqlite3.connect(DB)
+
     if new_db == "Y":
         recreate_tables(conn)
 

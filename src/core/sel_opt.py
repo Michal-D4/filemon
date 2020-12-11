@@ -126,7 +126,7 @@ class SelOpt(QDialog):
     def get_result(self) -> dict:
         """
         Returns the options chosen in the dialog
-        :rtype: dict of the following keys:
+        :result: dict of the following keys:
             'dir' - list of dir IDs as a str,
             'ext' - list of ext IDs as a str,
             'tag' - list of tag IDs as a str,

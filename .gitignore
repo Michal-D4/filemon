@@ -4,22 +4,24 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-/test_data/
-/tools/
-# /inspection/
-# /codestyles/
-# /_linux/
-/tmp/**/*
-/venv/
-/.idea/
+/.venv/
+ui_*.py
+*_rc.py
+
+# vscode workspace
+# /.vscode/
+
+# filemon.code-workspace
+filemon.egg-info
+
+# misc
+/tmp/
 *.xml
 *.log
 *.db
 *.zip
-ui_*.py
-*_rc.py
-/src/call_chain.py
-/.vscode/
-filemon.code-workspace
-filemon.egg-info
-prj_info/prj_info.ini
+# /test_data/
+# /tools/
+# /inspection/
+# /codestyles/
+# /_linux/

@@ -3,7 +3,14 @@ from pathlib import Path
 import sqlite3
 import datetime
 
-from src.core.create_db import create_all_objects
+from .create_db import create_all_objects
+
+DB_setting = {
+        'Path': 'empty',
+        'Conn': None,
+        'SameDB': False,   # TODO save/restore setting within DB, then 'SameDB' won't need
+    }
+
 
 EXT_ID_INCREMENT = 100000
 DETECT_TYPES = sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
@@ -155,12 +162,6 @@ Delete = {'EXT': 'delete from Extensions where ExtID = ?;',
           }
 
 
-DB_setting = {'Path': '',
-              'Conn': None,
-              'SameDB' : False,   # TODO save/restore setting with DB, then 'SameDB' won't need
-              }
-
-
 def generate_adv_sql(param: dict) -> str:
     """
     Generate SQL from tuple "Selects['ADV_SELECT']" of length 6
@@ -293,8 +294,6 @@ def open_create_db(create, file_name, same_db) -> bool:
         else:
             return False
 
-    DB_setting['Path'] = file_name
-    DB_setting['Conn'] = conn
     return True
 
 
@@ -305,4 +304,8 @@ def create_connection(name: str = None) -> sqlite3.Connection:
     conn = sqlite3.connect(name, check_same_thread=False,
                            detect_types=DETECT_TYPES)
     conn.cursor().execute('PRAGMA foreign_keys = ON;')
+
+    DB_setting['Path'] = name
+    DB_setting['Conn'] = conn
+
     return conn

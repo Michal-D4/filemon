@@ -2,7 +2,6 @@
 
 from collections import namedtuple
 import datetime
-from loguru import logger
 from pathlib import Path
 import re
 import sqlite3
@@ -149,8 +148,7 @@ class FileInfo(QRunnable):
                 issue_date = self.file_info[4]
                 book_title = self.file_info[5]
             except IndexError:
-                logger.exception(
-                    ' IndexError: {len(self.file_info)}, must be >= 6')
+                print(f"IndexError: {len(self.file_info)}, must be >= 6")
             else:
                 self.cursor.execute(INSERT_COMMENT, (book_title, ''))
                 self.conn.commit()
@@ -185,7 +183,7 @@ class FileInfo(QRunnable):
                 self.file_info.append(fr.getNumPages())
                 fi = fr.documentInfo     # == getDocumentInfo()
             except (ValueError, PyPDF2.utils.PdfReadError, PyPDF2.utils.PdfStreamError) as e:
-                logger.exception(e)
+                print(f"exception {e}")
                 self.file_info += [0, '', '', '']
             else:
                 self.add_pdf_info(fi)
