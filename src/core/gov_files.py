@@ -47,7 +47,7 @@ def insert_virt_dirs(dir_tree: list):
             dir_tree.insert(idx, (os.path.split(vd[0])[1], *vd[1:], vd[0]))
             id_list.insert(idx, vd[1])
         except ValueError:
-            pass
+            print('gov_files.insert_virt_dirs: ValueError')
 
 
 def persistent_row_indexes(view_: QAbstractItemView) -> list:
@@ -320,8 +320,8 @@ class FilesCrt:
                 u_dat = model.data(idx, Qt.UserRole)
                 file_path = ut.select_other("PATH", (u_dat.dir_id,)).fetchone()
                 file_data = file_._make(
-                    (idx, os.path.join(
-                        file_path[0], file_name), u_dat, file_name)
+                    (idx, os.path.join(file_path[0], file_name), 
+                     u_dat, file_name)
                 )
                 files.append(file_data)
         return files
@@ -516,7 +516,7 @@ class FilesCrt:
                     try:
                         ut.insert_other("TAG_FILE", (tag[1], file[1]))
                     except sqlite3.IntegrityError:
-                        pass
+                        print('FilesCtr._scan_for_tags: sqlite3.IntegrityError')
 
     def get_selected_tags(self):
         idxs = self.ui.tagsList.selectedIndexes()

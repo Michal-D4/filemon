@@ -273,7 +273,7 @@ def delete_other(sql, data):
     try:
         DB_setting['Conn'].cursor().execute(Delete[sql], data)
     except sqlite3.IntegrityError:
-        pass
+        print('utilities.delete_other: sqlite3.IntegrityError')
     else:
         DB_setting['Conn'].commit()
 

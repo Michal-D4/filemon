@@ -100,7 +100,9 @@ def create_all_objects(connection):
         try:
             cursor.execute(obj)
         except sqlite3.Error as err:
-            pass
+            print("create_db.create_all_objects")
+            print(err)
+            return
 
     initiate_db(connection)
 
@@ -111,6 +113,8 @@ def initiate_db(connection):
         # common root - without parent
         cursor.execute('insert into Dirs (DirID) values (0);')
     except sqlite3.Error as err:
-        pass
+        print("create_db.initiate_db")
+        print(err)
+        return
 
     connection.commit()
