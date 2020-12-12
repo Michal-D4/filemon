@@ -5,6 +5,7 @@ __pycache__/
 *$py.class
 
 /.venv/
+/.vscode/
 ui_*.py
 *_rc.py
 
@@ -18,7 +19,7 @@ filemon.egg-info
 /tmp/
 *.xml
 *.log
-*.db
+*.db*
 *.zip
 # /test_data/
 # /tools/
