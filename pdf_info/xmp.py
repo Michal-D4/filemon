@@ -8,7 +8,7 @@
 """
 
 from collections import defaultdict
-from xml.etree import ElementTree as ET
+from defusedxml.etree import ElementTree as ET
 
 RDF_NS = '{http://www.w3.org/1999/02/22-rdf-syntax-ns#}'
 XML_NS = '{http://www.w3.org/XML/1998/namespace}'
