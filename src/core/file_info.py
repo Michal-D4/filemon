@@ -189,14 +189,11 @@ class FileInfo(QRunnable):
                 self.add_pdf_info(fi)
 
     def add_pdf_info(self, fi: dict):
-        print(type(fi))
         if fi is not None:
             if "/CreationDate" in fi.keys():
-                print(type(fi["/CreationDate"]))
-            cr_date = pdf_creation_date(fi.getText('/CreationDate'))
-            self.file_info += [fi.getText('/Author'),
-                               cr_date,
-                               fi.getText('/Title')]
+                cr_date = pdf_creation_date(fi.getText('/CreationDate'))
+                self.file_info += [fi.getText('/Author'),
+                    cr_date, fi.getText('/Title')]
         else:
             self.file_info += ['', '', '']
 
