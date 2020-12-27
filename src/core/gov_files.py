@@ -169,9 +169,7 @@ class FilesCrt:
         self._opt = SelOpt(self)
         self._restore_font()
         self._restore_fields()
-
-    def _on_data_methods(self):
-        return {
+        self.data_methods = {
             "Author Remove unused": self._author_remove_unused,
             "change_font": self._ask_for_change_font,
             "Dirs Create virtual folder as child": self._create_virtual_child,
@@ -489,12 +487,12 @@ class FilesCrt:
         try:
             act = action.split("/")
             if len(act) == 1:
-                self._on_data_methods()[action]()
+                self.data_methods[action]()
             else:
-                self._on_data_methods()[act[0]](act[1:])
+                self.data_methods[act[0]](act[1:])
         except KeyError:
             self.app_window.show_message(
-                'Action "{}" not implemented'.format(action), 5000
+                f'Action "{action}" not implemented', 5000
             )
 
     def _scan_for_tags(self):
@@ -629,11 +627,11 @@ class FilesCrt:
     def _selection_options(self) -> None:
         """
         Show files according optional conditions
-        1) folder and nested sub-folders up to n-th level
+        1) folder and nested sub-folders
         2) list of extensions
         3) list of tags (match all/mutch any)
         4) list of authors - match any
-        5) date of "file modification" / "book issue" - after/before
+        5) date of "file modification" / "book issue" - after/before/between
         :return:
         """
         if self._opt.exec_():
@@ -1323,7 +1321,7 @@ class FilesCrt:
                 tt = model.data(i, Qt.UserRole)
                 if tt[0] > ut.EXT_ID_INCREMENT:
                     res.add(model.data(i, Qt.DisplayRole))
-                else:
+                else:              # group of extentions
                     ext_ = ut.select_other("EXT_IN_GROUP", (tt[0],)).fetchall()
                     res.update([ee[0] for ee in ext_])
             res = list(res)
