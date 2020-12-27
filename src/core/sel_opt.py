@@ -179,8 +179,8 @@ class SelOpt(QDialog):
         elif self.ui.chAuthor.isChecked():
             s.update(self._get_file_ids_4_authors())
 
-        return ','.join(s)
-
+        return ','.join((str(id_[0]) for id_ in s))
+    
     def _get_dir_ids(self) -> str:
         """
         returns list of selected IDs as string separated by coma
