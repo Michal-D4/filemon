@@ -2,18 +2,11 @@ import pytest
 from pathlib import Path
 import sqlite3
 
-from conftest import DETECT_TYPES
-
-from src.core import create_db as db
-import src.core.load_db_data as ld
+import core
+from core import create_db as db
+import core.load_db_data as ld
 
 TEST_ROOT_DIR = Path.cwd().parent.parent / "test_data"
-logger.remove()
-fmt = (
-    "<green>{time:HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | "
-    "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> "
-    "- <level>{message}</level>"
-)
 
 FILE_LIST = [
     "test_data/.gitignore",

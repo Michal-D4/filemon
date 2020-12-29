@@ -2,7 +2,8 @@ import sqlite3
 
 import pytest
 
-from src.core import load_db_data as ld, create_db as db
+import core
+from core import load_db_data as ld, create_db as db
 
 
 DETECT_TYPES = sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES

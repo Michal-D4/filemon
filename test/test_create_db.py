@@ -3,7 +3,8 @@ from typing import Iterable
 import pytest
 import sqlite3
 
-from src.core import create_db as db
+import core
+from core import create_db as db
 
 
 PATH_TO_DATA = Path("test/data")

@@ -2,7 +2,8 @@ import pytest
 from pathlib import Path
 import sqlite3
 
-import src.core.file_info as lf  # lf ~ fiLe_inFo
+import core
+import core.file_info as lf  # lf ~ fiLe_inFo
 
 
 def test_ext_translate():

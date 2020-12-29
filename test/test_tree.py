@@ -1,6 +1,7 @@
 import sqlite3
 import pytest
 
+import prj_info
 import prj_info.method_tree as mt
 
 lines = (
