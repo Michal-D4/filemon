@@ -169,42 +169,6 @@ class FilesCrt:
         self._opt = SelOpt(self)
         self._restore_font()
         self._restore_fields()
-        self.data_methods = {
-            "Author Remove unused": self._author_remove_unused,
-            "change_font": self._ask_for_change_font,
-            "Dirs Create virtual folder as child": self._create_virtual_child,
-            "Dirs Create virtual folder": self._create_virtual,
-            "Dirs Delete folder": self._delete_virtual,
-            "Dirs Remove empty folders": self._del_empty_dirs,
-            "Dirs Group": self._add_group_folder,
-            "Dirs Rename folder": self._rename_folder,
-            "Dirs Rescan dir": self._rescan_dir,
-            "Edit authors": self._edit_authors,
-            "Edit comment": self._edit_comment,
-            "Edit key words": self._edit_key_words,
-            "Edit title": self._edit_title,
-            "Ext Create group": self._ext_create_group,
-            "Ext Delete all files with current extension": self._ext_delete_current,
-            "Ext Remove unused": self._ext_remove_unused,
-            "File Copy file name": self._copy_file_name,
-            "File Copy file(s)": self._copy_files,
-            "File Copy path": self._copy_path,
-            "File Delete row": self._delete_files,
-            "File Delete file(s)": self._remove_files,
-            "File Move file(s)": self._move_files,
-            "File Open folder": self._open_folder,
-            "File Open": self._open_file,
-            "File Rename file": self._rename_file,
-            "File_doubleClicked": self._double_click_file,
-            "Resize columns": self._resize_columns,
-            "Select files": self._list_selected_files,
-            "Selection options": self._selection_options,
-            "Set fields": self._set_fields,
-            "Tag Remove unused": self._tag_remove_unused,
-            "Tag Rename": self._tag_rename,
-            "Tag Scan in names": self._scan_for_tags,
-            "start app": self._populate_all_widgets,
-        }
 
     def _add_group_folder(self):
         """
@@ -484,12 +448,49 @@ class FilesCrt:
         :@param action: string to select handle method
         :@return: None
         """
+        data_methods = {
+            "Author Remove unused": self._author_remove_unused,
+            "change_font": self._ask_for_change_font,
+            "Dirs Create virtual folder as child": self._create_virtual_child,
+            "Dirs Create virtual folder": self._create_virtual,
+            "Dirs Delete folder": self._delete_virtual,
+            "Dirs Remove empty folders": self._del_empty_dirs,
+            "Dirs Group": self._add_group_folder,
+            "Dirs Rename folder": self._rename_folder,
+            "Dirs Rescan dir": self._rescan_dir,
+            "Edit authors": self._edit_authors,
+            "Edit comment": self._edit_comment,
+            "Edit key words": self._edit_key_words,
+            "Edit title": self._edit_title,
+            "Ext Create group": self._ext_create_group,
+            "Ext Delete all files with current extension": self._ext_delete_current,
+            "Ext Remove unused": self._ext_remove_unused,
+            "File Copy file name": self._copy_file_name,
+            "File Copy file(s)": self._copy_files,
+            "File Copy path": self._copy_path,
+            "File Delete row": self._delete_files,
+            "File Delete file(s)": self._remove_files,
+            "File Move file(s)": self._move_files,
+            "File Open folder": self._open_folder,
+            "File Open": self._open_file,
+            "File Rename file": self._rename_file,
+            "File_doubleClicked": self._double_click_file,
+            "Resize columns": self._resize_columns,
+            "Select files": self._list_selected_files,
+            "Selection options": self._selection_options,
+            "Set fields": self._set_fields,
+            "Tag Remove unused": self._tag_remove_unused,
+            "Tag Rename": self._tag_rename,
+            "Tag Scan in names": self._scan_for_tags,
+            "start app": self._populate_all_widgets,
+        }
+
         try:
             act = action.split("/")
             if len(act) == 1:
-                self.data_methods[action]()
+                data_methods[action]()
             else:
-                self.data_methods[act[0]](act[1:])
+                data_methods[act[0]](act[1:])
         except KeyError:
             self.app_window.show_message(
                 f'Action "{action}" not implemented', 5000
