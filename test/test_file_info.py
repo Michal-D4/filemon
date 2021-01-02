@@ -95,6 +95,7 @@ def test_insert_author(init_load_obj, files, authors_dict):
             fa = curs.execute(lf.FILE_AUTHOR_LINKED, (str(f_id), str(a_id))).fetchone()
             assert fa == (f_id, a_id)
 
-
+""" 
 def test_get_file_info():
     pass
+"""

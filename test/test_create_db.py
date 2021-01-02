@@ -47,7 +47,7 @@ def schema_db():
                 curr = line
             else:
                 curr += line
-        lines.append(curr.strip())
+        lines.append(curr.strip())        # last SQL in file "file.sql"
     return lines
 
 
@@ -64,10 +64,8 @@ def expected() -> dict():
                     skip_line = False
                 else:
                     values.append(tuple(line.strip("\n").split("|")))
-
-        res[
-            fl[0].split(".")[0]
-        ] = values  # fl[0].split('.')[0] a dict key = "table name"
+        # fl[0].split('.')[0] a dict key = "table name"
+        res[fl[0].split(".")[0]] = values  
     return res
 
 
